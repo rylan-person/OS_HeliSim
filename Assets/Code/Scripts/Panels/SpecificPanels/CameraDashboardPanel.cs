@@ -15,8 +15,9 @@ public class CameraDashboardPanel : DashboardPanel
     private RenderTexture renderTexture;
     private DashboardSlot ownerSlot;
 
-    private void Awake()
+    protected override void Awake()
     {
+        base.Awake();
         ownerSlot = GetComponentInParent<DashboardSlot>();
         if (ownerSlot == null)
             Debug.LogWarning($"{name} could not find a parent DashboardSlot.", this);

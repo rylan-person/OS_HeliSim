@@ -428,8 +428,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 268650330}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: -0.14798656, y: 0, z: 0, w: 0.9889894}
+  m_LocalPosition: {x: 0, y: 0.00000047683716, z: 15.373354}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -734,7 +734,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &363936842
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -840,9 +840,9 @@ MonoBehaviour:
   gridRoot: {fileID: 566708793}
   focusedSlot: {fileID: 0}
   availablePanels:
-  - panelType: 1
+  - panelType: 0
     prefab: {fileID: 6424232111790478153, guid: 591ae5cedcb4d2d479757f073a37dfe5, type: 3}
-  - panelType: 3
+  - panelType: 1
     prefab: {fileID: 4807250329591889004, guid: a83a089e3f8bd2345a6422e8d57a96b0, type: 3}
   - panelType: 2
     prefab: {fileID: 4528000104874541456, guid: 58cacda65371a3c458aa967c209de46b, type: 3}
@@ -2034,7 +2034,7 @@ Camera:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1467092246}
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 1
   m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}

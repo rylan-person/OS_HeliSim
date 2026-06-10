@@ -1,9 +1,9 @@
 public enum DashboardPanelType
 {
-    Empty,
     FollowCamera,
-    FPVCamera,
     DynamicCamera,
+    FPVCamera,
+    Empty,
     TopDownCamera,
     ControlInputs,
     Timing,

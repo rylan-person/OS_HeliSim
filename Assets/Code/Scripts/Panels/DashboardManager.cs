@@ -108,4 +108,57 @@ public class DashboardManager : MonoBehaviour
 
         focusedSlot = null;
     }
+
+    private void SetSlotPanel(DashboardSlot slot, DashboardPanelType panelType)
+    {
+        if (slot == null)
+        {
+            Debug.LogWarning("Tried to set a panel on a missing dashboard slot.");
+            return;
+        }
+
+        if (panelType == DashboardPanelType.Empty)
+        {
+            slot.ClearPanel();
+            return;
+        }
+
+        if (!panelLookup.TryGetValue(panelType, out DashboardPanel prefab))
+        {
+            Debug.LogWarning($"No panel prefab registered for panel type: {panelType}");
+            return;
+        }
+
+        slot.SetPanel(prefab);
+    }
+
+    public void SetPanelBySlotIndex(int slotIndex, int panelTypeIndex)
+    {
+        DashboardPanelType panelType = (DashboardPanelType)panelTypeIndex;
+
+        Debug.Log($"Setting panel for slot index {slotIndex} to panel type {panelType}");
+
+        switch (slotIndex)
+        {
+            case 0:
+                SetSlotPanel(topLeft, panelType);
+                break;
+
+            case 1:
+                SetSlotPanel(topRight, panelType);
+                break;
+
+            case 2:
+                SetSlotPanel(bottomLeft, panelType);
+                break;
+
+            case 3:
+                SetSlotPanel(bottomRight, panelType);
+                break;
+
+            default:
+                Debug.LogWarning($"Invalid slot index: {slotIndex}");
+                break;
+        }
+    }
 }

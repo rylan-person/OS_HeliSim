@@ -8,9 +8,17 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 4587695868481439710, guid: 81bc38515700fe243bd7cce5d4f294b1, type: 3}
+      propertyPath: m_text
+      value: Dynamic Camera
+      objectReference: {fileID: 0}
     - target: {fileID: 5127523040133252296, guid: 81bc38515700fe243bd7cce5d4f294b1, type: 3}
       propertyPath: m_Name
       value: DynamicCamPanel
+      objectReference: {fileID: 0}
+    - target: {fileID: 5510007074796267867, guid: 81bc38515700fe243bd7cce5d4f294b1, type: 3}
+      propertyPath: m_Value
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8529416675335200198, guid: 81bc38515700fe243bd7cce5d4f294b1, type: 3}
       propertyPath: m_Pivot.x

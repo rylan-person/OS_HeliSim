@@ -21,4 +21,14 @@ public class DashboardSlot : MonoBehaviour
     {
         return currentPanel;
     }
+
+    public void ClearPanel()
+    {
+        if (currentPanel == null)
+            return;
+
+        currentPanel.OnPanelHidden();
+        Destroy(currentPanel.gameObject);
+        currentPanel = null;
+    }
 }
