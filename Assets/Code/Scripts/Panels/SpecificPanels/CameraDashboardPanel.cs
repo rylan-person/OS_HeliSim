@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using CesiumForUnity;
 
 public class CameraDashboardPanel : DashboardPanel
 {
@@ -14,7 +15,7 @@ public class CameraDashboardPanel : DashboardPanel
     private RenderTexture renderTexture;
     private DashboardSlot ownerSlot;
 
-    private void Start()
+    private void Awake()
     {
         ownerSlot = GetComponentInParent<DashboardSlot>();
         if (ownerSlot == null)
@@ -85,11 +86,13 @@ public class CameraDashboardPanel : DashboardPanel
     public override void OnPanelShown()
     {
         panelCamera.enabled = true;
+        WorldLookup.Instance.GetPrefab(WorldLookupType.CesiumGeoreference)?.GetComponent<CesiumCameraManager>()?.additionalCameras.Add(panelCamera);
     }
 
     public override void OnPanelHidden()
     {
         panelCamera.enabled = false;
+        WorldLookup.Instance.GetPrefab(WorldLookupType.CesiumGeoreference)?.GetComponent<CesiumCameraManager>()?.additionalCameras.Remove(panelCamera);
     }
 
     private void OnDestroy()

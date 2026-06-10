@@ -526,7 +526,7 @@ Camera:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 268650330}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 2
   m_ClearFlags: 1
   m_BackGroundColor: {r: 0, g: 0.38888872, b: 1, a: 0}
@@ -675,6 +675,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 331145491}
+  - component: {fileID: 331145492}
   m_Layer: 0
   m_Name: WorldModule
   m_TagString: Untagged
@@ -701,6 +702,21 @@ Transform:
   - {fileID: 126730124}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &331145492
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 331145490}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66ead92698111434cb12836e0eaae5f0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorldLookup
+  lookupEntries:
+  - lookupType: 0
+    prefab: {fileID: 363936841}
 --- !u!1 &363936841
 GameObject:
   m_ObjectHideFlags: 0
@@ -731,10 +747,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: be1fb41cdd01d7649a082f1a8f2bd114, type: 3}
   m_Name: 
   m_EditorClassIdentifier: CesiumForUnity::CesiumForUnity.CesiumCameraManager
-  _useMainCamera: 1
-  _useSceneViewCameraInEditor: 1
-  _additionalCameras:
-  - {fileID: 0}
+  _useMainCamera: 0
+  _useSceneViewCameraInEditor: 0
+  _additionalCameras: []
 --- !u!114 &363936843
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2019,7 +2034,7 @@ Camera:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1467092246}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 2
   m_ClearFlags: 1
   m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
@@ -2203,7 +2218,7 @@ Camera:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1512102870}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 2
   m_ClearFlags: 1
   m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
