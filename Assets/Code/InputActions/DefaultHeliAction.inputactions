@@ -1,0 +1,617 @@
+{
+    "version": 1,
+    "name": "DefaultHeliAction",
+    "maps": [
+        {
+            "name": "Default",
+            "id": "a879d10f-2f13-4b50-aebd-30a9e93477ed",
+            "actions": [
+                {
+                    "name": "Pitch Input",
+                    "type": "Value",
+                    "id": "a3cdcc41-b398-457c-9321-c6bcceae8889",
+                    "expectedControlType": "Axis",
+                    "processors": "Invert",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Reset VR",
+                    "type": "Button",
+                    "id": "410cf37b-82c7-453d-9c6d-09d49169c329",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Yaw Input",
+                    "type": "PassThrough",
+                    "id": "2557d8c2-59ec-41f9-b089-c3288e8f1ca0",
+                    "expectedControlType": "Axis",
+                    "processors": "AxisDeadzone(max=1)",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Roll Input",
+                    "type": "PassThrough",
+                    "id": "59d94c40-c46c-482d-85c2-926f1ef352ce",
+                    "expectedControlType": "Axis",
+                    "processors": "AxisDeadzone(max=1)",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Collective Lever",
+                    "type": "PassThrough",
+                    "id": "9c96411a-7e12-4bcf-b47a-395ac39e24b1",
+                    "expectedControlType": "Axis",
+                    "processors": "AxisDeadzone(max=1),Invert",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Throttle Lever",
+                    "type": "PassThrough",
+                    "id": "1075e3d8-a52c-46a8-a7e7-720ee7e295b7",
+                    "expectedControlType": "Axis",
+                    "processors": "AxisDeadzone(max=1),Invert",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Start Engine Global",
+                    "type": "Button",
+                    "id": "47b8c4d0-1f98-4b8f-a57b-2dd2ededeb37",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Yaw Small Input",
+                    "type": "PassThrough",
+                    "id": "679913e6-64fb-497a-b7e9-ad3cf42469eb",
+                    "expectedControlType": "Axis",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Yaw Large Input",
+                    "type": "PassThrough",
+                    "id": "cdd9eb74-1f75-4762-a25b-e3531c5f1fbc",
+                    "expectedControlType": "Axis",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Weapon Switch",
+                    "type": "Button",
+                    "id": "54157638-ec44-4075-a531-965b58274825",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Fire Press",
+                    "type": "Button",
+                    "id": "fdb7fca7-86f0-4eab-8703-1717f2ea480d",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Fire Hold",
+                    "type": "Button",
+                    "id": "1fd87e3e-2db5-4df1-b2ce-d4bab42d9990",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "Press(behavior=2)",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Reset Helicopter",
+                    "type": "Button",
+                    "id": "3f064ad6-9ae7-4d93-955d-d9b39542b7ed",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "IncreaseFlightDynamic",
+                    "type": "Button",
+                    "id": "979766a6-5708-4a37-80ab-fd3a4413d573",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "DecreaseFlightDynamic",
+                    "type": "Button",
+                    "id": "622dcb84-89d1-4b50-80bc-9a840206e33e",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "WidenFlightDynamic",
+                    "type": "Button",
+                    "id": "19aa769b-41b9-49cb-b407-361470728188",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "NarrowFlightDynamic",
+                    "type": "Button",
+                    "id": "c072684b-5f08-443a-bb43-bd0db122f4f6",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "CycleFlightDynamic",
+                    "type": "Button",
+                    "id": "2f543d29-5378-4202-9c21-fcacde29458f",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "e8370698-ee38-4852-a4ab-5506a2f1c5c2",
+                    "path": "<HID::Saitek Saitek X52 Flight Control System>/stick/y",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pitch Input",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "159c3f18-e3e3-4bfd-b422-a44e414f25de",
+                    "path": "<HID::Thustmaster Joystick - HOTAS Warthog>/stick/y",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pitch Input",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "1D Axis",
+                    "id": "626be370-1c51-42c9-a39d-7b15b83eb126",
+                    "path": "1DAxis",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pitch Input",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "negative",
+                    "id": "2abb9029-4578-4995-bd35-6ea6af90d308",
+                    "path": "<Keyboard>/s",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pitch Input",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "positive",
+                    "id": "7fbccd09-2456-44d8-8715-ad024ac6c0b9",
+                    "path": "<Keyboard>/w",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pitch Input",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "",
+                    "id": "76fd7e8e-a133-412e-b56a-fb5c23693909",
+                    "path": "<HID::Saitek Saitek X52 Flight Control System>/button28",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Start Engine Global",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "a059f5ab-2f0a-4381-a73a-b4b6972c7a86",
+                    "path": "<HID::Thrustmaster Throttle - HOTAS Warthog>/button16",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Start Engine Global",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "75d700c6-915c-4c2c-895f-fa44dc1d3499",
+                    "path": "<Keyboard>/f1",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Start Engine Global",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "6e61bdbb-c75b-4a5e-9b7e-2f53f7c048fa",
+                    "path": "<HID::Saitek Saitek X52 Flight Control System>/slider",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Throttle Lever",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "5a301243-c94b-4f72-8999-a9a095b20880",
+                    "path": "<HID::Thrustmaster Throttle - HOTAS Warthog>/slider",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Throttle Lever",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "1D Axis",
+                    "id": "01c80eab-9507-46fc-b02d-2b2d19749fce",
+                    "path": "1DAxis",
+                    "interactions": "",
+                    "processors": "Clamp(max=1)",
+                    "groups": "",
+                    "action": "Throttle Lever",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "negative",
+                    "id": "f3bfd631-fb0e-4e8b-98ae-9a65457bead5",
+                    "path": "<Keyboard>/2",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Throttle Lever",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "positive",
+                    "id": "ce90e560-63ec-498b-9e3c-3f77ca73487d",
+                    "path": "<Keyboard>/1",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Throttle Lever",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "",
+                    "id": "4381a879-804b-41a3-850d-cc84c4a5f3b3",
+                    "path": "<HID::Saitek Saitek X52 Flight Control System>/z",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Collective Lever",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "04b49524-acd8-4110-9638-6e99c020a384",
+                    "path": "<HID::Thrustmaster Throttle - HOTAS Warthog>/z",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Collective Lever",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "1D Axis",
+                    "id": "f32a1265-a161-42df-a427-c69a43a6d193",
+                    "path": "1DAxis",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Yaw Input",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "negative",
+                    "id": "9fed3594-166f-4687-842b-b28d50b4e3cc",
+                    "path": "<HID::Saitek Saitek X52 Flight Control System>/hat/left",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Yaw Input",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "positive",
+                    "id": "829fedac-0121-44bc-82fa-3ca6b40b6069",
+                    "path": "<HID::Saitek Saitek X52 Flight Control System>/hat/right",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Yaw Input",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "",
+                    "id": "dfcb16cb-2db9-4acd-b9ee-748ac5fe40f0",
+                    "path": "<HID::Saitek Saitek X52 Flight Control System>/stick/x",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Roll Input",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "25541455-d269-482c-9906-07e5078efe4f",
+                    "path": "<HID::Thustmaster Joystick - HOTAS Warthog>/stick/x",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Roll Input",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "1D Axis",
+                    "id": "fe904915-a2b5-4cf2-a6e8-64eb720f3959",
+                    "path": "1DAxis",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Roll Input",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "negative",
+                    "id": "d1b05b15-b7e1-4df1-a27a-b396cb7a52e7",
+                    "path": "<Keyboard>/a",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Roll Input",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "positive",
+                    "id": "afe5dc71-3738-4499-ba59-fb76f1ae2256",
+                    "path": "<Keyboard>/d",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Roll Input",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "",
+                    "id": "27fd6f96-10e1-4ff5-80e3-f56570ee51f6",
+                    "path": "<HID::Saitek Saitek X52 Flight Control System>/button29",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Reset VR",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "b63fb949-47f5-4b88-a279-55b726753e1d",
+                    "path": "<HID::Thrustmaster Throttle - HOTAS Warthog>/button21",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Reset VR",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "07df5069-b413-496f-b3fe-6591d52f0403",
+                    "path": "<ThrustmasterRudderPedals>/rotationSmall",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Yaw Small Input",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "48dd25c8-a85a-417f-bda0-07db23e69c39",
+                    "path": "<ThrustmasterRudderPedals>/rotationLarge",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Yaw Large Input",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "0971d382-5454-4fb4-b9fd-4882aa899fae",
+                    "path": "<HID::Saitek Saitek X52 Flight Control System>/button17",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Weapon Switch",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "eb5337c8-ae9f-45ad-adbe-f871803ce844",
+                    "path": "<HID::Thustmaster Joystick - HOTAS Warthog>/button7",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Weapon Switch",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "313c3802-d052-49b6-b87e-fe68cdf2974c",
+                    "path": "<HID::Saitek Saitek X52 Flight Control System>/trigger",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Fire Press",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "a2414e4e-d6d3-4162-ab80-a01c53efc011",
+                    "path": "<HID::Thustmaster Joystick - HOTAS Warthog>/trigger",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Fire Press",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "ee38f497-ae5a-4ee6-8daf-f0249d568b58",
+                    "path": "<HID::Saitek Saitek X52 Flight Control System>/trigger",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Fire Hold",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "c13138a0-7ff5-46fd-a345-4831e35314a6",
+                    "path": "<HID::Thustmaster Joystick - HOTAS Warthog>/trigger",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Fire Hold",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "e8047c20-1ef2-44d1-9b72-b03c409e2338",
+                    "path": "<HID::Thrustmaster Throttle - HOTAS Warthog>/button26",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Reset Helicopter",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "d324a9f6-5d0e-438e-bf58-e494dfbf7b60",
+                    "path": "<HID::Saitek Saitek X52 Flight Control System>/button27",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Reset Helicopter",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "67741423-7c80-4210-aac0-bab977322d9c",
+                    "path": "<HID::Thrustmaster Throttle - HOTAS Warthog>/button4",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "IncreaseFlightDynamic",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "aed50073-dcb8-44c4-9574-a624ea020deb",
+                    "path": "<HID::Thrustmaster Throttle - HOTAS Warthog>/button6",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "DecreaseFlightDynamic",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "558fe4b5-c02b-48b1-b3d5-cd9c71274bc5",
+                    "path": "<HID::Thrustmaster Throttle - HOTAS Warthog>/button3",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "WidenFlightDynamic",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "7424d542-0e04-4b41-8a2f-31a3dd16d8ed",
+                    "path": "<HID::Thrustmaster Throttle - HOTAS Warthog>/button5",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "NarrowFlightDynamic",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "fc4d0922-630e-4bff-b2a0-21b1be0956f5",
+                    "path": "<HID::Thrustmaster Throttle - HOTAS Warthog>/button2",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "CycleFlightDynamic",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}
