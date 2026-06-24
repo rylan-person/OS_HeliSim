@@ -5,6 +5,7 @@ public abstract class DashboardPanel : MonoBehaviour
 {
     public abstract string PanelName { get; }
     public TMP_Dropdown panelDropdown;
+    public DashboardSlot OwnerSlot { get; set; }
 
     protected virtual void Awake()
     {
@@ -22,7 +23,7 @@ public abstract class DashboardPanel : MonoBehaviour
 
     private int GetOwnerSlotIndex()
     {
-        var slot = GetComponentInParent<DashboardSlot>();
+        var slot = OwnerSlot;
         var mgr = DashboardManager.Instance;
         if (slot == null || mgr == null) return -1;
         if (slot == mgr.topLeft) return 0;

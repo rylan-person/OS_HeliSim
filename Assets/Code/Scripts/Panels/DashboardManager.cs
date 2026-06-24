@@ -39,6 +39,9 @@ public class DashboardManager : MonoBehaviour
     private void Start()
     {
         topLeft.SetPanel(panelLookup[DashboardPanelType.FollowCamera]);
+        topRight.SetPanel(panelLookup[DashboardPanelType.OrbitCamera]);
+        bottomLeft.SetPanel(panelLookup[DashboardPanelType.DynamicCamera]);
+        bottomRight.SetPanel(panelLookup[DashboardPanelType.FPVCamera]);
     }
 
     private void BuildPanelLookup()
@@ -63,6 +66,14 @@ public class DashboardManager : MonoBehaviour
         }
     }
 
+    private IEnumerable<DashboardSlot> AllSlots()
+    {
+        yield return topLeft;
+        yield return topRight;
+        yield return bottomLeft;
+        yield return bottomRight;
+    }
+
     public void FocusSlot(DashboardSlot slot)
     {
         if (focusedSlot != null)
@@ -75,6 +86,13 @@ public class DashboardManager : MonoBehaviour
         focusedSlot = slot;
         originalParent = panel.transform.parent;
         originalSiblingIndex = panel.transform.GetSiblingIndex();
+
+        // Hide all other slots' panels to free resources
+        foreach (DashboardSlot s in AllSlots())
+        {
+            if (s != slot)
+                s.GetCurrentPanel()?.OnPanelHidden();
+        }
 
         panel.transform.SetParent(fullscreenRoot, false);
 
@@ -106,7 +124,15 @@ public class DashboardManager : MonoBehaviour
         fullscreenRoot.gameObject.SetActive(false);
         gridRoot.gameObject.SetActive(true);
 
+        DashboardSlot previousFocus = focusedSlot;
         focusedSlot = null;
+
+        // Restore all other slots' panels
+        foreach (DashboardSlot s in AllSlots())
+        {
+            if (s != previousFocus)
+                s.GetCurrentPanel()?.OnPanelShown();
+        }
     }
 
     private void SetSlotPanel(DashboardSlot slot, DashboardPanelType panelType)
@@ -116,6 +142,10 @@ public class DashboardManager : MonoBehaviour
             Debug.LogWarning("Tried to set a panel on a missing dashboard slot.");
             return;
         }
+
+        bool wasFocused = focusedSlot == slot;
+        if (wasFocused)
+            Unfocus();
 
         if (panelType == DashboardPanelType.Empty)
         {
@@ -130,6 +160,9 @@ public class DashboardManager : MonoBehaviour
         }
 
         slot.SetPanel(prefab);
+
+        if (wasFocused)
+            FocusSlot(slot);
     }
 
     public void SetPanelBySlotIndex(int slotIndex, int panelTypeIndex)

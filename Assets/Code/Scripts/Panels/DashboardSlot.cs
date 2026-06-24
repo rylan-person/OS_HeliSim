@@ -14,6 +14,7 @@ public class DashboardSlot : MonoBehaviour
         }
 
         currentPanel = Instantiate(panelPrefab, transform);
+        currentPanel.OwnerSlot = this;
         currentPanel.OnPanelShown();
     }
 
