@@ -5,9 +5,7 @@ public enum DashboardPanelType
     FPVCamera,
     OrbitCamera,
     TopDownCamera,
-    Empty,
-    ControlInputs,
-    Timing,
     Telemetry,
-    Graph
+    Timing,
+    Empty
 }

@@ -852,6 +852,12 @@ MonoBehaviour:
     prefab: {fileID: 4528000104874541456, guid: 19e09cb0cdd621747a1039b279682a10, type: 3}
   - panelType: 4
     prefab: {fileID: 4528000104874541456, guid: 645b8b3512ba1da47bb55b5405f2c5ba, type: 3}
+  - panelType: 5
+    prefab: {fileID: 6119039682485165043, guid: f8847986ad5f40640b353b0509d04ac0, type: 3}
+  - panelType: 6
+    prefab: {fileID: 2919148042450663549, guid: 725db9bca981d7a4b89824f4604abade, type: 3}
+  - panelType: 7
+    prefab: {fileID: 4281574003637922543, guid: 6f06ccd315b78d2408476930e32f2503, type: 3}
 --- !u!1 &506764383
 GameObject:
   m_ObjectHideFlags: 0
@@ -1398,7 +1404,7 @@ MonoBehaviour:
   TargetOffset: {x: 0, y: 0, z: 0}
   TrackerSettings:
     BindingMode: 4
-    PositionDamping: {x: 1, y: 1, z: 1}
+    PositionDamping: {x: 0, y: 0, z: 0}
     AngularDampingMode: 0
     RotationDamping: {x: 1, y: 1, z: 1}
     QuaternionDamping: 1
@@ -1726,19 +1732,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 977553215706167723, guid: ebcc972863d950b49b47b622d414447e, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 7.1574006
+      value: 5.2573996
       objectReference: {fileID: 0}
     - target: {fileID: 977553215706167723, guid: ebcc972863d950b49b47b622d414447e, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -15.606999
+      value: -0.907
       objectReference: {fileID: 0}
     - target: {fileID: 977553215706167723, guid: ebcc972863d950b49b47b622d414447e, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.9979354
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 977553215706167723, guid: ebcc972863d950b49b47b622d414447e, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.0642253
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 977553215706167723, guid: ebcc972863d950b49b47b622d414447e, type: 3}
       propertyPath: m_LocalRotation.y
@@ -1750,7 +1756,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2633814491734958712, guid: ebcc972863d950b49b47b622d414447e, type: 3}
       propertyPath: field of view
-      value: 65
+      value: 77
       objectReference: {fileID: 0}
     - target: {fileID: 3064439829518475968, guid: ebcc972863d950b49b47b622d414447e, type: 3}
       propertyPath: GlobalObjectIdHash
@@ -1806,7 +1812,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8595651317394856688, guid: ebcc972863d950b49b47b622d414447e, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

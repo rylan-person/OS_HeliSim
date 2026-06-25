@@ -38,10 +38,12 @@ public class DashboardManager : MonoBehaviour
 
     private void Start()
     {
+        
         topLeft.SetPanel(panelLookup[DashboardPanelType.FollowCamera]);
         topRight.SetPanel(panelLookup[DashboardPanelType.OrbitCamera]);
         bottomLeft.SetPanel(panelLookup[DashboardPanelType.DynamicCamera]);
-        bottomRight.SetPanel(panelLookup[DashboardPanelType.FPVCamera]);
+        bottomRight.SetPanel(panelLookup[DashboardPanelType.Telemetry]);
+        
     }
 
     private void BuildPanelLookup()
@@ -146,12 +148,6 @@ public class DashboardManager : MonoBehaviour
         bool wasFocused = focusedSlot == slot;
         if (wasFocused)
             Unfocus();
-
-        if (panelType == DashboardPanelType.Empty)
-        {
-            slot.ClearPanel();
-            return;
-        }
 
         if (!panelLookup.TryGetValue(panelType, out DashboardPanel prefab))
         {
