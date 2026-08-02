@@ -75,11 +75,8 @@ public class MainMenu : MonoBehaviour
     [SerializeField] private GameObject OfflineMap; 
     [SerializeField] private GameObject OnlineMap;
 
-    [SerializeField] private GameObject CinematicCams;
-    [SerializeField] private GameObject ThirdPersonCam;
 
     // NEW VARIABLES
-    [SerializeField] private Toggle CinemaCamToggle;
     [SerializeField] private Toggle OfflineMapToggle;
     [SerializeField] private Slider AssistPresets;
     [SerializeField] private TMPro.TextMeshProUGUI AssistPresetName;
@@ -95,13 +92,11 @@ public class MainMenu : MonoBehaviour
     public TMPro.TextMeshProUGUI timeRemainingTextMenu;
     private Color defaultHelicopterUIColor = new(0, 1, 0.0156f, 1);
 
-    public bool cinematicCams = true;
     public float rollAsisstValue;
     public float stabilizationAsisstValue;
 
     private bool helicopterLinkInitialized = false;
     private bool timeTrialLinkInitialized = false;
-    private bool cinemaCamLinkInitialized = false;
 
     [SerializeField] private double collectiveUpperSaveValue;
 
@@ -158,8 +153,6 @@ public class MainMenu : MonoBehaviour
 
             helicopterLinkInitialized = true;
         }
-
-        if (CinematicCams != null) { cinemaCamLinkInitialized = true; }
 
         timeRemainingSeconds = timeLimitSeconds;
 
@@ -258,7 +251,7 @@ public class MainMenu : MonoBehaviour
 
     public void ResetVROrientation()
     {
-        // TODO - OpenXR Reset viewer pose
+        
     }
 
     public void startEngine()
@@ -378,27 +371,6 @@ public class MainMenu : MonoBehaviour
     #endregion
 
     #region SceneControls
-
-    public void CinematicCameraToggleCheck(bool isOn)
-    {
-        Debug.Log("Cinema Enabled" + cinemaCamLinkInitialized);
-        Debug.Log("isOn" + isOn);
-
-        if (!cinemaCamLinkInitialized) { return; }
-
-        if (CinemaCamToggle.isOn)
-        {
-            CinematicCams.GetComponent<TimeTrialCameraManager>().EnableFixedCams();
-            ThirdPersonCam.SetActive(false);
-            cinematicCams = true;
-        }
-        else
-        {
-            CinematicCams.GetComponent<TimeTrialCameraManager>().DisableFixedCams();
-            ThirdPersonCam.SetActive(true);
-            cinematicCams = false;
-        }
-    }
 
     public void OfflineMapToggleCheck(bool isOn)
     {

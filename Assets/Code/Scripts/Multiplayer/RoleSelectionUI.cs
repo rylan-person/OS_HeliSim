@@ -57,7 +57,7 @@ public class RoleSelectionUI : MonoBehaviour
     //[ContextMenu("Run Start")]
     public void Start()
     {
-        StartCoroutine(RunStartWhenReady());
+        //StartCoroutine(RunStartWhenReady());
     }
     
     private System.Collections.IEnumerator RunStartWhenReady()

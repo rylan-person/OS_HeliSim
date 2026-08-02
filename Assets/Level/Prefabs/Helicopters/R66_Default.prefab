@@ -1325,6 +1325,59 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RotorSpin
   rotor: {fileID: 3789332417417584981}
   rpm: 400
+--- !u!1 &1604967386173774592
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8374839515308139667}
+  - component: {fileID: 6195026755668568773}
+  m_Layer: 6
+  m_Name: _right_skid_poles
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8374839515308139667
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1604967386173774592}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.82, y: -0.893, z: 0.181}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8601675842042777858}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &6195026755668568773
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1604967386173774592}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.22, y: 0.51, z: 2.14}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &1914560709550084390
 GameObject:
   m_ObjectHideFlags: 0
@@ -2175,6 +2228,59 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &3768407369540827214
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7056228909913179895}
+  - component: {fileID: 701188811817825651}
+  m_Layer: 6
+  m_Name: _left_skid_poles
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7056228909913179895
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3768407369540827214}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.82, y: -0.893, z: 0.181}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8601675842042777858}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &701188811817825651
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3768407369540827214}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.22, y: 0.51, z: 2.14}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &4078157740007768523
 GameObject:
   m_ObjectHideFlags: 0
@@ -19605,8 +19711,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6152852414883597318}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.361, y: 2.6574001, z: -0.907}
+  m_LocalRotation: {x: 0.15212338, y: 0, z: 0, w: 0.98836154}
+  m_LocalPosition: {x: -52.761, y: 4.946987, z: 972.7873}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -21309,12 +21415,12 @@ MonoBehaviour:
   "\u03C4\u03BD": 0.20000000298023224
   "\u03C4\u03B43": 0.10000000149011612
   m_height: 1
-  rootLeadingEdge: {x: -0.14977922, y: 0.15600014, z: 0.118801616}
-  tipLeadingEdge: {x: -0.14809476, y: 0.13192318, z: 4.8990216}
-  rootTrailingEdge: {x: 0.19622077, y: 0.15600014, z: 0.118801616}
-  tipTrailingEdge: {x: 0.19453798, y: 0.18007709, z: 4.8990216}
-  quaterRootChordPoint: {x: -0.06327922, y: 0.15600014, z: 0.118801616}
-  quaterTipChordPoint: {x: -0.062436573, y: 0.14396167, z: 4.8990216}
+  rootLeadingEdge: {x: 52.25022, y: 4.127, z: -987.8812}
+  tipLeadingEdge: {x: 52.251904, y: 4.102923, z: -983.101}
+  rootTrailingEdge: {x: 52.596222, y: 4.127, z: -987.8812}
+  tipTrailingEdge: {x: 52.59454, y: 4.151077, z: -983.101}
+  quaterRootChordPoint: {x: 52.336723, y: 4.127, z: -987.8812}
+  quaterTipChordPoint: {x: 52.337563, y: 4.1149616, z: -983.101}
   skewDistance: {x: 0, y: 0, z: 0}
   m_controller: {fileID: 0}
   m_rootAirfoil: {fileID: 11400000, guid: 0b9e5749ed690be4c8c0ac6cd9139115, type: 2}
@@ -21582,7 +21688,7 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.05
+  m_Radius: 0.1
   m_Height: 2.87
   m_Direction: 2
   m_Center: {x: 0, y: 0, z: 0}
@@ -21675,7 +21781,7 @@ GameObject:
   - component: {fileID: 5249487377119311630}
   m_Layer: 6
   m_Name: R66_Default
-  m_TagString: Untagged
+  m_TagString: Helicopter
   m_Icon: {fileID: 3936346786652291628, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -21794,7 +21900,7 @@ MonoBehaviour:
   m_type: 1
   m_controlType: 0
   m_inputType: 0
-  m_inputLogic: 1
+  m_inputLogic: 0
   m_startMode: 1
   m_cameraState: 1
   m_engineType: 2
@@ -22873,7 +22979,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 242790098
+  GlobalObjectIdHash: 232673443
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -23341,7 +23447,7 @@ MonoBehaviour:
   m_section: 1
   m_sweep: 13.5
   m_taper: 58.2
-  m_area: 0.3761684000492096
+  m_area: 0.3761332929134369
   m_controller: {fileID: 0}
   m_airfoil: {fileID: 11400000, guid: 6f65a272e9edfcc4f984d9daa898f1e6, type: 2}
   m_collider: {fileID: 8621803667799568878}
@@ -23693,12 +23799,12 @@ MonoBehaviour:
   "\u03C4\u03BD": 0.20000000298023224
   "\u03C4\u03B43": 0.10000000149011612
   m_height: 1
-  rootLeadingEdge: {x: -0.271, y: -1.201182, z: -6.022212}
-  tipLeadingEdge: {x: -0.271, y: -1.2011821, z: -5.393272}
-  rootTrailingEdge: {x: -0.271, y: -1.3411821, z: -6.022212}
-  tipTrailingEdge: {x: -0.271, y: -1.3411822, z: -5.393272}
-  quaterRootChordPoint: {x: -0.271, y: -1.236182, z: -6.022212}
-  quaterTipChordPoint: {x: -0.271, y: -1.2361822, z: -5.393272}
+  rootLeadingEdge: {x: 52.129, y: 2.7698176, z: -994.0222}
+  tipLeadingEdge: {x: 52.129, y: 2.7698174, z: -993.39325}
+  rootTrailingEdge: {x: 52.129, y: 2.6298177, z: -994.0222}
+  tipTrailingEdge: {x: 52.129, y: 2.6298175, z: -993.39325}
+  quaterRootChordPoint: {x: 52.129, y: 2.7348175, z: -994.0222}
+  quaterTipChordPoint: {x: 52.129, y: 2.7348175, z: -993.39325}
   skewDistance: {x: 0, y: -0, z: 0}
   m_controller: {fileID: 0}
   m_rootAirfoil: {fileID: 11400000, guid: ee5384cf9cdea3e48a41ed86c2f5c2bc, type: 2}
@@ -24011,6 +24117,8 @@ Transform:
   - {fileID: 8601480104551913422}
   - {fileID: 8592972757942519696}
   - {fileID: 8593067590644941148}
+  - {fileID: 8374839515308139667}
+  - {fileID: 7056228909913179895}
   m_Father: {fileID: 8592890032889625714}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8596181870642180238
@@ -24084,7 +24192,7 @@ MonoBehaviour:
   m_section: -1
   m_sweep: 18.2
   m_taper: 51.2
-  m_area: 0.28858885169029236
+  m_area: 0.2885899543762207
   m_controller: {fileID: 0}
   m_airfoil: {fileID: 11400000, guid: 6f65a272e9edfcc4f984d9daa898f1e6, type: 2}
   m_collider: {fileID: 8621750664759022444}
@@ -24158,7 +24266,7 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.05
+  m_Radius: 0.1
   m_Height: 2.87
   m_Direction: 2
   m_Center: {x: 0, y: 0, z: 0}

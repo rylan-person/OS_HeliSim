@@ -26,10 +26,17 @@ public class LocalPlayerSetup : NetworkBehaviour
             {
                 if (cameraTarget.transform.parent == null)
                 {
+                    DebugPrint($"CameraTarget '{cameraTarget.name}' has no parent. Re-parenting to '{this.name}'.");
                     cameraTarget.transform.SetParent(this.transform);
                     cameraTarget.transform.localPosition = Vector3.zero;
                     cameraTarget.transform.localRotation = Quaternion.identity;
+                } else
+                {
+                    DebugPrint($"CameraTarget '{cameraTarget.name}' already has a parent '{cameraTarget.transform.parent.name}'. Not re-parenting.");
                 }
+            } else
+            {
+                DebugPrint("CameraTarget is null. Ensure GameObjectAssigner has targetName='CameraTarget' and runs before player spawn.");
             }
             // Disable any scripts you dragged into the array
             foreach (var script in localOnlyScripts)
@@ -55,14 +62,18 @@ public class LocalPlayerSetup : NetworkBehaviour
         }
         else
         {
-            WaypointManager.Instance.helicopterTransform = this.transform;
+            if (WaypointManager.Instance != null) WaypointManager.Instance.helicopterTransform = this.transform;
             // Move cameratarget to be a child of this player
             var cameraTarget = GetCameraTarget();
             if (cameraTarget != null)
             {
+                DebugPrint($"CameraTarget '{cameraTarget.name}' will be re-parented to '{this.name}' for owner player.");
                 cameraTarget.transform.SetParent(this.transform);
                 cameraTarget.transform.localPosition = Vector3.zero;
                 cameraTarget.transform.localRotation = Quaternion.identity;
+            } else
+            {
+                DebugPrint("CameraTarget is null. Ensure GameObjectAssigner has targetName='CameraTarget' and runs before player spawn.");
             }
             // Disable any scripts you dragged into the array
             foreach (var script in remoteOnlyScripts)

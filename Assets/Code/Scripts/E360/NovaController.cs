@@ -131,7 +131,7 @@ public class NovaController : MonoBehaviour
         }
         else
         {
-            Debug.LogError("Settings file not found: " + settingsPath);
+            Debug.LogWarning("Settings file not found: " + settingsPath);
         }
     }
     // End Post Additions
