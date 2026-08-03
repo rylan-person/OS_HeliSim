@@ -293,7 +293,10 @@ public class MainMenu : MonoBehaviour
         // Optionally, reset the rigidbody to be non-kinematic after the operation
         HelicopterComponents.Instance.helicopterRb.isKinematic = false;
 
-        waypointManager.goLock = false;
+        if (waypointManager != null)
+        {
+            waypointManager.goLock = false;
+        }
 
         if (lockCollective) LockCollective();
     }

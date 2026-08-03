@@ -10,6 +10,10 @@ public class TelemetrySeriesConfig
     public Color color = Color.white;
     [Tooltip("Label shown in the legend.")]
     public string label;
+    [Tooltip("Bottom of the value range for this series.")]
+    public float valueMin = -1f;
+    [Tooltip("Top of the value range for this series.")]
+    public float valueMax = 1f;
 }
 
 [RequireComponent(typeof(RectTransform))]
@@ -62,22 +66,22 @@ public class TelemetryLineGraphic : Graphic
             if (samples.Count < 2)
                 continue;
 
-            Vector2 prev = SampleToLocal(samples[0], minTime, rect);
+            Vector2 prev = SampleToLocal(samples[0], minTime, rect, config);
             for (int i = 1; i < samples.Count; i++)
             {
-                Vector2 curr = SampleToLocal(samples[i], minTime, rect);
+                Vector2 curr = SampleToLocal(samples[i], minTime, rect, config);
                 AddSegment(vh, prev, curr, lineThickness, config.color);
                 prev = curr;
             }
         }
     }
 
-    private Vector2 SampleToLocal(ClientTelemetryCollector.Sample s, float minTime, Rect rect)
+    private Vector2 SampleToLocal(ClientTelemetryCollector.Sample s, float minTime, Rect rect, TelemetrySeriesConfig config)
     {
         float tNorm = Mathf.InverseLerp(minTime, minTime + timeWindow, s.time);
         float x = rect.xMin + tNorm * rect.width;
 
-        float vNorm = Mathf.InverseLerp(valueMin, valueMax, s.value);
+        float vNorm = Mathf.InverseLerp(config.valueMin, config.valueMax, s.value);
         float y = rect.yMin + vNorm * rect.height;
 
         return new Vector2(x, y);
@@ -88,12 +92,19 @@ public class TelemetryLineGraphic : Graphic
         return series.Exists(c => c.series == target);
     }
 
+    private static bool IsRotationSeries(TelemetrySeries s) =>
+        s == TelemetrySeries.RotationPitch ||
+        s == TelemetrySeries.RotationYaw ||
+        s == TelemetrySeries.RotationRoll;
+
     public void AddSeries(TelemetrySeries target, Color color, string label = "")
     {
         if (HasSeries(target))
             return;
 
-        series.Add(new TelemetrySeriesConfig { series = target, color = color, label = label });
+        float vMin = IsRotationSeries(target) ? -180f : valueMin;
+        float vMax = IsRotationSeries(target) ?  180f : valueMax;
+        series.Add(new TelemetrySeriesConfig { series = target, color = color, label = label, valueMin = vMin, valueMax = vMax });
     }
 
     public void RemoveSeries(TelemetrySeries target)
