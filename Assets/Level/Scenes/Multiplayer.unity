@@ -3335,7 +3335,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &892891553
 Transform:
   m_ObjectHideFlags: 0
@@ -3373,11 +3373,11 @@ MonoBehaviour:
   _preloadAncestors: 1
   _preloadSiblings: 1
   _forbidHoles: 0
-  _maximumSimultaneousTileLoads: 20
+  _maximumSimultaneousTileLoads: 300
   _maximumCachedBytes: 536870912
-  _loadingDescendantLimit: 20
-  _enableFrustumCulling: 1
-  _enableFogCulling: 1
+  _loadingDescendantLimit: 300
+  _enableFrustumCulling: 0
+  _enableFogCulling: 0
   _enforceCulledScreenSpaceError: 1
   _culledScreenSpaceError: 64
   _opaqueMaterial: {fileID: 2100000, guid: ff4a82c526973f7479ac2e784ba4d726, type: 2}
@@ -3388,9 +3388,9 @@ MonoBehaviour:
     _geometricErrorScale: 1
     _maximumAttenuation: 0
     _baseResolution: 0
-  _suspendUpdate: 1
+  _suspendUpdate: 0
   _showTilesInHierarchy: 0
-  _updateInEditor: 1
+  _updateInEditor: 0
   _logSelectionStats: 0
   _createPhysicsMeshes: 1
 --- !u!1 &932995007

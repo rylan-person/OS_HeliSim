@@ -31,7 +31,7 @@ public class CameraDashboardPanel : DashboardPanel
             }
         }
 
-        CreateRenderTexture(960, 540);
+        CreateRenderTexture(1280, 720);
 
         SetTitleText();
         InitialiseButton();
@@ -81,7 +81,7 @@ public class CameraDashboardPanel : DashboardPanel
         if (fullscreen)
             CreateRenderTexture(1920, 1080);
         else
-            CreateRenderTexture(960, 540);
+            CreateRenderTexture(1280, 720);
     }
 
     public override void OnPanelShown()
