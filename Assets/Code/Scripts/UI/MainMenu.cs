@@ -6,6 +6,7 @@ using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.XR;
 
 public struct assistValues
 {
@@ -251,7 +252,12 @@ public class MainMenu : MonoBehaviour
 
     public void ResetVROrientation()
     {
-        
+        List<XRInputSubsystem> subsystems = new List<XRInputSubsystem>();
+        SubsystemManager.GetSubsystems(subsystems);
+        foreach (var subsystem in subsystems)
+        {
+            subsystem.TryRecenter();
+        }
     }
 
     public void startEngine()
