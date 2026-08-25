@@ -73,4 +73,5 @@ public class HelicopterComponents : MonoBehaviour
     public Transform mainRotor;
     public Transform tailRotor;
     public TMPro.TextMeshProUGUI timeRemainingTextInternal;
+    public Recenter recenter;
 }

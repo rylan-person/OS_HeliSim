@@ -252,11 +252,13 @@ public class MainMenu : MonoBehaviour
 
     public void ResetVROrientation()
     {
-        List<XRInputSubsystem> subsystems = new List<XRInputSubsystem>();
-        SubsystemManager.GetSubsystems(subsystems);
-        foreach (var subsystem in subsystems)
+        Debug.Log(helicopterLinkInitialized);
+        if (!helicopterLinkInitialized) return;
+
+        Debug.Log(HelicopterComponents.Instance.recenter);  
+        if (HelicopterComponents.Instance.recenter != null)
         {
-            subsystem.TryRecenter();
+            HelicopterComponents.Instance.recenter.RecenterHeadset();
         }
     }
 
