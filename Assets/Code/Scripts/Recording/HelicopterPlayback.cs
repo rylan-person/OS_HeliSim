@@ -26,6 +26,13 @@ public class HelicopterPlayback : MonoBehaviour
         LoadJourneyFromFile();
     }
 
+    void OnDestroy()
+    {
+        // StartPlayback() kicks off WaitDelay() as a fire-and-forget coroutine; make sure it
+        // doesn't keep running (or throw on a destroyed object) if this component is removed.
+        StopAllCoroutines();
+    }
+
     void Update()
     {
         // Check for keyboard input to start/stop playback (M key), pause (space), and skip (left/right arrow)
@@ -79,6 +86,12 @@ public class HelicopterPlayback : MonoBehaviour
         
         if (journeyData.Count > 0)
         {
+            if (helicopterComponents == null || helicopterComponents.helicopterRb == null)
+            {
+                Debug.LogError($"{nameof(HelicopterPlayback)}: helicopterComponents (or its Rigidbody) is not assigned; cannot start playback.");
+                yield break;
+            }
+
             helicopterComponents.helicopterRb.useGravity = false;
             helicopterComponents.helicopterRb.isKinematic = true;
             playbackStartTime = Time.time;
@@ -161,7 +174,7 @@ public class HelicopterPlayback : MonoBehaviour
 
     private void LoadJourneyFromFile()
     {
-        string settingsPath = Application.persistentDataPath + "/Settings/playbackName.txt";
+        string settingsPath = Path.Combine(Application.persistentDataPath, "Settings", "playbackName.txt");
         string fileName = "";
 
 
@@ -173,27 +186,55 @@ public class HelicopterPlayback : MonoBehaviour
         else
         {
             Debug.LogError("Settings file not found: " + settingsPath);
+            return;
         }
 
-        if (File.Exists(Application.persistentDataPath + "/" + fileName))
+        string journeyPath = Path.Combine(Application.persistentDataPath, fileName);
+        if (!File.Exists(journeyPath))
         {
-            using (StreamReader reader = new StreamReader(Application.persistentDataPath + "/" + fileName))
+            Debug.LogWarning($"{nameof(HelicopterPlayback)}: journey file not found at '{journeyPath}'.");
+            return;
+        }
+
+        try
+        {
+            using (StreamReader reader = new StreamReader(journeyPath))
             {
                 string line;
+                int lineNumber = 0;
                 while ((line = reader.ReadLine()) != null)
                 {
+                    lineNumber++;
                     string[] parts = line.Split(';');
+                    if (parts.Length < 3)
+                    {
+                        Debug.LogWarning($"{nameof(HelicopterPlayback)}: skipping malformed line {lineNumber} in '{journeyPath}'.");
+                        continue;
+                    }
+
                     string[] posParts = parts[0].Split(',');
                     string[] rotParts = parts[1].Split(',');
-                    float time = float.Parse(parts[2]);
 
-                    Vector3 position = new Vector3(float.Parse(posParts[0]), float.Parse(posParts[1]), float.Parse(posParts[2]));
-                    Quaternion rotation = new Quaternion(float.Parse(rotParts[0]), float.Parse(rotParts[1]), float.Parse(rotParts[2]), float.Parse(rotParts[3]));
+                    if (posParts.Length < 3 || rotParts.Length < 4 ||
+                        !float.TryParse(parts[2], out float time) ||
+                        !float.TryParse(posParts[0], out float posX) || !float.TryParse(posParts[1], out float posY) || !float.TryParse(posParts[2], out float posZ) ||
+                        !float.TryParse(rotParts[0], out float rotX) || !float.TryParse(rotParts[1], out float rotY) || !float.TryParse(rotParts[2], out float rotZ) || !float.TryParse(rotParts[3], out float rotW))
+                    {
+                        Debug.LogWarning($"{nameof(HelicopterPlayback)}: skipping unparsable line {lineNumber} in '{journeyPath}'.");
+                        continue;
+                    }
+
+                    Vector3 position = new Vector3(posX, posY, posZ);
+                    Quaternion rotation = new Quaternion(rotX, rotY, rotZ, rotW);
 
                     journeyData.Add(new TransformData(position, rotation, time));
                 }
             }
             Debug.Log("Journey loaded from " + fileName);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"{nameof(HelicopterPlayback)}: failed to load journey from '{journeyPath}': {ex}");
         }
     }
 

@@ -15,6 +15,9 @@ public class LocalPlayerSetup : NetworkBehaviour
     [Header("Disable these GameObjects on OWNERS")]
     public GameObject[] remoteOnlyObjects;
 
+    [Header("Debug")]
+    [SerializeField] private bool debugLogsEnabled = false;
+
     public override void OnNetworkSpawn()
     {
         DebugPrint($"OnNetworkSpawn called. IsOwner: {IsOwner}, IsClient: {IsClient}, IsServer: {IsServer}");
@@ -87,18 +90,17 @@ public class LocalPlayerSetup : NetworkBehaviour
 
     public void DebugPrint(string message)
     {
+        if (!debugLogsEnabled)
+        {
+            return;
+        }
+
         Debug.Log($"[LocalPlayerSetup] {message}");
     }
 
     private GameObject GetCameraTarget()
     {
-        if (GameObjectTarget.target == null)
-        {
-            DebugPrint("GameObjectTarget dictionary is null.");
-            return null;
-        }
-
-        if (!GameObjectTarget.target.TryGetValue("CameraTarget", out var cameraTarget) || cameraTarget == null)
+        if (!GameObjectTarget.TryGet("CameraTarget", out var cameraTarget))
         {
             DebugPrint("CameraTarget not found in GameObjectTarget. Ensure GameObjectAssigner has targetName='CameraTarget' and runs before player spawn.");
             return null;

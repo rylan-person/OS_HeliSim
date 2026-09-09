@@ -69,19 +69,7 @@ public class CameraTargetPovSwitcher : MonoBehaviour
 
     private bool TryGetCameraTarget(out GameObject target)
     {
-        target = null;
-
-        if (GameObjectTarget.target == null)
-        {
-            return false;
-        }
-
-        if (!GameObjectTarget.target.TryGetValue(cameraTargetKey, out target))
-        {
-            return false;
-        }
-
-        return target != null;
+        return GameObjectTarget.TryGet(cameraTargetKey, out target);
     }
 
     private List<Transform> GetPlayerObjectTransforms()

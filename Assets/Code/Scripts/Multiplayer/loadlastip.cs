@@ -9,15 +9,22 @@ public class loadlastip : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        if (System.IO.File.Exists("ServerIP.txt"))
+        try
         {
-            string serverIP = System.IO.File.ReadAllText("ServerIP.txt");
-            PlayerPrefs.SetString("ServerIP", serverIP);
-
-            if (ipText != null)
+            if (System.IO.File.Exists("ServerIP.txt"))
             {
-                ipText.text = serverIP;
+                string serverIP = System.IO.File.ReadAllText("ServerIP.txt").Trim();
+                PlayerPrefs.SetString("ServerIP", serverIP);
+
+                if (ipText != null)
+                {
+                    ipText.text = serverIP;
+                }
             }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"{nameof(loadlastip)}: failed to read ServerIP.txt: {ex.Message}");
         }
     }
 }
