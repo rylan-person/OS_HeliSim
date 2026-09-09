@@ -12,7 +12,8 @@ public class GForceCalculator : MonoBehaviour
     private Vector3 accelerationComp = Vector3.zero;
 
     [SerializeField] private LineRenderer lineRenderer;
-    public Vector3[] points;
+    [SerializeField] private Material lineMaterial;
+    private Vector3[] points = new Vector3[2];
 
     private Vector3 lastGForce = Vector3.zero;
     private Vector3 currentGForce = Vector3.zero;
@@ -24,13 +25,16 @@ public class GForceCalculator : MonoBehaviour
     {
         points[0] = Vector3.zero;
         points[1] = Vector3.zero;
-        lineRenderer = GetComponent<LineRenderer>();
+        if (lineRenderer == null)
+        {
+            lineRenderer = GetComponent<LineRenderer>();
+        }
         SetupLineRenderer();
     }
 
     void SetupLineRenderer()
     {
-        if (points == null || points.Length < 2)
+        if (lineRenderer == null || points == null || points.Length < 2)
             return;
 
         lineRenderer.positionCount = points.Length;
@@ -43,7 +47,14 @@ public class GForceCalculator : MonoBehaviour
         // Optional: Set Line Renderer properties
         lineRenderer.startWidth = 0.1f;
         lineRenderer.endWidth = 0.1f;
-        lineRenderer.material = new Material(Shader.Find("Sprites/Default")); // Assign a default material
+        // Prefer a serialized material reference; only fall back to a runtime-created
+        // one (and cache it) if nothing was assigned, to avoid leaking a new Material
+        // instance every time this component is (re)initialized.
+        if (lineMaterial == null)
+        {
+            lineMaterial = new Material(Shader.Find("Sprites/Default"));
+        }
+        lineRenderer.material = lineMaterial;
         lineRenderer.startColor = Color.red;
         lineRenderer.endColor = Color.red;
     }
@@ -70,9 +81,6 @@ public class GForceCalculator : MonoBehaviour
         Vector3 localGForce = rotationComp;
 
         currentGForce = localGForce;
-
-        // Use localGForce for further calculations or display
-        Debug.Log("Local GForce: " + localGForce);
     }
 
 
@@ -94,11 +102,5 @@ public class GForceCalculator : MonoBehaviour
         {
             lineRenderer.SetPosition(i, points[i]);
         }
-
-        // Log Values
-        Debug.Log("Rotation Comp: " + rotationComp);
-        Debug.Log("Acceleration Comp: " + accelerationComp);
-        Debug.Log("GForce Direction: " + gForceDirection);
-        Debug.Log("GForce Magnitude: " + gForceMagnitude);
     }
 }

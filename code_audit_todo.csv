@@ -1,0 +1,277 @@
+﻿file_path,subsystem,severity,status,issue
+Camera/AutoCam.cs,Camera,high,fixed,"Fixed in prior pass: unsafe dictionary access replaced with GameObjectTarget.TryGet, magic numbers extracted to tooltipped [SerializeField] fields, Debug.Log spam gated behind debugLogsEnabled, several public fields tightened to [SerializeField] private, ground-fallback sign bug fixed"
+Camera/CameraAssigner.cs,Camera,medium,pending,Update() re-checks/re-assigns target every frame instead of doing this once in OnEnable/Start (inefficient poll pattern)
+Camera/CameraAssigner.cs,Camera,medium,pending,No null check on TimeTrialCameraManager.Instance before use
+Camera/CameraAssigner.cs,Camera,low,pending,"Unused usings: System.Collections, System.Collections.Generic"
+Camera/CameraMovement.cs,Camera,high,pending,"Zoom interpolation uses a frame-counted progress (framesElapsed / zoomDuration) instead of Time.deltaTime, making it framerate-dependent"
+Camera/CameraMovement.cs,Camera,medium,pending,"Public mutable fields (movementSpeed, lookSpeed, zoomSpeed, minZoom, maxZoom, minDistance, maxDistance, scrollSpeedMultiplier, newZoom, changeDuration, cameraTarget, _currentFov) should be [SerializeField] private"
+Camera/CameraMovement.cs,Camera,medium,pending,"Numerous unexplained magic numbers (10.0f, 3.0f, 2.0f, 50.0f, 100.0f, 0.1f, 1.0f, mouse-button index 2)"
+Camera/CameraMovement.cs,Camera,medium,pending,Per-frame TimeTrialCameraManager.Instance.GetTarget() call in Update without caching
+Camera/CameraMovement.cs,Camera,medium,pending,Debug.Log spam in ToggleAim()
+Camera/CameraMovement.cs,Camera,medium,pending,No null check on cameraTarget.transform before use
+Camera/CameraMovement.cs,Camera,low,pending,Dead commented-out code left in file
+Camera/CameraSwitcher.cs,Camera,medium,pending,Debug.Log spam in hot paths (OnCameraSelected and elsewhere)
+Camera/CameraSwitcher.cs,Camera,medium,pending,"Hardcoded magic-number camera indices (0,1,2,3) instead of an enum/constant mapping"
+Camera/CameraSwitcher.cs,Camera,medium,pending,No null check before cameraDropdown.onValueChanged.AddListener()
+Camera/CameraSwitcher.cs,Camera,medium,pending,"Duplicate FindGameObjectWithTag(""Helicopter"") calls with no null validation of the result"
+Camera/CameraSwitcher.cs,Camera,low,pending,Singleton-style Instance usage inconsistent with other manager classes in the project (see systemic pattern across CameraSwitcher/SpeedGrapher/ViewManager/DashboardManager/WorldLookup) — consolidate on one pattern
+Camera/ClickDragCinemachineInput.cs,Camera,low,pending,No significant issues found on review
+Camera/MountedCam.cs,Camera,medium,pending,No null check on GetComponent<CinemachineCamera>() result
+Camera/MountedCam.cs,Camera,low,pending,"Unused usings: System.Collections, System.Collections.Generic"
+Camera/ViewManager.cs,Camera,medium,pending,"Public mutable fields (cesiumCameraManager, cameraViews, cameras, cameraManagers, otherMenuOpen, InputCamera, InputUICanvas) should be [SerializeField] private"
+Camera/ViewManager.cs,Camera,medium,pending,No null checks when accessing array elements in Start()
+Camera/ViewManager.cs,Camera,medium,pending,Appears to be an incomplete/unfinished feature (arrays initialized but no real usage pattern) — decide whether to finish or remove
+Camera/ViewManager.cs,Camera,low,pending,Empty Update() method is dead code
+Camera/fpv_camLock.cs,Camera,medium,pending,"Public mutable fields (cameraTarget, fpv_view, validTarget, cinemachineCamera) should be [SerializeField] private"
+Camera/fpv_camLock.cs,Camera,medium,pending,cinemachineCamera.Follow assignment has no guaranteed-initialized/null guard
+Camera/smoothCamera.cs,Camera,high,pending,"Quaternion.Slerp uses smoothRotationTime directly as the lerp factor instead of a Time.deltaTime-scaled factor, making smoothing framerate-dependent"
+Camera/smoothCamera.cs,Camera,low,pending,public Transform target should be [SerializeField] private
+Camera/smoothCamera.cs,Camera,low,pending,Leftover comment suggests an incomplete refactor; needs cleanup/finishing
+Cesium/RecreateTileset.cs,Cesium,medium,pending,Update() logs on a keypress but does not act on the result — effectively dead/no-op code; finish or remove
+Cesium/RecreateTileset.cs,Cesium,low,pending,Unused field cesiumAsset declared but never used
+Cesium/cesiumDisabler.cs,Cesium,high,fixed,"Fixed in prior pass: replaced broken GameObject.Find-by-URL logic with a direct [SerializeField] GameObject reference, removed dead raycast block, added null guard/warning"
+Cesium/cesiumDisabler.cs,Cesium,medium,pending,"Remaining: DisableChildrenAfterDelay coroutine (started in Start) has no OnDestroy/StopCoroutine cleanup — if the component is disabled/destroyed before the delay elapses, referenced objects could be gone or the coroutine could reference a destroyed object"
+Data/ClientTelemetryCollector.cs,Data,low,pending,No issues found — well-structured NetworkBehaviour with proper null guards and initialization
+Data/DataExtractor.cs,Data,high,fixed,"Fixed in prior pass: StreamWriter wrapped in using/try-catch, Directory.CreateDirectory added, Path.Combine used, null guards added, Rigidbody reference cached instead of per-frame GetComponent, CSV trailing-comma bug fixed"
+Debugging/RotRateGrapher.cs,Debugging,low,pending,Unused public fields xJoy_input and axisName
+Debugging/RotRateGrapher.cs,Debugging,low,pending,"Commented-out code left in file, should be removed"
+Debugging/RotRateGrapher.cs,Debugging,low,pending,Unused using UnityEngine.InputSystem
+Debugging/RotationGrapher.cs,Debugging,low,pending,No significant issues found on review
+Debugging/SpeedGrapher.cs,Debugging,medium,pending,"Singleton pattern does not guard against multiple instances being created in the same frame; inconsistent with singleton style used elsewhere (WorldLookup, DashboardManager, ViewManager, CameraSwitcher) — needs a single consistent base pattern"
+Debugging/SpeedGrapher.cs,Debugging,low,pending,Unused public field xJoy_input
+Debugging/SpeedGrapher.cs,Debugging,low,pending,Unused using UnityEngine.InputSystem
+Debugging/SpeedGrapher.cs,Debugging,low,pending,"Commented-out Debug.Log should be deleted, not commented out"
+Debugging/XJoyGrapher.cs,Debugging,low,pending,Large commented-out code block should be removed entirely
+Debugging/XJoyGrapher.cs,Debugging,low,pending,"Commented-out Debug.Log statements should be deleted, not commented out"
+Debugging/XRDebugInfo.cs,Debugging,low,pending,"No significant issues found on review (consider gating its Debug.Log output behind a debug flag for consistency with other files, but this is a debug-only utility so lower priority)"
+Debugging/YJoyGrapher.cs,Debugging,low,pending,No significant issues found on review
+E360/NovaController.cs,E360,high,fixed,"Fixed in prior pass: StringBuilder for message building, DNS/SocketException null-checks, InputAction named-handler unsubscription + OnDisable, UdpClient disposed in OnDestroy, unused field removed, testObject null-guarded"
+E360/Rotator.cs,E360,low,pending,No significant issues found on review
+EditorScripts/ComponentGroup.cs,EditorScripts,low,pending,"Public mutable fields (groupName, visibility, isEditing, parent, comps) should be [SerializeField] private for editor-script consistency"
+EditorScripts/ComponentGroup.cs,EditorScripts,low,pending,Heavy LINQ .ToList() usage in a few places — acceptable for editor-only tooling but flagged as a perf smell; a TODO in the code itself already acknowledges the inefficiency
+EditorScripts/ComponentGroup.cs,EditorScripts,low,pending,Static field _numOfGroupsToCollapseAtFirstLaunch is fragile global state that does not reset between editor sessions cleanly
+Enums/DashboardPanelType.cs,Enums,low,pending,No issues found (clean enum)
+Enums/PanelCameraType.cs,Enums,low,pending,No issues found (clean enum)
+Enums/WorldLookupType.cs,Enums,low,pending,No issues found (clean enum)
+HID/Pedals/ThrustmasterPedalHIDInputReport.cs,HID,medium,pending,"Comment claims field range ""0 to 3"" but the field is a BYTE (0-255) — documentation/implementation mismatch needs reconciling"
+HID/Pedals/ThrustmasterPedalHIDInputReport.cs,HID,low,pending,"Typo ""nummber"" in comments should be ""number"""
+HID/Pedals/ThrustmasterPedalHIDInputReport.cs,HID,low,pending,Unused import UnityEditor outside of a conditional-compilation guard — verify it's properly wrapped in #if UNITY_EDITOR
+HID/Pedals/ThrustmasterRudderPedals.cs,HID,medium,pending,No error handling around device/layout registration — failures fail silently
+HID/Pedals/ThrustmasterRudderPedals.cs,HID,low,pending,"Unused using directives (UnityEngine.InputSystem.Layouts, UnityEngine.InputSystem, UnityEngine — verify which are actually unused)"
+HID/Pedals/ThrustmasterRudderPedals.cs,HID,low,pending,"Empty Init() method serves no purpose — remove or document why it must exist (often needed only to force static constructor execution; if so, add a comment explaining that)"
+Multiplayer/CameraTargetPovSwitcher.cs,Multiplayer,medium,fixed,"Fixed in prior pass: uses GameObjectTarget.TryGet directly, debug logs gated behind debugLogsEnabled"
+Multiplayer/CameraTargetSetup.cs,Multiplayer,medium,fixed,"Fixed in prior pass: uses GameObjectTarget.TryGet instead of unsafe indexer, removed empty dead Update()"
+Multiplayer/ClientRole.cs,Multiplayer,low,pending,No issues found on review
+Multiplayer/CustomConnectionManager.cs,Multiplayer,medium,pending,debugLogsEnabled defaults to true — should default to false to avoid log spam in production/release builds
+Multiplayer/CustomConnectionManager.cs,Multiplayer,medium,pending,nm.LocalClient?.PlayerObject can be null before .CompareTag() is called — add an explicit null check
+Multiplayer/CustomConnectionManager.cs,Multiplayer,medium,pending,Singleton does not handle the case where the underlying GameObject is destroyed/scene reloaded — Instance can go stale
+Multiplayer/CustomConnectionManager.cs,Multiplayer,medium,pending,No validation that spawn point arrays are non-null/non-empty before use in GetNextSpawnPoint
+Multiplayer/CustomConnectionManager.cs,Multiplayer,low,pending,Public mutable fields playerPrefab and spectatorPrefab should be [SerializeField] private
+Multiplayer/CustomConnectionManager.cs,Multiplayer,low,pending,Duplicate identical Debug.Log call in OnClientConnected (same message logged twice)
+Multiplayer/GameObjectAssigner.cs,Multiplayer,high,fixed,Fixed in prior pass: now calls GameObjectTarget.Register in Awake and Unregister in OnDestroy
+Multiplayer/GameObjectTarget.cs,Multiplayer,critical,fixed,Fixed in prior pass: rewritten from a public mutable static Dictionary into an encapsulated static class with Register/Unregister/TryGet/Clear methods
+Multiplayer/LocalPlayerSetup.cs,Multiplayer,medium,fixed,"Fixed in prior pass: uses GameObjectTarget.TryGet, Debug.Log spam gated behind debugLogsEnabled flag"
+Multiplayer/MenuUI.cs,Multiplayer,high,fixed,"Fixed in prior pass: hardcoded IP/port extracted to serialized fields with a SetServerAddress method, listener leak fixed with OnDestroy, bounds-checked prefab indexer"
+Multiplayer/NetworkManager.cs,Multiplayer,medium,pending,File only contains an empty CustomNetworkManager stub extending NetworkManager with no real functionality
+Multiplayer/NetworkManager.cs,Multiplayer,medium,pending,Unused fields spawnPoints and nextSpawnIndex — either implement spawn-point logic here or remove the stub entirely
+Multiplayer/PersonMovement.cs,Multiplayer,medium,pending,No null check on cam before use — will crash on input if unassigned
+Multiplayer/PersonMovement.cs,Multiplayer,medium,pending,No null check on agent (NavMeshAgent) before use in raycast-move handler — will crash if unassigned
+Multiplayer/PersonMovement.cs,Multiplayer,low,pending,"Public mutable fields (cam, agent, etc.) should be [SerializeField] private"
+Multiplayer/PersonMovement.cs,Multiplayer,low,pending,Hardcoded mouse-button index (0) inline rather than a named constant — minor readability/extensibility issue
+Multiplayer/PlayerUtilInput.cs,Multiplayer,medium,pending,_mainMenu is never null-checked before use — will crash if not wired up in the inspector
+Multiplayer/PlayerUtilInput.cs,Multiplayer,medium,pending,OnResetVR() has a TODO comment and no implementation — finish or remove
+Multiplayer/PlayerUtilInput.cs,Multiplayer,low,pending,Debug.Log left in without a debug-flag gate
+Multiplayer/RoleSelectionUI.cs,Multiplayer,high,fixed,"Fixed in prior pass: removed IP-leaking Debug.Log, hardcoded port extracted to serialized field, null guards added, dead RunStartWhenReady() coroutine removed"
+Multiplayer/RotorSpin.cs,Multiplayer,medium,pending,No null check on rotor — will throw NullReferenceException every frame if unassigned
+Multiplayer/RotorSpin.cs,Multiplayer,low,pending,Magic number 293 with no explanation (appears to be an RPM-to-degrees-per-second style conversion factor) — extract to a named/tooltipped constant
+Multiplayer/RotorSpin.cs,Multiplayer,low,pending,Per-frame arithmetic for the rotation-speed factor could be pre-computed once in OnEnable/Start instead of recomputed every frame
+Multiplayer/loadlastip.cs,Multiplayer,medium,fixed,Fixed in prior pass: file read wrapped in try/catch for robustness
+Multiplayer/loadlastip.cs,Multiplayer,low,pending,"Class name still non-standard casing (""loadlastip"") — should be PascalCase; deferred rename to be done in the Unity Editor to preserve any scene/prefab references"
+Navigation/PathFollower.cs,Navigation,high,pending,No null/empty check on waypoints list before indexing — NullReferenceException/IndexOutOfRangeException risk
+Navigation/PathFollower.cs,Navigation,low,pending,Public mutable fields waypoints/speed/currentWaypointIndex should be [SerializeField] private
+Navigation/PathFollower.cs,Navigation,low,pending,Hardcoded waypoint-reached distance (0.1f) with no explanation — extract to a tooltipped [SerializeField] field
+Navigation/RandomPatrolAgent.cs,Navigation,high,pending,No null check on agent (NavMeshAgent) in Update — will throw if GetComponent failed in Start
+Navigation/RandomPatrolAgent.cs,Navigation,medium,pending,No validation/log that NavMeshAgent was successfully retrieved in Start()
+Navigation/RandomPatrolAgent.cs,Navigation,low,pending,Public mutable fields patrolRadius/stoppingDistance should be [SerializeField] private
+Navigation/waypointInitializer.cs,Navigation,medium,pending,Class is a completely empty stub with no functionality — implement it or delete the file/class
+Panels/CameraRegestry/DashboardCameraRegistry.cs,Panels,low,pending,"Folder name misspelled ""CameraRegestry"" — should be ""CameraRegistry"" (rename via Unity Editor / file system, verify no hardcoded path references)"
+Panels/CameraRegestry/DashboardCameraRegistry.cs,Panels,low,pending,Commented-out debug log suggests debug tooling was removed inconsistently with other Debug.LogWarning calls left in the same file
+Panels/CameraRegestry/DashboardCameraSource.cs,Panels,high,pending,"OnEnable/OnDisable registry (re-)subscription is commented out, so registration only happens in Awake — if the component is disabled and re-enabled it silently stops updating the registry (real correctness bug, not just style)"
+Panels/CameraRegestry/DashboardCameraSource.cs,Panels,high,pending,No OnDestroy cleanup — destroyed sources remain registered in the static registry as stale references
+Panels/DashboardManager.cs,Panels,high,pending,No null-check guard before panelLookup[DashboardPanelType.FollowCamera]-style dictionary access in Start() — KeyNotFoundException risk if BuildPanelLookup skipped an entry
+Panels/DashboardManager.cs,Panels,medium,pending,"Public mutable fields (topLeft, topRight, bottomLeft, bottomRight, fullscreenRoot, gridRoot, focusedSlot) should be [SerializeField] private"
+Panels/DashboardManager.cs,Panels,medium,pending,Singleton Instance not reliably cleared in all destroy paths — can go stale
+Panels/DashboardManager.cs,Panels,low,pending,"Debug.Log left in hot path (SetPanelBySlotIndex, called from UI interaction)"
+Panels/DashboardManager.cs,Panels,low,pending,"Singleton pattern is inconsistent with the other manager singletons in the project (CameraSwitcher, SpeedGrapher, ViewManager, WorldLookup) — consolidate on one reusable singleton base/pattern"
+Panels/DashboardPanel.cs,Panels,high,pending,Dropdown event subscribed in Awake with no corresponding unsubscription in OnDestroy — memory leak on panel destroy/recreate
+Panels/DashboardPanel.cs,Panels,medium,pending,No null-check on DashboardManager.Instance before calling SetPanelBySlotIndex
+Panels/DashboardPanel.cs,Panels,low,pending,Public panelDropdown field should be [SerializeField] private
+Panels/DashboardPanel.cs,Panels,low,pending,Debug.Log left in hot path (dropdown value-changed listener)
+Panels/DashboardPanelEntry.cs,Panels,low,pending,No issues found on review
+Panels/DashboardSlot.cs,Panels,low,pending,Public isFullscreen field (appears unused) should be [SerializeField] private or removed if dead
+Panels/SpecificPanels/CameraDashboardPanel.cs,Panels,high,pending,panelCamera can be null after a registry lookup miss but is used unguarded in OnPanelShown/OnPanelHidden/SetFullscreen — crash risk
+Panels/SpecificPanels/CameraDashboardPanel.cs,Panels,medium,pending,"Public fields (cameraType, panelCamera, displayImage, titleText, fullscreenButton) should be [SerializeField] private"
+Panels/SpecificPanels/CameraDashboardPanel.cs,Panels,low,pending,"Hardcoded RenderTexture dimensions (1280x720, 1920x1080) should be named constants or config values"
+Panels/SpecificPanels/CameraDashboardPanel.cs,Panels,low,pending,"GetComponentInParent chain used without an initial null-check guard (later guarded, but fragile ordering)"
+Panels/SpecificPanels/EmptyDashboardPanel.cs,Panels,medium,pending,Event subscribed in Awake with no corresponding OnDestroy unsubscription — memory leak
+Panels/SpecificPanels/EmptyDashboardPanel.cs,Panels,medium,pending,No null-check on DashboardManager.Instance before use
+Panels/SpecificPanels/EmptyDashboardPanel.cs,Panels,low,pending,Redundant/duplicate null-check pattern that could be simplified
+Panels/SpecificPanels/TelemetryDashboardPanel.cs,Panels,high,pending,Dropdown event subscribed in InitDropdown with no unsubscribe in OnDestroy/OnDisable — memory leak
+Panels/SpecificPanels/TelemetryDashboardPanel.cs,Panels,medium,pending,"Static cache fields (cachedOptions, seriesNames) are never invalidated/cleared — stale-cache risk if enum values ever change at runtime"
+Panels/SpecificPanels/TelemetryDashboardPanel.cs,Panels,medium,pending,SeriesPalette modulo/index logic can fail silently if the palette array is empty
+Panels/SpecificPanels/TelemetryDashboardPanel.cs,Panels,low,pending,Magic numbers 0 and 1 (title row index / offset) repeated at multiple call sites instead of named constants
+Panels/SpecificPanels/TelemetryLineGraphic.cs,Panels,medium,pending,SetVerticesDirty() called unconditionally every frame in Update() even when underlying data has not changed — should be event/dirty-flag driven
+Panels/SpecificPanels/TelemetryLineGraphic.cs,Panels,low,pending,Magic numbers -180f/180f for rotation range should be named constants
+Panels/SpecificPanels/TelemetryLineGraphic.cs,Panels,low,pending,No extensibility hooks for custom series types or color palettes — hardcoded to the current series model
+Recording/HelicopterPlayback.cs,Recording,high,fixed,"Fixed in prior pass: OnDestroy/StopAllCoroutines added, null guards in WaitDelay, Path.Combine for paths, try/catch + float.TryParse with per-line validation for file parsing"
+Recording/HelicopterPlayback.cs,Recording,low,pending,"Remaining: hardcoded rotor-rotation multiplier (6f, ""degrees per RPM unit"") lacks a clear explanation/derivation comment"
+Recording/HelicopterRecorder.cs,Recording,high,pending,No try/catch around StreamWriter file I/O — crashes on I/O errors
+Recording/HelicopterRecorder.cs,Recording,high,pending,Records a new journeyData entry every frame with no batching — memory/file-size growth concern for long sessions
+Recording/HelicopterRecorder.cs,Recording,medium,pending,Uses string concatenation for paths instead of Path.Combine
+Recording/HelicopterRecorder.cs,Recording,medium,pending,No OnDestroy to stop recording if the component is destroyed mid-recording
+Recording/HelicopterRecorder.cs,Recording,low,pending,No null-check on transform before use in Update
+Recording/HelicopterRecorder.cs,Recording,low,pending,"Hardcoded output file name ""HelicopterJourney.txt"" should be a configurable serialized field"
+TImeTrialCameras/ExternalTrackCam.cs,TImeTrialCameras,medium,pending,"Unused fields never read after assignment: smoothSpeed, maxZoom, minZoom, maxDistance, minDistance"
+TImeTrialCameras/ExternalTrackCam.cs,TImeTrialCameras,medium,pending,Uses FindObjectOfType<TimeTrialCameraManager>() in Start instead of a direct/injected reference — fragile coupling
+TImeTrialCameras/ExternalTrackCam.cs,TImeTrialCameras,low,pending,"Public/[SerializeField] public conflicting field declarations (startingWaypoint, externalTrackCam) should be [SerializeField] private"
+TImeTrialCameras/ExternalTrackCam.cs,TImeTrialCameras,low,pending,Per-frame null re-check in Update without caching the result
+TImeTrialCameras/ExternalTrackCam.cs,TImeTrialCameras,low,pending,Unused using Unity.VisualScripting
+TImeTrialCameras/TimeTrialCameraManager.cs,TimeTrialCameras,high,pending,"Per-frame FindGameObjectWithTag(""Helicopter"") call — expensive, should cache the result once"
+TImeTrialCameras/TimeTrialCameraManager.cs,TimeTrialCameras,high,pending,IncrementWaypoint() indexes externalTrackCams[currentCam+1] without a bounds check
+TImeTrialCameras/TimeTrialCameraManager.cs,TimeTrialCameras,medium,pending,No null check on externalTrackCams array before use
+TImeTrialCameras/TimeTrialCameraManager.cs,TimeTrialCameras,low,pending,Debug.Log statements left in public methods
+TImeTrialCameras/TimeTrialCameraManager.cs,TimeTrialCameras,low,pending,Hardcoded magic number (-1) used for array-bounds comparison instead of a named constant
+TImeTrialCameras/TimeTrialCameraManager.cs,TimeTrialCameras,low,pending,"Folder name itself has a typo: ""TImeTrialCameras"" (capital I) — inconsistent with ""TimeTrial"" folder naming; consider renaming via Unity Editor"
+TimeTrial/PlayerTimeTrialState.cs,TimeTrial,low,pending,"No issues found on review — proper null-checks, correct NetworkVariable usage, no obvious leaks"
+TimeTrial/SpectatorTimeTrialView.cs,TimeTrial,high,pending,Potential null dereference: activeState.CurrentWaypoint accessed without confirming activeState is non-null
+TimeTrial/SpectatorTimeTrialView.cs,TimeTrial,medium,pending,timingManagers[i].sectorTimesText.Length accessed without a null-check on sectorTimesText
+TimeTrial/SpectatorTimeTrialView.cs,TimeTrial,medium,pending,GetComponentInChildren result used without a null-check guard
+TimeTrial/SpectatorTimeTrialView.cs,TimeTrial,low,pending,"Hardcoded ""look-ahead waypoints"" constant (3) should be a named/tooltipped field"
+TimeTrial/SpectatorTimeTrialView.cs,TimeTrial,low,pending,Per-frame loop over timingManagers with redundant null-checks — minor perf/readability cleanup opportunity
+TimeTrial/Waypoint.cs,TimeTrial,medium,pending,checkpointFills[0]/[1] indices accessed with no bounds checking — will crash if array is misconfigured in the inspector
+TimeTrial/Waypoint.cs,TimeTrial,medium,pending,No null-check on waypointManager before calling finishWaypoint/finishSector — will crash if not wired up
+TimeTrial/Waypoint.cs,TimeTrial,low,pending,"Public method/field naming uses camelCase (setAsNext, checkpointPassed, resetCheckpoint, waypointNumber) instead of PascalCase — inconsistent with C#/Unity convention"
+TimeTrial/Waypoint.cs,TimeTrial,low,pending,"Debug.Log left in OnTriggerEnter, a potentially hot/frequently-called path"
+TimeTrial/WaypointManager.cs,TimeTrial,critical,fixed,"Fixed in prior pass: fixed bestLapSectors/currentLapSectors list-aliasing correctness bug, removed all per-lap/per-init LINQ allocations, added null guards on GetComponentInChildren chains, added singleton OnDestroy cleanup, gated debug logs behind debugLogsEnabled"
+TimeTrial/WaypointManager.cs,TimeTrial,low,pending,"Public fields helicopterTransform, lapActive, goLock, currentLapSectors remain public — should be [SerializeField] private with accessor methods where external systems need them"
+UI/AssistValues.cs,UI,medium,pending,"Struct is a near-duplicate of the ""assistValues"" struct declared in MainMenu.cs — consolidate into a single shared type"
+UI/AssistValues.cs,UI,low,pending,"Naming inconsistency vs. MainMenu's lowercase ""assistValues"" (PascalCase here) — pick one convention"
+UI/Compass.cs,UI,medium,pending,No null-check on helicopterTransform (only camera is checked)
+UI/Compass.cs,UI,low,pending,"Uses ""new"" keyword to shadow base-class members — confusing, should rename instead"
+UI/Compass.cs,UI,low,pending,Unused field graphics (List<Graphic>) declared but never populated/used
+UI/Compass.cs,UI,low,pending,Hardcoded directions array plus a magic 45-degree divisor tightly couples the compass to a fixed direction count — blocks future extensibility
+UI/DynamicLayoutUtil.cs,UI,medium,pending,GetComponent<RectTransform>() result not null-checked before being passed to LayoutRebuilder
+UI/HelicopterComponents.cs,UI,low,pending,No issues found — proper singleton implementation with OnDestroy cleanup
+UI/HelicopterHUD.cs,UI,high,fixed,"Fixed in prior pass: per-frame string concatenation replaced with reused StringBuilder + TMP SetText, magic numbers extracted to tooltipped serialized fields, dead commented code removed"
+UI/HelicopterHUD.cs,UI,low,pending,Remaining: hudCenterRect and velocityMarkerGO are assigned in Start() but never subsequently used — dead fields to clean up
+UI/HelicopterHUDDirectional.cs,UI,low,pending,Unused variable velocityMarkerGO assigned but not used meaningfully afterward
+UI/HelicopterHUDDirectional.cs,UI,low,pending,Magic numbers for pixel-offset math and a sqrMagnitude threshold of 1 with no explanation
+UI/HorrizonIndicator.cs,UI,medium,pending,"Class/file name typo: ""HorrizonIndicator"" should be ""HorizonIndicator"" (rename via Unity Editor to preserve references)"
+UI/HorrizonIndicator.cs,UI,medium,pending,Update() sets a fixed hardcoded rotation every single frame regardless of any state change — wasteful and likely a leftover/incomplete feature
+UI/HorrizonIndicator.cs,UI,low,pending,Unused field helitransform is assigned but never read
+UI/HorrizonIndicator.cs,UI,low,pending,"Magic unexplained quaternion values (-90, 180, 0)"
+UI/InputUI.cs,UI,medium,pending,No null-checks on referenced UI GameObjects before transform access
+UI/InputUI.cs,UI,low,pending,Magic number _inputBounds = 65f with no explanation — extract to a tooltipped field
+UI/MFD/FlightDynamicsControl.cs,UI,medium,pending,No min/max bounds validation when increasing/decreasing values
+UI/MFD/FlightDynamicsControl.cs,UI,medium,pending,Repeated (int) casts of the current-selected-dynamic enum for indexing — fragile if the enum changes order/adds members
+UI/MFD/FlightDynamicsControl.cs,UI,low,pending,Hardcoded 0.5 increment magic number repeated across Increase/Decrease/Widen/Narrow methods with no explanation
+UI/MFD/FlightDynamicsControl.cs,UI,low,pending,Debug.Log left in a frequently-invoked increase/decrease handler
+UI/MFD/FlightDynamicsUIController.cs,UI,medium,pending,No null-check on flightDynamicsControl before invoking events
+UI/MFD/FlightDynamicsUIController.cs,UI,medium,pending,Hardcoded array size (4) instead of deriving it from the relevant enum's value count — blocks extensibility if new flight-dynamics types are added
+UI/MFD/FlightDynamicsUIController.cs,UI,low,pending,Unused field rotaryComputer declared but never referenced
+UI/MFD/TrimDirectionUIController.cs,UI,high,pending,"Color constructor bug: new(255, 255, 255, 0.1f) uses 0-255 range values in a 0-1 normalized Color constructor — produces an unintended (over-saturated/clamped) color; should be new(1, 1, 1, 0.1f)"
+UI/MFD/TrimDirectionUIController.cs,UI,medium,pending,No null-checks on maxText/minText before setting their .text
+UI/MFD/TrimDirectionUIController.cs,UI,low,pending,"Hardcoded color hex strings/alpha values (0.1f, 0.2f) with no named constants"
+UI/MainMenu.cs,UI,medium,pending,"Duplicate/near-duplicate ""assistValues"" struct also defined in AssistValues.cs — consolidate into a single shared type"
+UI/MainMenu.cs,UI,medium,pending,"Magic numbers (2f duration, 180, and controller gains 0.175/0.12/2.0/0.15/0.33) hardcoded with no explanation — extract to named/tooltipped fields"
+UI/MainMenu.cs,UI,medium,pending,Multiple unguarded HelicopterComponents.Instance accesses without a full null-check chain
+UI/MainMenu.cs,UI,medium,pending,"Deeply nested if-else logic for control-scheme selection — hard to read/maintain, consider a lookup table or strategy pattern"
+UI/MainMenu.cs,UI,medium,pending,timeRemainingSeconds decremented by deltaTime before the paused-state check is applied — ordering bug risk
+UI/MainMenu.cs,UI,low,pending,Debug.Log spam across multiple methods
+UI/MainMenu.cs,UI,low,pending,Redundant duplicate assignment of m_mode in the same method
+UI/PitchBar.cs,UI,medium,pending,"Dead code: a ""transforms"" List is populated but never used — logic always iterates the separate ""texts"" list instead"
+UI/PitchBar.cs,UI,low,pending,Redundant GetComponent<Transform>() call on an object where .transform is already directly available
+UI/PitchLadder.cs,UI,medium,pending,No null-check on camera inside the per-frame update loop (only checked once elsewhere)
+UI/PitchLadder.cs,UI,low,pending,"Uses ""new"" keyword to shadow base-class members — confusing, should rename the members instead"
+UI/PitchLadder.cs,UI,low,pending,"Magic hardcoded angles (0, 90, -90) with no explanation"
+UI/PitchLadder.cs,UI,low,pending,"No cleanup (OnDestroy) of the dynamically created ""bars"" List/instantiated objects"
+UI/PrefSettings.cs,UI,high,pending,FindObjectOfType/FindFirstObjectByType called in VariablesToObjects() instead of caching a reference — expensive and version-fragile
+UI/PrefSettings.cs,UI,medium,pending,Large commented-out Update() body left in file — should be removed or finished
+UI/PrefSettings.cs,UI,medium,pending,settingsMenu.SetUiVariables() called without full null-chain validation despite an earlier partial null-check
+UI/PrefSettings.cs,UI,medium,pending,Hardcoded JSON file path structure with no validation that the directory exists
+UI/PrefSettings.cs,UI,low,pending,Debug.Log spam across multiple methods
+UI/PrefSettings.cs,UI,low,pending,Magic number 200.0f used for audio-volume conversion with no explanation
+UI/SettingMenuOpener.cs,UI,medium,pending,Update() polls input every frame with no null-checks on the referenced GameObjects
+UI/SettingMenuOpener.cs,UI,low,pending,Public mutable fields settingMenu/bottomMenu should be [SerializeField] private
+UI/SettingsMenu.cs,UI,high,pending,int.Parse()/uint.Parse() calls with no try/catch or TryParse — crashes on invalid input
+UI/SettingsMenu.cs,UI,medium,pending,No null-check on prefSettings before use
+UI/SettingsMenu.cs,UI,low,pending,Debug.Log left in hot path (menu open)
+UI/SettingsMenu.cs,UI,low,pending,Dead commented-out code left in file
+UI/TaxiComponenets.cs,UI,medium,pending,"Class/file name typo: ""TaxiComponenets"" should be ""TaxiComponents"" (rename via Unity Editor to preserve references)"
+UI/TaxiComponenets.cs,UI,medium,pending,No null-checks on assigned references before use
+UI/TaxiComponenets.cs,UI,low,pending,Fields declared with both [SerializeField] and public modifiers together (redundant/anti-pattern) — pick one (prefer [SerializeField] private)
+UI/UIHelper.cs,UI,low,pending,"Parameter name typo ""uiOjbect"" should be ""uiObject"""
+UI/UIHelper.cs,UI,low,pending,"Unused usings: System.Collections, System.Collections.Generic"
+UI/UISliderController.cs,UI,medium,pending,float.Parse() has no try/catch or TryParse — crashes on invalid user input
+UI/UISliderController.cs,UI,low,pending,"Unused usings: System.Collections, System.Collections.Generic"
+Utilities/ForceApplier.cs,Utilities,high,pending,No null-checks on rb/rotaryController before use in Update
+Utilities/ForceApplier.cs,Utilities,medium,pending,"Hardcoded gust-simulation magic numbers (gustFrequency 0.25f, directionChangeSpeed 5f, Perlin multiplier 0.1f, Perlin power 3.5f) with no explanation — extract to tooltipped fields"
+Utilities/ForceApplier.cs,Utilities,medium,pending,No null-check on rotaryController.emptyWeight access
+Utilities/ForceApplier.cs,Utilities,low,pending,Public mutable fields rb and rotaryController should be [SerializeField] private
+Utilities/ForceApplier.cs,Utilities,low,pending,OnDrawGizmos duplicates the Update() wind-force calculation instead of sharing a single method — risk of the two diverging over time
+Utilities/GForceCalculator.cs,Utilities,high,fixed,"Fixed in prior pass: removed per-frame Debug.Log spam, cached Material instead of per-call allocation, fixed redundant GetComponent overwriting a serialized field, public array changed to private self-initializing array"
+Utilities/GForceCalculator.cs,Utilities,low,pending,Remaining: points array is initialized both at field-declaration and again redundantly in Start() — harmless but worth cleaning up for clarity
+Utilities/GameReferences.cs,Utilities,low,pending,No issues found on review
+Utilities/SceneTransition.cs,Utilities,medium,pending,Scene names array hardcoded in two separate places — should be a single source of truth (constant or serialized field)
+Utilities/SceneTransition.cs,Utilities,medium,pending,No null-check on sceneDropdown before use in Start()
+Utilities/Timing.cs,Utilities,medium,pending,"Hardcoded time thresholds (e.g. 120s, 10s) lack explanation/tooltips — extract to named serialized fields"
+Utilities/Timing.cs,Utilities,medium,pending,No null-checks on TextMeshProUGUI fields before setting .text/.color
+Utilities/Timing.cs,Utilities,low,pending,Public TextMeshProUGUI array fields should be [SerializeField] private
+Utilities/Timing.cs,Utilities,low,pending,Public mutable color fields should be [SerializeField] private
+Utilities/Utilities.cs,Utilities,low,pending,No issues found on review
+Utilities/mirrorTransform.cs,Utilities,medium,pending,"Class name uses non-standard lowercase casing ""mirrorTransform"" — should be PascalCase ""MirrorTransform"" (rename via Unity Editor to preserve references)"
+Utilities/mirrorTransform.cs,Utilities,low,pending,Unused field heliTransformTarget assigned but never referenced meaningfully
+Utilities/mirrorTransform.cs,Utilities,low,pending,Null-check pattern in FixedUpdate is inconsistent (checks a field it never actually uses)
+VR/HeadSetTracking.cs,VR,medium,pending,Class is an entirely empty stub (Start/Update do nothing) — either implement the intended headset-tracking feature or delete the file
+VR/Recenter.cs,VR,medium,pending,No null-checks on XROrigin/TargetTransform before use — will crash if not assigned in inspector
+VR/VRCameraPlayback.cs,VR,high,pending,No try/catch around StreamReader file I/O — crashes on I/O errors
+VR/VRCameraPlayback.cs,VR,high,pending,float.Parse used instead of float.TryParse — crashes on malformed recorded data instead of skipping the bad line
+VR/VRCameraPlayback.cs,VR,medium,pending,Uses string concatenation for paths instead of Path.Combine
+VR/VRCameraPlayback.cs,VR,medium,pending,No bounds-checking on journeyData indexing before interpolation
+VR/VRCameraPlayback.cs,VR,medium,pending,No OnDestroy cleanup of coroutines if destroyed mid-playback
+VR/VRCameraPlayback.cs,VR,medium,pending,No File.Exists check before attempting to read the journey file
+VR/VRCameraPlayback.cs,VR,low,pending,Hardcoded frameRate = 30f with no explanation
+VR/VRCameraRecording.cs,VR,high,pending,No try/catch around StreamWriter file I/O — crashes on I/O errors
+VR/VRCameraRecording.cs,VR,high,pending,Records a new journeyData entry every single frame with no batching/decimation — unbounded memory growth and huge output files for long sessions
+VR/VRCameraRecording.cs,VR,medium,pending,Uses string concatenation for paths instead of Path.Combine
+VR/VRCameraRecording.cs,VR,medium,pending,No OnDestroy to stop/flush recording if the component is destroyed mid-recording
+VR/VRCameraRecording.cs,VR,low,pending,No null-check on transform before use in Update
+VR/VRCameraRecording.cs,VR,low,pending,No validation that Application.persistentDataPath is accessible before writing
+WorldLookup/WorldLookupEntry.cs,WorldLookup,low,pending,Fields are public/mutable; should be [SerializeField] private for consistency with modern Unity practice
+WorldLookup/WorldLookupEntry.cs,WorldLookup,low,pending,No validation that entries are non-null/well-formed
+WorldLookup/WorldLoopup.cs,WorldLookup,high,pending,"Singleton is not marked with DontDestroyOnLoad — will be recreated on scene load, breaking the singleton contract"
+WorldLookup/WorldLoopup.cs,WorldLookup,medium,pending,"Class/file name typo: ""WorldLoopup"" should be ""WorldLookup"" (rename via Unity Editor to preserve references)"
+WorldLookup/WorldLoopup.cs,WorldLookup,medium,pending,No OnDestroy() to clear the lookup dictionary on scene unload
+WorldLookup/WorldLoopup.cs,WorldLookup,medium,pending,No guard against consumers accessing lookupDictionary before Awake() has run (initialization-order hazard)
+WorldLookup/WorldLoopup.cs,WorldLookup,medium,pending,"Singleton pattern is inconsistent with the other manager singletons in the project (CameraSwitcher, SpeedGrapher, ViewManager, DashboardManager) — consolidate on one reusable singleton base/pattern"
+WorldLookup/WorldLoopup.cs,WorldLookup,low,pending,"lookupDictionary field visibility should be private, currently more open than necessary"
+helicopter/AutoTrim.cs,helicopter,high,fixed,"Fixed in prior pass: all magic numbers extracted to tooltipped [SerializeField] fields, dead/inconsistent IncreaseYawTrim/DecreaseYawTrim methods removed, useMoments toggle exposed, null guards added in Start/FixedUpdate"
+helicopter/CollectiveOverride.cs,helicopter,high,pending,Entire implementation is commented-out dead code — either finish the feature or delete the file
+helicopter/CollectiveOverride.cs,helicopter,medium,pending,"Unused fields (m_collectiveOverride, m_collectiveOverrideValueSlider, m_collectiveOverrideValue, m_collectiveOverrideToggle, m_controller) declared but never used because the logic is commented out"
+helicopter/TaxiLoops.cs,helicopter,critical,pending,Division by zero risk: journeyData.Count / helicopters.Count when helicopters.Count is 0
+helicopter/TaxiLoops.cs,helicopter,high,pending,No null checks on helicopters[i].helicopterRb / helicopterTransform before use
+helicopter/TaxiLoops.cs,helicopter,high,pending,No check for empty journeyData list before indexing — can throw IndexOutOfRangeException
+helicopter/TaxiLoops.cs,helicopter,high,pending,File parsing has no try/catch — malformed save file will crash at runtime
+helicopter/TaxiLoops.cs,helicopter,medium,pending,"Inconsistent typo' d variable names (""helictoperStartTimes"", ""helictoperLoops"", ""currentHelicopterTimes"") mixing ""helictoper""/""helicopter"" spelling"
+helicopter/TaxiLoops.cs,helicopter,medium,pending,StartPlayback() allocates new List objects on every call — avoidable per-call allocation
+helicopter/TaxiLoops.cs,helicopter,low,pending,Public mutable fields fileName and playbackSpeed should be [SerializeField] private
+helicopter/TaxiLoops.cs,helicopter,low,pending,Debug.Log statements left in without a debug-flag gate
+helicopter/TaxiLoops.cs,helicopter,low,pending,Dead/commented-out code left in file suggesting an incomplete feature
+helicopter/YawOverride.cs,helicopter,high,pending,m_yawOverrideToggle is read in SetYawOverride() but never assigned/initialized — likely a null reference bug waiting to happen once the surrounding code is un-commented
+helicopter/YawOverride.cs,helicopter,high,pending,All core logic is commented out; method is currently non-functional — finish or remove
+helicopter/YawOverride.cs,helicopter,low,pending,Unused field m_controller declared but never used
+helicopter/YawOverride.cs,helicopter,low,pending,"Misleading/misspelled local variable naming (e.g. ""bol"") — clean up naming when logic is restored"
+helicopter/verticalDrag.cs,helicopter,high,pending,No null check on rb — will throw NullReferenceException if not assigned in inspector
+helicopter/verticalDrag.cs,helicopter,high,pending,Drag force only applied when rb.linearVelocity.y > 0 — logic looks incomplete/asymmetric; likely a bug where downward vertical drag is never applied
+helicopter/verticalDrag.cs,helicopter,medium,pending,"Class name uses non-standard lowercase casing ""verticalDrag"" — should be PascalCase ""VerticalDrag"" (rename via Unity Editor to preserve scene/prefab references)"
+helicopter/verticalDrag.cs,helicopter,low,pending,verticalSpeed and drag fields are serialized purely as debug readouts — should be private (or removed) with debug info exposed differently

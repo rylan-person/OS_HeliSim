@@ -51,9 +51,8 @@ public class NovaController : MonoBehaviour
     [Header("GForce Calculator")]
     public GForceCalculator gForceCalculator;
 
+    [Tooltip("Optional transform used to visualize the computed g-force direction; only required in MotionCueing mode.")]
     public GameObject testObject;
-
-    public Vector3 direcetion = Vector3.zero;
 
     [FormerlySerializedAs("aQuatFilt")]
     [Tooltip("Final Quaternion filter parameter 1 unfiltered 0 static")]
@@ -116,11 +115,27 @@ public class NovaController : MonoBehaviour
         {
             tryActivate();
         }
-        controlTypeCued.started += ctxt => ControlStateQuat();
-        controlTypeRotation.started += ctxt => ControlStateCued();
+        controlTypeCued.started += OnControlTypeCuedStarted;
+        controlTypeRotation.started += OnControlTypeRotationStarted;
         controlTypeCued.Enable();
         controlTypeRotation.Enable();
     }
+
+    private void OnDisable()
+    {
+        controlTypeCued.started -= OnControlTypeCuedStarted;
+        controlTypeRotation.started -= OnControlTypeRotationStarted;
+        controlTypeCued.Disable();
+        controlTypeRotation.Disable();
+    }
+
+    private void OnDestroy()
+    {
+        client?.Dispose();
+    }
+
+    private void OnControlTypeCuedStarted(InputAction.CallbackContext ctx) => ControlStateQuat();
+    private void OnControlTypeRotationStarted(InputAction.CallbackContext ctx) => ControlStateCued();
 
     // Post Additions
     void LoadSettings()
@@ -152,6 +167,12 @@ public class NovaController : MonoBehaviour
     private void tryActivate()
     {
         remoteEndPoint = GetRemoteEndpoint(novaIpAddress, novaPort);
+        if (remoteEndPoint == null)
+        {
+            active = false;
+            return;
+        }
+
         Debug.Log("Sending NOVA Control messages to " + remoteEndPoint.Address + " : " + remoteEndPoint.Port);
         client = new UdpClient(remoteEndPoint.AddressFamily);
         sequenceNumber = 0;
@@ -176,8 +197,22 @@ public class NovaController : MonoBehaviour
 
     private IPEndPoint GetRemoteEndpoint(string ipAddress, int port)
     {
-        var resolvedIP = Dns.GetHostEntry(ipAddress).AddressList[0];
-        return new IPEndPoint(resolvedIP, port);
+        try
+        {
+            var addresses = Dns.GetHostEntry(ipAddress).AddressList;
+            if (addresses == null || addresses.Length == 0)
+            {
+                Debug.LogError($"{nameof(NovaController)}: DNS lookup for '{ipAddress}' returned no addresses.");
+                return null;
+            }
+
+            return new IPEndPoint(addresses[0], port);
+        }
+        catch (SocketException ex)
+        {
+            Debug.LogError($"{nameof(NovaController)}: failed to resolve NOVA host '{ipAddress}': {ex.Message}");
+            return null;
+        }
     }
 
     private void FixedUpdate()
@@ -214,16 +249,24 @@ public class NovaController : MonoBehaviour
         SendAsQuaternion(sequenceNumber, smoothQuat);
     }
 
+    private readonly StringBuilder _messageBuilder = new StringBuilder(64);
+
     private void SendAsQuaternion(int sequenceNumber, Quaternion unityRotation)
     {
         // Convert from Unity's left-handed Y-up, to NOVA's right-handed Z-up:
         Quaternion rhsOrientation = new Quaternion(-unityRotation.z, unityRotation.x, -unityRotation.y, unityRotation.w);
 
-        // Unity Quaternion order is XYZW, but NOVA Control expects WXYZ
-        var msg = string.Format("{0},{1},{2},{3},{4}\n", sequenceNumber,
-            rhsOrientation.w, rhsOrientation.x, rhsOrientation.y, rhsOrientation.z);
+        // Unity Quaternion order is XYZW, but NOVA Control expects WXYZ.
+        // Build the message with a reused StringBuilder instead of string.Format
+        // to avoid allocating a new string every physics tick.
+        _messageBuilder.Clear();
+        _messageBuilder.Append(sequenceNumber).Append(',')
+            .Append(rhsOrientation.w).Append(',')
+            .Append(rhsOrientation.x).Append(',')
+            .Append(rhsOrientation.y).Append(',')
+            .Append(rhsOrientation.z).Append('\n');
 
-        SendControlMessage(msg);
+        SendControlMessage(_messageBuilder);
     }
 
     private Quaternion doBasicMotionCueing(Quaternion rotation, Vector3 acceleration)
@@ -247,16 +290,21 @@ public class NovaController : MonoBehaviour
         Vector3 gForceDirection = gForceCalculator.gForceDirection;
         float gForceMagnitude = gForceCalculator.gForceMagnitude;
 
-        testObject.transform.rotation = Quaternion.LookRotation(gForceDirection) * transform.rotation;
+        Quaternion result = Quaternion.LookRotation(gForceDirection) * transform.rotation;
 
-        return Quaternion.LookRotation(gForceDirection) * transform.rotation;
+        if (testObject != null)
+        {
+            testObject.transform.rotation = result;
+        }
+
+        return result;
     }
 
-    private void SendControlMessage(string message) 
+    private void SendControlMessage(StringBuilder message)
     {
         try
         {
-            byte[] data = Encoding.UTF8.GetBytes(message);
+            byte[] data = Encoding.UTF8.GetBytes(message.ToString());
             client.Send(dgram: data, bytes: data.Length, endPoint: remoteEndPoint);
         }
         catch (Exception err)

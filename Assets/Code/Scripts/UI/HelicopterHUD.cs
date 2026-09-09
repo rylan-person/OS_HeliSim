@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -41,6 +42,30 @@ public class HelicopterHUD : MonoBehaviour
     public TextMeshProUGUI gLoadText;
     public TextMeshProUGUI speedText;
 
+    [Header("Warning Thresholds")]
+    [Tooltip("Climb rate (m/s) below which the climb-rate readout turns red.")]
+    [SerializeField] private double climbRateWarningThreshold = -10;
+    [Tooltip("Altitude (m) below which the altitude readout turns red.")]
+    [SerializeField] private double altitudeWarningThreshold = 25;
+    [Tooltip("Vertical offset (m) subtracted from raw altitude to account for the helicopter's origin height above ground.")]
+    [SerializeField] private double altitudeDisplayOffset = 6.65;
+    [Tooltip("Offset applied to the altitude slider so its 0 value lines up with the ground.")]
+    [SerializeField] private double altitudeSliderOffset = 30.4;
+    [Tooltip("G-load above which the readout turns red.")]
+    [SerializeField] private double gLoadHighWarning = 4;
+    [Tooltip("G-load below which the readout turns red.")]
+    [SerializeField] private double gLoadLowWarning = -1;
+    [Tooltip("Conversion factor from m/s to km/h.")]
+    [SerializeField] private float metersPerSecondToKmh = 3.6f;
+
+    // Reused per-field so numeric HUD readouts don't allocate a new string every frame.
+    private readonly StringBuilder _climbRateBuilder = new StringBuilder(16);
+    private readonly StringBuilder _altitudeBuilder = new StringBuilder(16);
+    private readonly StringBuilder _powerLevelBuilder = new StringBuilder(16);
+    private readonly StringBuilder _collectiveBuilder = new StringBuilder(16);
+    private readonly StringBuilder _gLoadBuilder = new StringBuilder(16);
+    private readonly StringBuilder _speedBuilder = new StringBuilder(16);
+
     UnityEngine.Vector3 TransformToHUDSpace(Vector3 worldSpace)
     {
         var screenSpace = camera.WorldToScreenPoint(worldSpace);
@@ -49,17 +74,7 @@ public class HelicopterHUD : MonoBehaviour
 
     void UpdateHUDCenter()
     {
-        /*
-        var rotation = cameraTransform.localEulerAngles;
-        var hudPos = TransformToHUDSpace(cameraTransform.position + rb.transform.forward); //
-
-
-        hudCenterGO.SetActive(true);
-        //hudCenter.localPosition = new Vector3(hudPos.x, hudPos.y, 0);
-        hudCenter.localEulerAngles = new Vector3(0, 0, -rotation.z);
-        */
-        //UIHelper.UIHelper.PointToUISpace(canvas, hudCenterRect, rb.transform.position + rb.transform.forward*1000 + cameraParentTransform.localPosition, cameraTransform);
-
+        // Reserved for future HUD-center reticle placement (currently unused; see UIHelper.PointToUISpace).
     }
 
     private void Start()
@@ -83,10 +98,6 @@ public class HelicopterHUD : MonoBehaviour
         var velocityDirection = Quaternion.LookRotation(velocity, Vector3.up);
 
         velocityRoot.rotation = velocityDirection;
-
-        //UIHelper.UIHelper.PointToUISpace(canvas, velocityRoot, rb.transform.position + velocity*1000f, cameraTransform);
-
-
     }
 
     // Update is called once per frame
@@ -96,52 +107,48 @@ public class HelicopterHUD : MonoBehaviour
         UpdateVelocityMarker();
 
         // Climb Rate
-        climbRateText.text = (m_vehicle.m_core.δz).ToString("0.0") + "m/s >";
-        if (m_vehicle.m_core.δz < -10)
-        {
-            climbRateText.color = Color.red;
-        }
-        else
-        {
-            climbRateText.color = defaultUIColor;
-        }
+        _climbRateBuilder.Clear();
+        _climbRateBuilder.Append(m_vehicle.m_core.δz.ToString("0.0"));
+        _climbRateBuilder.Append("m/s >");
+        climbRateText.SetText(_climbRateBuilder);
+        climbRateText.color = m_vehicle.m_core.δz < climbRateWarningThreshold ? Color.red : defaultUIColor;
         climbRateSlider.value = (float)m_vehicle.m_core.δz;
 
         // Altitude
-        altitudeText.text =  "< " + (m_vehicle.m_core.z - 6.65).ToString("0.0") + "m";
-        if (m_vehicle.m_core.z < 25)
-        {
-            altitudeText.color = Color.red;
-        }
-        else
-        {
-            altitudeText.color = defaultUIColor;
-        }
-        altitudeSlider.value = (float)(m_vehicle.m_core.z - 30.4);
+        _altitudeBuilder.Clear();
+        _altitudeBuilder.Append("< ");
+        _altitudeBuilder.Append((m_vehicle.m_core.z - altitudeDisplayOffset).ToString("0.0"));
+        _altitudeBuilder.Append("m");
+        altitudeText.SetText(_altitudeBuilder);
+        altitudeText.color = m_vehicle.m_core.z < altitudeWarningThreshold ? Color.red : defaultUIColor;
+        altitudeSlider.value = (float)(m_vehicle.m_core.z - altitudeSliderOffset);
 
         // Collective and Power Level
-        powerLevelText.text = (m_vehicle.m_powerLevel * 100).ToString("0.0") + "%";
-        collectiveLevelText.text = (m_vehicle._collectiveInput * 100f).ToString("0") + " %";
+        _powerLevelBuilder.Clear();
+        _powerLevelBuilder.Append((m_vehicle.m_powerLevel * 100).ToString("0.0"));
+        _powerLevelBuilder.Append("%");
+        powerLevelText.SetText(_powerLevelBuilder);
+
+        _collectiveBuilder.Clear();
+        _collectiveBuilder.Append((m_vehicle._collectiveInput * 100f).ToString("0"));
+        _collectiveBuilder.Append(" %");
+        collectiveLevelText.SetText(_collectiveBuilder);
 
         // G-Load
-        gLoadText.text = m_vehicle.m_core.n.ToString("0.00");
-        if (m_vehicle.m_core.n > 4 || m_vehicle.m_core.n < -1)
-        {
-            gLoadText.color = Color.red;
-        }
-        else
-        {
-            gLoadText.color = defaultUIColor;
-        }
+        _gLoadBuilder.Clear();
+        _gLoadBuilder.Append(m_vehicle.m_core.n.ToString("0.00"));
+        gLoadText.SetText(_gLoadBuilder);
+        gLoadText.color = (m_vehicle.m_core.n > gLoadHighWarning || m_vehicle.m_core.n < gLoadLowWarning) ? Color.red : defaultUIColor;
 
         // Speed
         double u = m_vehicle.m_core.u;
         double v = m_vehicle.m_core.v;
         float Speed = (float)System.Math.Sqrt((u * u) + (v * v));
 
-        float speedly = Speed * 3.6f;
-        speedText.text = speedly.ToString("0.0") + " kmh";
-
-
+        float speedly = Speed * metersPerSecondToKmh;
+        _speedBuilder.Clear();
+        _speedBuilder.Append(speedly.ToString("0.0"));
+        _speedBuilder.Append(" kmh");
+        speedText.SetText(_speedBuilder);
     }
 }

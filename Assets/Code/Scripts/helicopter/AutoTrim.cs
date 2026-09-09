@@ -29,6 +29,30 @@ public class AutoTrim : MonoBehaviour
     [SerializeField] double changeValueMed = 0.01;
     [SerializeField] double changeValueHigh = 0.015;
 
+    [Header("Trim Rate Thresholds")]
+    [Tooltip("Body rate (rad/s) above which auto-trim uses the high trim-change rate (changeValueHigh).")]
+    [SerializeField] private float highRateThreshold = 0.4f;
+    [Tooltip("Body rate (rad/s) above which auto-trim uses the medium trim-change rate (changeValueMed), below highRateThreshold.")]
+    [SerializeField] private float mediumRateThreshold = 0.25f;
+    [Tooltip("Deadband (rad/s) within which auto-trim stops nudging trim for that axis.")]
+    [SerializeField] private float rateDeadband = 0.001f;
+    [Tooltip("Input deadband auto-trim requires on the pilot's raw stick/pedal input before it will adjust trim for that axis (prevents fighting active pilot input).")]
+    [SerializeField] private float pilotInputDeadband = 0.1f;
+
+    [Header("Cyclic Trim Limits")]
+    [Tooltip("Magnitude (deg) the longitudinal/lateral upper or lower trim actuator can reach on its own before the opposite actuator absorbs the remainder.")]
+    [SerializeField] private double cyclicTrimLimit = 10.3;
+
+    [Header("Pedal Trim Limits")]
+    [Tooltip("Pedal-upper trim (deg) auto-trim will not increase past while correcting positive yaw rate.")]
+    [SerializeField] private double pedalUpperCeiling = 19.5;
+    [Tooltip("Pedal-lower trim (deg) auto-trim will not increase past while correcting positive yaw rate.")]
+    [SerializeField] private double pedalLowerCeiling = -5.0;
+    [Tooltip("Pedal-upper trim (deg) auto-trim will not decrease below while correcting negative yaw rate.")]
+    [SerializeField] private double pedalUpperFloor = 14.0;
+    [Tooltip("Pedal-lower trim (deg) auto-trim will not decrease below while correcting negative yaw rate.")]
+    [SerializeField] private double pedalLowerFloor = -10.5;
+
     [Header("Base Trims")]
     [SerializeField] double[] _longBaseTrim = new double[2];
     [SerializeField] double[] _latBaseTrim = new double[2];
@@ -36,8 +60,9 @@ public class AutoTrim : MonoBehaviour
 
     public bool _autoTrim = false;
 
-    // Use Moments to AutoTrim
-    private bool useMoments = false;
+    [Header("Trim Source")]
+    [Tooltip("When enabled, auto-trim reads rotor moments (m_mainRotor/m_tailRotor) as its error signal instead of body rates (SilantroCore.p/q/r).")]
+    [SerializeField] private bool useMoments = false;
 
     public void AutoTrimOn()
     {
@@ -62,6 +87,13 @@ public class AutoTrim : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        if (_flcs == null)
+        {
+            Debug.LogError($"{nameof(AutoTrim)}: RotaryComputer (_flcs) reference is not assigned; auto-trim will be disabled.", this);
+            enabled = false;
+            return;
+        }
+
         _longBaseTrim[0] = _flcs.LongitudinalUpper;
         _longBaseTrim[1] = _flcs.LongitudinalLower;
 
@@ -75,8 +107,11 @@ public class AutoTrim : MonoBehaviour
 
     private void FixedUpdate()
     {
+        if (_flcs == null || _core == null) return;
+
         if (useMoments)
         {
+            if (_mainRotor == null || _tailRotor == null) return;
             _pitchDiff = _mainRotor.m_moment.x;
             _rollDiff = _mainRotor.m_moment.z;
             _yawDiff = _tailRotor.m_moment.y;
@@ -95,15 +130,15 @@ public class AutoTrim : MonoBehaviour
 
         if (_autoTrim)
         {
-            if (_flcs.b_pitchInput < 0.1 && _flcs.b_pitchInput > -0.1)
+            if (_flcs.b_pitchInput < pilotInputDeadband && _flcs.b_pitchInput > -pilotInputDeadband)
             {
                 UpdatePitchTrim();
             }
-            if (_flcs.b_rollInput < 0.1 && _flcs.b_rollInput > -0.1)
+            if (_flcs.b_rollInput < pilotInputDeadband && _flcs.b_rollInput > -pilotInputDeadband)
             {
                 UpdateRollTrim();
             }
-            if (_flcs.b_yawInput < 0.1 && _flcs.b_yawInput > -0.1)
+            if (_flcs.b_yawInput < pilotInputDeadband && _flcs.b_yawInput > -pilotInputDeadband)
             {
                 UpdateYawTrim();
             }
@@ -114,21 +149,21 @@ public class AutoTrim : MonoBehaviour
     public void UpdatePitchTrim()
     {
         double changeValue = changeValueLow;
-        // if the magnitude of the yaw difference is greater than 0.01
-        if (_pitchDiff > 0.4 || _pitchDiff < -0.4)
+        // if the magnitude of the pitch rate is greater than the medium/high rate thresholds, trim faster
+        if (_pitchDiff > highRateThreshold || _pitchDiff < -highRateThreshold)
         {
             changeValue = changeValueHigh;
         }
-        else if (_pitchDiff > 0.25 || _pitchDiff < -0.25)
+        else if (_pitchDiff > mediumRateThreshold || _pitchDiff < -mediumRateThreshold)
         {
             changeValue = changeValueMed;
         }
 
-        if (_pitchDiff > 0.001)
+        if (_pitchDiff > rateDeadband)
         {
             IncreaseLongTrim(changeValue);
         }
-        else if (_pitchDiff < -0.001)
+        else if (_pitchDiff < -rateDeadband)
         {
             DecreaseLongTrim(changeValue);
         }
@@ -136,40 +171,40 @@ public class AutoTrim : MonoBehaviour
 
     private void IncreaseLongTrim(double amount)
     {
-        if (_flcs.LongitudinalUpper >= 10.3)
+        if (_flcs.LongitudinalUpper >= cyclicTrimLimit)
         {
             _flcs.LongitudinalLower += amount * 2;
             return;
         }
-        if (_flcs.LongitudinalUpper + amount * 2 < 10.3)
+        if (_flcs.LongitudinalUpper + amount * 2 < cyclicTrimLimit)
         {
             _flcs.LongitudinalUpper += amount * 2;
             return;
         }
-        if (_flcs.LongitudinalUpper < 10.3)
+        if (_flcs.LongitudinalUpper < cyclicTrimLimit)
         {
-            _flcs.LongitudinalLower += (amount - (10.3 - _flcs.LongitudinalUpper));
-            _flcs.LongitudinalUpper = 10.3;
+            _flcs.LongitudinalLower += (amount - (cyclicTrimLimit - _flcs.LongitudinalUpper));
+            _flcs.LongitudinalUpper = cyclicTrimLimit;
             return;
         }
     }
 
     private void DecreaseLongTrim(double amount)
     {
-        if (_flcs.LongitudinalLower <= -10.3)
+        if (_flcs.LongitudinalLower <= -cyclicTrimLimit)
         {
             _flcs.LongitudinalUpper -= amount * 2;
             return;
         }
-        if (_flcs.LongitudinalLower - amount * 2 > -10.3)
+        if (_flcs.LongitudinalLower - amount * 2 > -cyclicTrimLimit)
         {
             _flcs.LongitudinalLower -= amount * 2;
             return;
         }
-        if (_flcs.LongitudinalLower > -10.3)
+        if (_flcs.LongitudinalLower > -cyclicTrimLimit)
         {
-            _flcs.LongitudinalUpper -= (amount - (-10.3 - _flcs.LongitudinalLower));
-            _flcs.LongitudinalLower = -10.3;
+            _flcs.LongitudinalUpper -= (amount - (-cyclicTrimLimit - _flcs.LongitudinalLower));
+            _flcs.LongitudinalLower = -cyclicTrimLimit;
             return;
         }
     }
@@ -179,21 +214,21 @@ public class AutoTrim : MonoBehaviour
     private void UpdateRollTrim()
     {
         double changeValue = changeValueLow;
-        // if the magnitude of the yaw difference is greater than 0.01
-        if (_rollDiff > 0.4 || _rollDiff < -0.4)
+        // if the magnitude of the roll rate is greater than the medium/high rate thresholds, trim faster
+        if (_rollDiff > highRateThreshold || _rollDiff < -highRateThreshold)
         {
             changeValue = changeValueHigh;
         }
-        else if (_rollDiff > 0.25 || _rollDiff < -0.25)
+        else if (_rollDiff > mediumRateThreshold || _rollDiff < -mediumRateThreshold)
         {
             changeValue = changeValueMed;
         }
 
-        if (_rollDiff < -0.001)
+        if (_rollDiff < -rateDeadband)
         {
             IncreaseLateralTrim(changeValue);
         }
-        else if (_rollDiff > 0.001)
+        else if (_rollDiff > rateDeadband)
         {
             DecreaseLateralTrim(changeValue);
         }
@@ -201,40 +236,40 @@ public class AutoTrim : MonoBehaviour
 
     private void IncreaseLateralTrim(double amount)
     {
-        if (_flcs.LateralUpper >= 10.3)
+        if (_flcs.LateralUpper >= cyclicTrimLimit)
         {
             _flcs.LateralLower += amount*2;
             return;
         }
-        if (_flcs.LateralUpper + amount*2 < 10.3)
+        if (_flcs.LateralUpper + amount*2 < cyclicTrimLimit)
         {
             _flcs.LateralUpper += amount*2;
             return;
         } 
-        if (_flcs.LateralUpper < 10.3)
+        if (_flcs.LateralUpper < cyclicTrimLimit)
         {
-            _flcs.LateralLower += (amount - (10.3 - _flcs.LateralUpper));
-            _flcs.LateralUpper = 10.3;
+            _flcs.LateralLower += (amount - (cyclicTrimLimit - _flcs.LateralUpper));
+            _flcs.LateralUpper = cyclicTrimLimit;
             return;
         }
     }
 
     private void DecreaseLateralTrim(double amount)
     {
-        if (_flcs.LateralLower <= -10.3)
+        if (_flcs.LateralLower <= -cyclicTrimLimit)
         {
             _flcs.LateralUpper -= amount*2;
             return;
         }
-        if (_flcs.LateralLower - amount*2 > -10.3)
+        if (_flcs.LateralLower - amount*2 > -cyclicTrimLimit)
         {
             _flcs.LateralLower -= amount*2;
             return;
         }
-        if (_flcs.LateralLower > -10.3)
+        if (_flcs.LateralLower > -cyclicTrimLimit)
         {
-            _flcs.LateralUpper -= (amount - (-10.3 - _flcs.LateralLower));
-            _flcs.LateralLower = -10.3;
+            _flcs.LateralUpper -= (amount - (-cyclicTrimLimit - _flcs.LateralLower));
+            _flcs.LateralLower = -cyclicTrimLimit;
             return;
         }
     }
@@ -242,76 +277,36 @@ public class AutoTrim : MonoBehaviour
     private void UpdateYawTrim()
     {
         double changeValue = changeValueLow;
-        // if the magnitude of the yaw difference is greater than 0.01
-        if (_yawDiff > 0.4 || _yawDiff < -0.4)
+        // if the magnitude of the yaw rate is greater than the medium/high rate thresholds, trim faster
+        if (_yawDiff > highRateThreshold || _yawDiff < -highRateThreshold)
         {
             changeValue = changeValueHigh;
-        } else if (_yawDiff > 0.25 || _yawDiff < -0.25)
+        } else if (_yawDiff > mediumRateThreshold || _yawDiff < -mediumRateThreshold)
         {
             changeValue = changeValueMed;
         }
 
-        if (_yawDiff < -0.001)
+        if (_yawDiff < -rateDeadband)
         {
-            if (_flcs.PedalUpper < 19.5)
+            if (_flcs.PedalUpper < pedalUpperCeiling)
             {
                 _flcs.PedalUpper += changeValue;
             }
-            if (_flcs.PedalLower < -5)
+            if (_flcs.PedalLower < pedalLowerCeiling)
             {
                 _flcs.PedalLower += changeValue;
             }
         }
-        else if (_yawDiff > 0.001)
+        else if (_yawDiff > rateDeadband)
         {
-            if (_flcs.PedalUpper > 14)
+            if (_flcs.PedalUpper > pedalUpperFloor)
             {
                 _flcs.PedalUpper -= changeValue;
             }
-            if (_flcs.PedalLower > -10.5)
+            if (_flcs.PedalLower > pedalLowerFloor)
             {
                 _flcs.PedalLower -= changeValue;
             }
-        }
-    }
-
-    private void IncreaseYawTrim(double amount)
-    {
-        if (_flcs.PedalUpper >= 17.8)
-        {
-            _flcs.PedalLower += amount * 2;
-            return;
-        }
-        if (_flcs.PedalUpper + amount * 2 < 17.8)
-        {
-            _flcs.PedalUpper += amount * 2;
-            return;
-        }
-        if (_flcs.PedalUpper < 17.8)
-        {
-            _flcs.PedalLower += (amount - (17.8 - _flcs.PedalUpper));
-            _flcs.PedalUpper = 17.8;
-            return;
-        }
-    }
-
-    private void DecreaseYawTrim(double amount)
-    {
-        if (_flcs.PedalLower <= -9)
-        {
-            _flcs.PedalUpper -= amount * 2;
-            return;
-        }
-        if (_flcs.PedalLower - amount * 2 > -9)
-        {
-            _flcs.PedalLower -= amount * 2;
-            return;
-        }
-        if (_flcs.PedalLower > -9)
-        {
-            _flcs.PedalUpper -= (amount - (-9 - _flcs.PedalLower));
-            _flcs.PedalLower = -9;
-            return;
         }
     }
 

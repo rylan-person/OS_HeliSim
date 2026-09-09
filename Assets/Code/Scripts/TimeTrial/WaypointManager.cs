@@ -2,10 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.Analytics;
 
 public class WaypointManager : MonoBehaviour
 {
@@ -44,6 +42,7 @@ public class WaypointManager : MonoBehaviour
     [SerializeField] private Timing[] timingManagers;
     [SerializeField] private PlayerTimeTrialState playerTimeTrialState;
     [SerializeField] private bool autoRegisterTimingManagersOnStart = true;
+    [SerializeField] private bool debugLogsEnabled = false;
 
     private float optLapTime = 0;
 
@@ -59,23 +58,43 @@ public class WaypointManager : MonoBehaviour
         else
         {
             Destroy(gameObject);
+            return;
         }
 
         for (int i = 0; i < waypoints.Length; i++)
         {
-            waypoints[i].GetComponentInChildren<Waypoint>().waypointNumber = i + 1;
+            var waypoint = waypoints[i].GetComponentInChildren<Waypoint>();
+            if (waypoint == null)
+            {
+                Debug.LogError($"{nameof(WaypointManager)}: waypoint entry {i} ('{waypoints[i].name}') has no Waypoint component in its children.", waypoints[i]);
+                continue;
+            }
+            waypoint.waypointNumber = i + 1;
         }
 
         ResolvePlayerState();
     }
 
+    void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+    }
+
     public bool finishWaypoint(int waypointNumber)
     {
-        Debug.Log("WaypointNumber: " + waypointNumber + " : currentWaypoint: " + currentWaypoint);
+        LogDebug("WaypointNumber: " + waypointNumber + " : currentWaypoint: " + currentWaypoint);
         if (currentWaypoint == waypointNumber - 1)
         {
-            Debug.Log("Logging");
-            waypoints[currentWaypoint].GetComponentInChildren<Waypoint>().checkpointPassed();
+            var waypoint = waypoints[currentWaypoint].GetComponentInChildren<Waypoint>();
+            if (waypoint == null)
+            {
+                Debug.LogError($"{nameof(WaypointManager)}: waypoint {currentWaypoint} has no Waypoint component.", waypoints[currentWaypoint]);
+                return false;
+            }
+            waypoint.checkpointPassed();
 
             if (currentWaypoint + 3 < waypoints.Length)
             {
@@ -89,7 +108,11 @@ public class WaypointManager : MonoBehaviour
             currentWaypoint++;
             if (currentWaypoint < waypoints.Length)
             {
-                waypoints[currentWaypoint].GetComponentInChildren<Waypoint>().setAsNext();
+                var nextWaypoint = waypoints[currentWaypoint].GetComponentInChildren<Waypoint>();
+                if (nextWaypoint != null)
+                {
+                    nextWaypoint.setAsNext();
+                }
             }
 
             PublishPlayerProgress();
@@ -136,7 +159,11 @@ public class WaypointManager : MonoBehaviour
         // Check if the lap is the best lap
         if (currentLapTime < bestLap)
         {
-            bestLapSectors = currentLapSectors;
+            // Copy the values rather than aliasing the list reference — currentLapSectors
+            // continues to be mutated in-place during the next lap (see finishSector), and if
+            // bestLapSectors pointed at the same List<float> instance those in-place writes
+            // would silently corrupt the "best lap" record before it could be displayed/saved.
+            bestLapSectors = new List<float>(currentLapSectors);
             bestLap = currentLapTime;
             bestLapDistanceWaypointTimes = new List<(float, float)>(currentLapDistanceTimes);
             newBest = true;
@@ -176,7 +203,11 @@ public class WaypointManager : MonoBehaviour
 
     private void updateDisplayTimes(bool newBest, bool resetLapTimes = false)
     {
-        averageLap = averageSectors.Sum();
+        averageLap = 0f;
+        for (int i = 0; i < averageSectors.Count; i++)
+        {
+            averageLap += averageSectors[i];
+        }
 
         for (int i = 0; i < timingManagers.Length; i++)
         {
@@ -193,7 +224,7 @@ public class WaypointManager : MonoBehaviour
 
     public void resetLap()
     {
-        Debug.Log("ting Lap");
+        LogDebug("Resetting Lap");
         ResetLapDataToDefault();
         PublishPlayerProgress();
     }
@@ -228,9 +259,9 @@ public class WaypointManager : MonoBehaviour
         LoadTimesFromCSV();
 
         int defaultSectorCount = _sectors;
-        if (averageSectors.Count == 0) averageSectors = Enumerable.Repeat(0f, defaultSectorCount).ToList();
-        if (bestLapSectors.Count == 0) bestLapSectors = Enumerable.Repeat(float.MaxValue, defaultSectorCount).ToList();
-        if (bestSectors.Count == 0) bestSectors = Enumerable.Repeat(float.MaxValue, defaultSectorCount).ToList();
+        if (averageSectors.Count == 0) averageSectors = CreateFilledList(defaultSectorCount, 0f);
+        if (bestLapSectors.Count == 0) bestLapSectors = CreateFilledList(defaultSectorCount, float.MaxValue);
+        if (bestSectors.Count == 0) bestSectors = CreateFilledList(defaultSectorCount, float.MaxValue);
 
         for (int i = 0; i < 3 && i < waypoints.Length; i++)
         {
@@ -253,8 +284,15 @@ public class WaypointManager : MonoBehaviour
         // Set each waypoints distance from the end using the end waypoint as the finish line, the calculate the distance from the end
         for (int i = waypoints.Length - 2; i >= 0; i--)
         {
-            Debug.Log(i);
-            waypoints[i].GetComponentInChildren<Waypoint>().distanceFromEnd = Vector3.Distance(waypoints[i].transform.position, waypoints[i + 1].transform.position) + waypoints[i + 1].GetComponentInChildren<Waypoint>().distanceFromEnd;
+            var currentWaypointComponent = waypoints[i].GetComponentInChildren<Waypoint>();
+            var nextWaypointComponent = waypoints[i + 1].GetComponentInChildren<Waypoint>();
+            if (currentWaypointComponent == null || nextWaypointComponent == null)
+            {
+                Debug.LogError($"{nameof(WaypointManager)}: waypoint {i} or {i + 1} is missing a Waypoint component; skipping distance-from-end calculation.");
+                continue;
+            }
+
+            currentWaypointComponent.distanceFromEnd = Vector3.Distance(waypoints[i].transform.position, waypoints[i + 1].transform.position) + nextWaypointComponent.distanceFromEnd;
         }
 
     }
@@ -352,7 +390,6 @@ public class WaypointManager : MonoBehaviour
         // if the distance from the start point to the helicopter is greater than 3, start the lap
         if (Vector3.Distance(helicopterTransform.position, startingPosition) > 3 && goLock == false)
         {
-            //Debug.Log("Starting Lap, Distance from start: " + Vector3.Distance(helicopterTransform.position, startingPosition));
             lapActive = true;
         }
 
@@ -360,8 +397,6 @@ public class WaypointManager : MonoBehaviour
         {
             currentLapTime += Time.deltaTime;
             currentSectorTime += Time.deltaTime;
-
-            //currentLapDistanceTimes.Add( ((Vector3.Distance(helicopterTransform.position, waypoints[currentWaypoint].transform.position) + waypoints[currentWaypoint].GetComponent<Waypoint>().distanceFromEnd) , currentLapTime));
 
             for (int i = 0; i < timingManagers.Length; i++)
             {
@@ -411,7 +446,11 @@ public class WaypointManager : MonoBehaviour
         // Reset the checkpoints
         for (int i = 0; i < waypoints.Length; i++)
         {
-            waypoints[i].GetComponentInChildren<Waypoint>().resetCheckpoint();
+            var waypoint = waypoints[i].GetComponentInChildren<Waypoint>();
+            if (waypoint != null)
+            {
+                waypoint.resetCheckpoint();
+            }
             waypoints[i].SetActive(false);
         }
 
@@ -423,7 +462,14 @@ public class WaypointManager : MonoBehaviour
 
 
         // Set the first waypoint as the next
-            waypoints[0].GetComponentInChildren<Waypoint>().setAsNext();
+        if (waypoints.Length > 0)
+        {
+            var firstWaypoint = waypoints[0].GetComponentInChildren<Waypoint>();
+            if (firstWaypoint != null)
+            {
+                firstWaypoint.setAsNext();
+            }
+        }
 
         lapActive = false;
 
@@ -457,14 +503,34 @@ public class WaypointManager : MonoBehaviour
             list.Add(defaultValue);
 
         if (list.Count > _sectors)
-            list = list.Take(_sectors).ToList();
+            list.RemoveRange(_sectors, list.Count - _sectors);
     }
 
     private void InitializeSectorLists()
     {
-        averageSectors = Enumerable.Repeat(0f, _sectors).ToList();
-        bestLapSectors = Enumerable.Repeat(float.MaxValue, _sectors).ToList();
-        bestSectors = Enumerable.Repeat(float.MaxValue, _sectors).ToList();
+        averageSectors = CreateFilledList(_sectors, 0f);
+        bestLapSectors = CreateFilledList(_sectors, float.MaxValue);
+        bestSectors = CreateFilledList(_sectors, float.MaxValue);
+    }
+
+    private static List<float> CreateFilledList(int count, float value)
+    {
+        var list = new List<float>(count);
+        for (int i = 0; i < count; i++)
+        {
+            list.Add(value);
+        }
+        return list;
+    }
+
+    private void LogDebug(string message)
+    {
+        if (!debugLogsEnabled)
+        {
+            return;
+        }
+
+        Debug.Log($"[WaypointManager] {message}");
     }
 
     private void ResolvePlayerState()
