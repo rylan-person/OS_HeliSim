@@ -39,6 +39,9 @@
 # Visual Studio cache directory
 .vs/
 
+# Github for Unity cache directory
+.github/
+
 # Gradle cache directory
 .gradle/
 

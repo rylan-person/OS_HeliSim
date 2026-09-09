@@ -484,10 +484,10 @@ RectTransform:
   - {fileID: 6558428918755569653}
   m_Father: {fileID: 2377836285761444326}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 71.175, y: -40}
-  m_SizeDelta: {x: 142.35, y: 80}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &3601485641664774383
 MonoBehaviour:
@@ -3028,7 +3028,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -4547,7 +4547,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -5505,7 +5505,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -7778,7 +7778,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -7966,7 +7966,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -8103,7 +8103,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -8240,7 +8240,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -8297,10 +8297,10 @@ RectTransform:
   - {fileID: 1121655991973695092}
   m_Father: {fileID: 2377836285761444326}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 213.52501, y: -40}
-  m_SizeDelta: {x: 142.35, y: 80}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &3298597002280978563
 MonoBehaviour:
@@ -8628,7 +8628,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 23.25
+  m_fontSize: 23.35
   m_fontSizeBase: 22
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -8706,7 +8706,7 @@ RectTransform:
   m_Father: {fileID: 2627099740157731306}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -8817,7 +8817,7 @@ RectTransform:
   m_Father: {fileID: 7465198830489074992}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 15, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -8892,7 +8892,7 @@ RectTransform:
   m_Father: {fileID: 8209462473601299298}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 15, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -9673,7 +9673,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -10157,7 +10157,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -10387,7 +10387,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -11354,7 +11354,7 @@ RectTransform:
   m_Father: {fileID: 5381914046902276882}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 15, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -12011,7 +12011,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -12858,7 +12858,7 @@ RectTransform:
   m_Father: {fileID: 1555500001633519320}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -13015,7 +13015,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -14224,7 +14224,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -14763,7 +14763,7 @@ RectTransform:
   m_Father: {fileID: 3523828751024706605}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -15073,7 +15073,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -15724,7 +15724,7 @@ RectTransform:
   m_Father: {fileID: 416065427666751209}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -16583,7 +16583,7 @@ RectTransform:
   m_Father: {fileID: 1291285922624485236}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 15, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -16934,7 +16934,7 @@ RectTransform:
   m_Father: {fileID: 5875148369192803293}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 15, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -17529,7 +17529,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -17928,10 +17928,10 @@ RectTransform:
   - {fileID: 3996911837804254988}
   m_Father: {fileID: 2905161070490840057}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 213.52501, y: -40}
-  m_SizeDelta: {x: 142.35, y: 80}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &7204701247591603569
 MonoBehaviour:
@@ -18301,7 +18301,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -19446,7 +19446,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -21958,10 +21958,10 @@ RectTransform:
   - {fileID: 9107856657213283015}
   m_Father: {fileID: 2905161070490840057}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 71.175, y: -40}
-  m_SizeDelta: {x: 142.35, y: 80}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2227951691492905450
 MonoBehaviour:
@@ -22247,7 +22247,7 @@ RectTransform:
   m_Father: {fileID: 2121991438494589876}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -23033,10 +23033,10 @@ PrefabInstance:
       addedObject: {fileID: 1945410135527547789}
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 8924773812446211129}
+      addedObject: {fileID: 6898550378197262079}
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 6898550378197262079}
+      addedObject: {fileID: 8924773812446211129}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
 --- !u!1 &327136556277575509 stripped
@@ -23155,13 +23155,13 @@ PrefabInstance:
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 4412406542369131677}
+      addedObject: {fileID: 2377836285761444326}
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2905161070490840057}
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 2377836285761444326}
+      addedObject: {fileID: 4412406542369131677}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
 --- !u!1 &52124989242380382 stripped
@@ -23280,19 +23280,19 @@ PrefabInstance:
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 9060798787514573133}
-    - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 9186923826540484283}
-    - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 6710499196545719228}
+      addedObject: {fileID: 1693206843115363079}
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1777120566371042740}
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1693206843115363079}
+      addedObject: {fileID: 6710499196545719228}
+    - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 9060798787514573133}
+    - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 9186923826540484283}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
 --- !u!1 &1777736860593325893 stripped
@@ -23411,19 +23411,19 @@ PrefabInstance:
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 5009732323792742071}
-    - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 1946006062782490266}
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2998358193527122913}
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 6984178648058494949}
+      addedObject: {fileID: 4292140063878855564}
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 4292140063878855564}
+      addedObject: {fileID: 5009732323792742071}
+    - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6984178648058494949}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
 --- !u!1 &1751192490117052829 stripped
@@ -23887,25 +23887,25 @@ PrefabInstance:
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 8191642181704506131}
-    - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 4893756774533359730}
-    - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 4347152518472130954}
+      addedObject: {fileID: 2735947148330640}
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1987167586130077897}
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 2735947148330640}
+      addedObject: {fileID: 4347152518472130954}
+    - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4893756774533359730}
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5349008961421512459}
     - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
       addedObject: {fileID: 6945127073224127061}
+    - targetCorrespondingSourceObject: {fileID: 8709424011567610048, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8191642181704506131}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 5689345053031929085, guid: 0d21302b60409464685be84c9abcffb2, type: 3}
       insertIndex: -1
