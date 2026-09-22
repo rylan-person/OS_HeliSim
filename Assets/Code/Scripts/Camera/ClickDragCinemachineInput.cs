@@ -11,8 +11,15 @@ public class ClickDragCinemachineInput : MonoBehaviour
     [Header("Cinemachine")]
     [SerializeField] private CinemachineInputAxisController inputAxisController;
 
+    [Header("Dashboard Input")]
+    [SerializeField] private PanelCameraType panelCameraType = PanelCameraType.Orbit;
+
+    private bool dragStartedOverPanel;
+
     private void OnEnable()
     {
+        dragStartedOverPanel = false;
+        inputAxisController.enabled = false;
         orbitInput.action.Enable();
         dragButton.action.Enable();
     }
@@ -21,12 +28,23 @@ public class ClickDragCinemachineInput : MonoBehaviour
     {
         orbitInput.action.Disable();
         dragButton.action.Disable();
+        dragStartedOverPanel = false;
+        inputAxisController.enabled = false;
     }
 
     private void Update()
     {
-        bool dragging = dragButton.action.IsPressed();
+        bool isDragButtonPressed = dragButton.action.IsPressed();
+        if (dragButton.action.WasPressedThisFrame())
+        {
+            Vector2 pointerPosition = Pointer.current != null ? Pointer.current.position.ReadValue() : default;
+            dragStartedOverPanel = DashboardCameraRegistry.IsPointerOverPanel(panelCameraType, pointerPosition);
+        }
+        else if (!isDragButtonPressed)
+        {
+            dragStartedOverPanel = false;
+        }
 
-        inputAxisController.enabled = dragging;
+        inputAxisController.enabled = isDragButtonPressed && dragStartedOverPanel;
     }
 }

@@ -12,6 +12,7 @@ EditorBuildSettings:
     path: Assets/Level/Scenes/Multiplayer.unity
     guid: 1c5f5cf5da9fc214a8d41c3e124773fe
   m_configObjects:
+    com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 289c1b55c9541489481df5cc06664110, type: 3}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 10bd1bd20bff2c842840d7450464fe5c, type: 2}
     com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 837702e17f5cd5b4b9ebcd00b9ec3d34, type: 2}

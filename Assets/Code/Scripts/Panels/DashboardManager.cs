@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -38,12 +39,10 @@ public class DashboardManager : MonoBehaviour
 
     private void Start()
     {
-        
-        topLeft.SetPanel(panelLookup[DashboardPanelType.FollowCamera]);
-        topRight.SetPanel(panelLookup[DashboardPanelType.OrbitCamera]);
-        bottomLeft.SetPanel(panelLookup[DashboardPanelType.DynamicCamera]);
-        bottomRight.SetPanel(panelLookup[DashboardPanelType.Telemetry]);
-        
+        SetSlotPanel(topLeft, DashboardPanelType.FollowCamera);
+        SetSlotPanel(topRight, DashboardPanelType.OrbitCamera);
+        SetSlotPanel(bottomLeft, DashboardPanelType.DynamicCamera);
+        SetSlotPanel(bottomRight, DashboardPanelType.Telemetry);
     }
 
     private void BuildPanelLookup()
@@ -145,20 +144,74 @@ public class DashboardManager : MonoBehaviour
             return;
         }
 
-        bool wasFocused = focusedSlot == slot;
-        if (wasFocused)
-            Unfocus();
-
         if (!panelLookup.TryGetValue(panelType, out DashboardPanel prefab))
         {
             Debug.LogWarning($"No panel prefab registered for panel type: {panelType}");
             return;
         }
 
-        slot.SetPanel(prefab);
+        if (!IsPanelTypeAvailableForSlot(slot, panelType))
+        {
+            Debug.LogWarning($"Panel type {panelType} is already open in another dashboard slot.");
+            return;
+        }
+
+        bool wasFocused = focusedSlot == slot;
+        if (wasFocused)
+            Unfocus();
+
+        slot.SetPanel(prefab, panelType);
+        RefreshPanelDropdowns();
 
         if (wasFocused)
             FocusSlot(slot);
+    }
+
+    private bool IsPanelTypeAvailableForSlot(DashboardSlot slot, DashboardPanelType panelType)
+    {
+        foreach (DashboardSlot otherSlot in AllSlots())
+        {
+            if (otherSlot == null || otherSlot == slot || !otherSlot.CurrentPanelType.HasValue)
+                continue;
+
+            if (otherSlot.CurrentPanelType.Value == panelType)
+                return false;
+        }
+
+        return true;
+    }
+
+    private List<DashboardPanelType> GetAvailablePanelTypes(DashboardSlot slot)
+    {
+        List<DashboardPanelType> otherPanelTypes = new();
+        foreach (DashboardSlot otherSlot in AllSlots())
+        {
+            if (otherSlot != null && otherSlot != slot && otherSlot.CurrentPanelType.HasValue)
+                otherPanelTypes.Add(otherSlot.CurrentPanelType.Value);
+        }
+
+        List<DashboardPanelType> availablePanelTypes = new();
+        foreach (DashboardPanelType panelType in Enum.GetValues(typeof(DashboardPanelType)))
+        {
+            if (panelLookup.ContainsKey(panelType) &&
+                DashboardPanelAvailability.IsAvailable(panelType, otherPanelTypes))
+            {
+                availablePanelTypes.Add(panelType);
+            }
+        }
+
+        return availablePanelTypes;
+    }
+
+    private void RefreshPanelDropdowns()
+    {
+        foreach (DashboardSlot slot in AllSlots())
+        {
+            if (slot == null)
+                continue;
+
+            slot.GetCurrentPanel()?.SetAvailablePanelTypes(GetAvailablePanelTypes(slot));
+        }
     }
 
     public void SetPanelBySlotIndex(int slotIndex, int panelTypeIndex)
@@ -189,5 +242,21 @@ public class DashboardManager : MonoBehaviour
                 Debug.LogWarning($"Invalid slot index: {slotIndex}");
                 break;
         }
+    }
+}
+
+public static class DashboardPanelAvailability
+{
+    public static bool IsAvailable(
+        DashboardPanelType panelType,
+        IEnumerable<DashboardPanelType> otherPanelTypes)
+    {
+        foreach (DashboardPanelType otherPanelType in otherPanelTypes)
+        {
+            if (otherPanelType == panelType)
+                return false;
+        }
+
+        return true;
     }
 }

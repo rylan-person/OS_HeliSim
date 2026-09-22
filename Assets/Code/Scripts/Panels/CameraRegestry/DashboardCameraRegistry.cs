@@ -4,6 +4,7 @@ using UnityEngine;
 public static class DashboardCameraRegistry
 {
     private static readonly Dictionary<PanelCameraType, DashboardCameraSource> cameras = new();
+    private static readonly Dictionary<PanelCameraType, CameraDashboardPanel> panels = new();
 
     public static void Register(DashboardCameraSource source)
     {
@@ -51,5 +52,34 @@ public static class DashboardCameraRegistry
     public static bool TryGet(PanelCameraType type, out DashboardCameraSource source)
     {
         return cameras.TryGetValue(type, out source);
+    }
+
+    public static void RegisterPanel(CameraDashboardPanel panel)
+    {
+        if (panel != null)
+            panels[panel.CameraType] = panel;
+    }
+
+    public static void UnregisterPanel(CameraDashboardPanel panel)
+    {
+        if (panel != null && panels.TryGetValue(panel.CameraType, out CameraDashboardPanel current) && current == panel)
+            panels.Remove(panel.CameraType);
+    }
+
+    public static bool IsPointerOverPanel(PanelCameraType type, Vector2 screenPoint)
+    {
+        return panels.TryGetValue(type, out CameraDashboardPanel panel) &&
+               panel != null &&
+               panel.IsPointerOverDisplay(screenPoint);
+    }
+}
+
+public static class DashboardPanelPointerHitTest
+{
+    public static bool IsPointerOver(RectTransform panelRect, Vector2 screenPoint)
+    {
+        return panelRect != null &&
+               panelRect.gameObject.activeInHierarchy &&
+               RectTransformUtility.RectangleContainsScreenPoint(panelRect, screenPoint);
     }
 }

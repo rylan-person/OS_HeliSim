@@ -4,8 +4,9 @@ public class DashboardSlot : MonoBehaviour
 {
     private DashboardPanel currentPanel;
     public bool isFullscreen = false;
+    public DashboardPanelType? CurrentPanelType { get; private set; }
 
-    public void SetPanel(DashboardPanel panelPrefab)
+    public void SetPanel(DashboardPanel panelPrefab, DashboardPanelType panelType)
     {
         if (currentPanel != null)
         {
@@ -15,6 +16,7 @@ public class DashboardSlot : MonoBehaviour
 
         currentPanel = Instantiate(panelPrefab, transform);
         currentPanel.OwnerSlot = this;
+        CurrentPanelType = panelType;
         currentPanel.OnPanelShown();
     }
 
@@ -31,5 +33,6 @@ public class DashboardSlot : MonoBehaviour
         currentPanel.OnPanelHidden();
         Destroy(currentPanel.gameObject);
         currentPanel = null;
+        CurrentPanelType = null;
     }
 }

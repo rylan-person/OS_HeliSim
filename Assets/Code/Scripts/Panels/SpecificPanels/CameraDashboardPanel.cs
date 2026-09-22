@@ -15,6 +15,8 @@ public class CameraDashboardPanel : DashboardPanel
     private RenderTexture renderTexture;
     private DashboardSlot ownerSlot;
 
+    public PanelCameraType CameraType => cameraType;
+
     protected override void Awake()
     {
         base.Awake();
@@ -32,6 +34,7 @@ public class CameraDashboardPanel : DashboardPanel
         }
 
         CreateRenderTexture(1280, 720);
+        DashboardCameraRegistry.RegisterPanel(this);
 
         SetTitleText();
         InitialiseButton();
@@ -96,8 +99,18 @@ public class CameraDashboardPanel : DashboardPanel
         WorldLookup.Instance.GetPrefab(WorldLookupType.CesiumGeoreference)?.GetComponent<CesiumCameraManager>()?.additionalCameras.Remove(panelCamera);
     }
 
+    public bool IsPointerOverDisplay(Vector2 screenPoint)
+    {
+        return isActiveAndEnabled &&
+               displayImage != null &&
+               displayImage.isActiveAndEnabled &&
+               DashboardPanelPointerHitTest.IsPointerOver(displayImage.rectTransform, screenPoint);
+    }
+
     private void OnDestroy()
     {
+        DashboardCameraRegistry.UnregisterPanel(this);
+
         if (renderTexture != null)
         {
             renderTexture.Release();
