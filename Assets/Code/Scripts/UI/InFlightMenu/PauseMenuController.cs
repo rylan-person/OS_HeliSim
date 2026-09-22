@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using UnityEngine.UI;
 
 public enum DirtyPageChoice
 {
@@ -23,10 +22,10 @@ public sealed class PauseMenuController : MonoBehaviour
     [SerializeField] private List<PauseMenuPageRegistration> pages = new List<PauseMenuPageRegistration>();
     [SerializeField] private GameObject overlayRoot;
     [SerializeField] private GameObject confirmationRoot;
-    [SerializeField] private Button resumeButton;
-    [SerializeField] private Button applyChangesButton;
-    [SerializeField] private Button discardChangesButton;
-    [SerializeField] private Button cancelCloseButton;
+    [SerializeField] private UnityEngine.UI.Button resumeButton;
+    [SerializeField] private UnityEngine.UI.Button applyChangesButton;
+    [SerializeField] private UnityEngine.UI.Button discardChangesButton;
+    [SerializeField] private UnityEngine.UI.Button cancelCloseButton;
     [SerializeField] private EventSystem eventSystem;
 
     private readonly Dictionary<string, InFlightMenuPage> pagesById = new Dictionary<string, InFlightMenuPage>();
@@ -177,6 +176,11 @@ public sealed class PauseMenuController : MonoBehaviour
         foreach (PauseMenuPageRegistration registration in pages)
         {
             InFlightMenuPage page = registration != null ? registration.Page : null;
+            if (page != null && page.ContentRoot != null)
+            {
+                page.ContentRoot.SetActive(false);
+            }
+
             if (page == null || string.IsNullOrWhiteSpace(page.PageId))
             {
                 Debug.LogError("In-flight menu page registrations require a page with a non-empty id.", this);
@@ -315,7 +319,7 @@ public sealed class PauseMenuController : MonoBehaviour
         }
     }
 
-    private void Select(Selectable selectable)
+    private void Select(UnityEngine.UI.Selectable selectable)
     {
         EventSystem selectionEventSystem = eventSystem != null ? eventSystem : EventSystem.current;
         if (selectionEventSystem == null)

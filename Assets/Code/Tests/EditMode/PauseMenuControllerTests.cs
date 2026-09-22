@@ -6,7 +6,6 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
-using UnityEngine.UI;
 
 public class PauseMenuControllerTests
 {
@@ -51,6 +50,7 @@ public class PauseMenuControllerTests
         Object.DestroyImmediate(controller.gameObject);
         firstPage.SetPageId("duplicate");
         secondPage.SetPageId("duplicate");
+        secondPage.ContentRoot.SetActive(true);
         LogAssert.Expect(LogType.Error, new Regex("Duplicate in-flight menu page id"));
         controller = CreateController(new[] { firstPage, secondPage });
 
@@ -100,12 +100,34 @@ public class PauseMenuControllerTests
     [Test]
     public void Open_WithoutAnEventSystem_LogsWarningAndDoesNotThrow()
     {
-        Object.DestroyImmediate(controller.gameObject);
-        LogAssert.Expect(LogType.Warning, new Regex("EventSystem"));
-        controller = CreateController(new[] { firstPage });
+        EventSystem[] existingEventSystems = Object.FindObjectsByType<EventSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        bool[] eventSystemWasActive = new bool[existingEventSystems.Length];
+        for (int index = 0; index < existingEventSystems.Length; index++)
+        {
+            eventSystemWasActive[index] = existingEventSystems[index].gameObject.activeSelf;
+            existingEventSystems[index].gameObject.SetActive(false);
+        }
 
-        Assert.DoesNotThrow(() => controller.Open());
-        Assert.That(overlayRoot.activeSelf, Is.True);
+        try
+        {
+            Object.DestroyImmediate(controller.gameObject);
+            Assert.That(EventSystem.current, Is.Null);
+            LogAssert.Expect(LogType.Warning, new Regex("EventSystem"));
+            controller = CreateController(new[] { firstPage });
+
+            Assert.DoesNotThrow(() => controller.Open());
+            Assert.That(overlayRoot.activeSelf, Is.True);
+        }
+        finally
+        {
+            for (int index = 0; index < existingEventSystems.Length; index++)
+            {
+                if (existingEventSystems[index] != null)
+                {
+                    existingEventSystems[index].gameObject.SetActive(eventSystemWasActive[index]);
+                }
+            }
+        }
     }
 
     [Test]
