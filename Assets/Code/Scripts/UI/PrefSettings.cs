@@ -58,22 +58,23 @@ public class PrefSettings : MonoBehaviour
     public bool enableNovaPopup = true;
     public int volume = 10;
 
-    [SerializeField] private SettingsMenu settingsMenu;
-
     public void VariablesToObjects()
     {
         // Set the cesium asset settings
-        cesiumAsset.maximumScreenSpaceError = screenSpaceError;//screenSpaceError
-        cesiumAsset.preloadAncestors = preloadAncestors;
-        cesiumAsset.preloadSiblings = preloadSiblings;
-        cesiumAsset.forbidHoles = forbidHoles;
-        cesiumAsset.maximumSimultaneousTileLoads = MaximumSimultaneousTileLoads;
-        cesiumAsset.maximumCachedBytes = MaximumCachedBytes;
-        cesiumAsset.loadingDescendantLimit = LoadingDescendantLimit;
-        cesiumAsset.enableFrustumCulling = enableFrustumCulling;
-        cesiumAsset.enableFogCulling = enableFogCulling;
-        cesiumAsset.enforceCulledScreenSpaceError = enableForceScreenSpaceError;
-        cesiumAsset.culledScreenSpaceError = culledScreenSpaceError;
+        if (cesiumAsset != null)
+        {
+            cesiumAsset.maximumScreenSpaceError = screenSpaceError;
+            cesiumAsset.preloadAncestors = preloadAncestors;
+            cesiumAsset.preloadSiblings = preloadSiblings;
+            cesiumAsset.forbidHoles = forbidHoles;
+            cesiumAsset.maximumSimultaneousTileLoads = MaximumSimultaneousTileLoads;
+            cesiumAsset.maximumCachedBytes = MaximumCachedBytes;
+            cesiumAsset.loadingDescendantLimit = LoadingDescendantLimit;
+            cesiumAsset.enableFrustumCulling = enableFrustumCulling;
+            cesiumAsset.enableFogCulling = enableFogCulling;
+            cesiumAsset.enforceCulledScreenSpaceError = enableForceScreenSpaceError;
+            cesiumAsset.culledScreenSpaceError = culledScreenSpaceError;
+        }
     
         // Get the helicopter controller
         RotaryController helicopterController = FindObjectOfType<RotaryController>();
@@ -179,13 +180,10 @@ public class PrefSettings : MonoBehaviour
                 string json = File.ReadAllText(path);
 
                 Cesium3DTileset oldTileset = cesiumAsset;
-                SettingsMenu oldSettingsMenu = settingsMenu;
-
                 // Populate this object with the data from the JSON
                 JsonUtility.FromJsonOverwrite(json, this);
 
                 cesiumAsset = oldTileset;
-                settingsMenu = oldSettingsMenu;
 
                 Debug.Log("Settings loaded from JSON: " + path);
             }
@@ -206,8 +204,6 @@ public class PrefSettings : MonoBehaviour
     {
         JSONToVariables();
         VariablesToObjects();
-
-        settingsMenu.SetUiVariables();
     }
 
     // On "backspace" press variables to object
