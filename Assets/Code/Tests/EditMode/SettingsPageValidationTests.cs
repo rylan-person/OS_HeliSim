@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class SettingsPageValidationTests
 {
@@ -8,6 +10,8 @@ public class SettingsPageValidationTests
     private PrefSettings prefSettings;
     private GeneralSettingsPage generalPage;
     private CesiumSettingsPage cesiumPage;
+    private TMP_InputField generalVolume;
+    private TMP_InputField cesiumScreenSpaceError;
 
     [SetUp]
     public void SetUp()
@@ -17,6 +21,16 @@ public class SettingsPageValidationTests
         cesiumPage = CreateGameObject("CesiumSettingsPage").AddComponent<CesiumSettingsPage>();
         generalPage.SetPrefSettingsForTest(prefSettings);
         cesiumPage.SetPrefSettingsForTest(prefSettings);
+        generalVolume = CreateComponent<TMP_InputField>();
+        generalPage.SetControlsForTest(CreateComponent<TMP_Dropdown>(), generalVolume,
+            CreateComponent<Toggle>(), CreateComponent<Button>(), CreateComponent<TextMeshProUGUI>());
+        cesiumScreenSpaceError = CreateComponent<TMP_InputField>();
+        cesiumPage.SetControlsForTest(cesiumScreenSpaceError, CreateComponent<Toggle>(), CreateComponent<Toggle>(),
+            CreateComponent<Toggle>(), CreateComponent<TMP_InputField>(), CreateComponent<TMP_InputField>(),
+            CreateComponent<TMP_InputField>(), CreateComponent<Toggle>(), CreateComponent<Toggle>(),
+            CreateComponent<Toggle>(), CreateComponent<TMP_InputField>(), CreateComponent<Button>(),
+            CreateComponent<TextMeshProUGUI>(), CreateComponent<TextMeshProUGUI>(), CreateComponent<TextMeshProUGUI>(),
+            CreateComponent<TextMeshProUGUI>(), CreateComponent<TextMeshProUGUI>(), CreateComponent<TextMeshProUGUI>());
         generalPage.OnPageSelected();
         cesiumPage.OnPageSelected();
     }
@@ -132,6 +146,27 @@ public class SettingsPageValidationTests
     }
 
     [Test]
+    public void GeneralPage_RealInputEventUpdatesDraftAndApplyState()
+    {
+        generalVolume.text = "12";
+
+        Assert.That(generalPage.IsDirty, Is.True);
+        Assert.That(generalPage.TryApplyChanges(), Is.True);
+        Assert.That(prefSettings.volume, Is.EqualTo(12));
+    }
+
+    [Test]
+    public void GeneralPage_MissingControlsDisablesApplyWithDiagnostic()
+    {
+        GeneralSettingsPage missing = CreateGameObject("MissingGeneral").AddComponent<GeneralSettingsPage>();
+        missing.SetPrefSettingsForTest(prefSettings);
+        missing.OnPageSelected();
+
+        Assert.That(missing.TryApplyChanges(), Is.False);
+        Assert.That(missing.ApplyError, Does.Contain("controls"));
+    }
+
+    [Test]
     public void CesiumPage_DiscardRestoresSnapshotAndClearsValidationErrors()
     {
         cesiumPage.SetLoadingDescendantLimitForTest("invalid");
@@ -142,6 +177,27 @@ public class SettingsPageValidationTests
         Assert.That(cesiumPage.IsDirty, Is.False);
         Assert.That(cesiumPage.LoadingDescendantLimitForTest, Is.EqualTo("10"));
         Assert.That(cesiumPage.LoadingDescendantLimitError, Is.Empty);
+    }
+
+    [Test]
+    public void CesiumPage_RealInputEventUpdatesDraftAndApplyState()
+    {
+        cesiumScreenSpaceError.text = "128";
+
+        Assert.That(cesiumPage.IsDirty, Is.True);
+        Assert.That(cesiumPage.TryApplyChanges(), Is.True);
+        Assert.That(prefSettings.screenSpaceError, Is.EqualTo(128));
+    }
+
+    [Test]
+    public void CesiumPage_MissingControlsDisablesApplyWithDiagnostic()
+    {
+        CesiumSettingsPage missing = CreateGameObject("MissingCesium").AddComponent<CesiumSettingsPage>();
+        missing.SetPrefSettingsForTest(prefSettings);
+        missing.OnPageSelected();
+
+        Assert.That(missing.TryApplyChanges(), Is.False);
+        Assert.That(missing.LoadingDescendantLimitError, Does.Contain("controls"));
     }
 
     [Test]
@@ -179,5 +235,11 @@ public class SettingsPageValidationTests
         GameObject gameObject = new GameObject(name);
         createdObjects.Add(gameObject);
         return gameObject;
+    }
+
+    private T CreateComponent<T>() where T : Component
+    {
+        GameObject gameObject = CreateGameObject(typeof(T).Name);
+        return gameObject.AddComponent<T>();
     }
 }

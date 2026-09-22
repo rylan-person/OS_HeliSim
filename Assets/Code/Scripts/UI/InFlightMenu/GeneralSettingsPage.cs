@@ -8,12 +8,16 @@ public sealed class GeneralSettingsPage : InFlightMenuPage
     [SerializeField] private TMP_Dropdown controlScheme;
     [SerializeField] private TMP_InputField volume;
     [SerializeField] private Toggle enableNovaPopup;
+    [SerializeField] private Button applyButton;
+    [SerializeField] private TMP_Text diagnosticLabel;
 
     private ControlScheme snapshotControlScheme;
     private bool snapshotNovaPopup;
     private string snapshotVolume = "10";
     private string volumeDraft = "10";
     private string validationError = string.Empty;
+    private bool controlsWired;
+    private bool snapshotInitialized;
 
     public override bool IsDirty => volumeDraft != snapshotVolume ||
         GetControlSchemeDraft() != snapshotControlScheme ||
@@ -23,9 +27,23 @@ public sealed class GeneralSettingsPage : InFlightMenuPage
     public string VolumeError => validationError;
     public string ApplyError => validationError;
 
+    private void OnEnable() => WireControls();
+
     public void SetPrefSettingsForTest(PrefSettings settings)
     {
         prefSettings = settings;
+    }
+
+    public void SetControlsForTest(TMP_Dropdown scheme, TMP_InputField volumeInput, Toggle novaToggle,
+        Button apply, TMP_Text diagnostic)
+    {
+        controlScheme = scheme;
+        volume = volumeInput;
+        enableNovaPopup = novaToggle;
+        applyButton = apply;
+        diagnosticLabel = diagnostic;
+        WireControls();
+        UpdateAvailability();
     }
 
     public void SetVolumeForTest(string value)
@@ -39,7 +57,7 @@ public sealed class GeneralSettingsPage : InFlightMenuPage
 
     public override void OnPageSelected()
     {
-        if (IsDirty)
+        if (snapshotInitialized && IsDirty)
         {
             return;
         }
@@ -56,20 +74,25 @@ public sealed class GeneralSettingsPage : InFlightMenuPage
         snapshotVolume = settings.volume.ToString();
         volumeDraft = snapshotVolume;
         SetControlsFromSnapshot();
+        snapshotInitialized = true;
         validationError = string.Empty;
+        UpdateAvailability();
     }
 
     public override bool TryApplyChanges()
     {
         PrefSettings settings = ResolvePrefSettings();
-        if (settings == null)
+        if (!UpdateAvailability() || settings == null)
         {
-            validationError = "PrefSettings is not assigned.";
+            validationError = string.IsNullOrEmpty(validationError) ? "Assign PrefSettings and all General settings controls before applying." : validationError;
+            SetDiagnostic(validationError);
             return false;
         }
 
         if (!NumericSettingParser.TryParseInt(volumeDraft, 0, 200, out int parsedVolume, out validationError))
         {
+            SetDiagnostic(validationError);
+            UpdateAvailability();
             return false;
         }
 
@@ -84,6 +107,8 @@ public sealed class GeneralSettingsPage : InFlightMenuPage
         snapshotNovaPopup = parsedNovaPopup;
         volumeDraft = snapshotVolume;
         validationError = string.Empty;
+        SetDiagnostic(string.Empty);
+        UpdateAvailability();
         return true;
     }
 
@@ -92,6 +117,7 @@ public sealed class GeneralSettingsPage : InFlightMenuPage
         volumeDraft = snapshotVolume;
         SetControlsFromSnapshot();
         validationError = string.Empty;
+        UpdateAvailability();
     }
 
     private PrefSettings ResolvePrefSettings()
@@ -128,5 +154,50 @@ public sealed class GeneralSettingsPage : InFlightMenuPage
         {
             enableNovaPopup.SetIsOnWithoutNotify(snapshotNovaPopup);
         }
+    }
+
+    private void WireControls()
+    {
+        if (controlsWired)
+        {
+            if (volume != null) volume.onValueChanged.RemoveListener(OnVolumeChanged);
+            if (controlScheme != null) controlScheme.onValueChanged.RemoveListener(OnControlSchemeChanged);
+            if (enableNovaPopup != null) enableNovaPopup.onValueChanged.RemoveListener(OnNovaPopupChanged);
+        }
+
+        if (volume != null) volume.onValueChanged.AddListener(OnVolumeChanged);
+        if (controlScheme != null) controlScheme.onValueChanged.AddListener(OnControlSchemeChanged);
+        if (enableNovaPopup != null) enableNovaPopup.onValueChanged.AddListener(OnNovaPopupChanged);
+        controlsWired = true;
+    }
+
+    private void OnVolumeChanged(string value) { volumeDraft = value ?? string.Empty; ClearDiagnosticOnEdit(); }
+    private void OnControlSchemeChanged(int value) { ClearDiagnosticOnEdit(); }
+    private void OnNovaPopupChanged(bool value) { ClearDiagnosticOnEdit(); }
+
+    private bool UpdateAvailability()
+    {
+        bool ready = ResolvePrefSettings() != null && controlScheme != null && volume != null && enableNovaPopup != null;
+        if (!ready)
+        {
+            SetDiagnostic("Assign PrefSettings, Control Scheme, Volume, and NOVA Popup controls before applying.");
+        }
+        else if (string.IsNullOrEmpty(validationError))
+        {
+            SetDiagnostic(string.Empty);
+        }
+        if (applyButton != null) applyButton.interactable = ready && string.IsNullOrEmpty(validationError);
+        return ready;
+    }
+
+    private void ClearDiagnosticOnEdit()
+    {
+        validationError = string.Empty;
+        if (applyButton != null) applyButton.interactable = UpdateAvailability();
+    }
+
+    private void SetDiagnostic(string message)
+    {
+        if (diagnosticLabel != null) diagnosticLabel.text = message ?? string.Empty;
     }
 }

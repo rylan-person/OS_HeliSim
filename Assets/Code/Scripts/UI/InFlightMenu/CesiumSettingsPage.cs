@@ -16,6 +16,13 @@ public sealed class CesiumSettingsPage : InFlightMenuPage
     [SerializeField] private Toggle enableFogCulling;
     [SerializeField] private Toggle enableForceScreenSpaceError;
     [SerializeField] private TMP_InputField culledScreenSpaceError;
+    [SerializeField] private Button applyButton;
+    [SerializeField] private TMP_Text diagnosticLabel;
+    [SerializeField] private TMP_Text screenSpaceErrorLabel;
+    [SerializeField] private TMP_Text maximumSimultaneousTileLoadsLabel;
+    [SerializeField] private TMP_Text maximumCachedBytesLabel;
+    [SerializeField] private TMP_Text loadingDescendantLimitLabel;
+    [SerializeField] private TMP_Text culledScreenSpaceErrorLabel;
 
     private string snapshotScreenSpaceError = "64";
     private string snapshotMaximumSimultaneousTileLoads = "28";
@@ -39,6 +46,8 @@ public sealed class CesiumSettingsPage : InFlightMenuPage
     private bool enableFrustumCullingDraft;
     private bool enableFogCullingDraft;
     private bool enableForceScreenSpaceErrorDraft;
+    private bool controlsWired;
+    private bool snapshotInitialized;
 
     public string ScreenSpaceErrorError { get; private set; } = string.Empty;
     public string MaximumSimultaneousTileLoadsError { get; private set; } = string.Empty;
@@ -59,6 +68,35 @@ public sealed class CesiumSettingsPage : InFlightMenuPage
         enableForceScreenSpaceErrorDraft != snapshotEnableForceScreenSpaceError;
 
     public void SetPrefSettingsForTest(PrefSettings settings) => prefSettings = settings;
+    public void SetControlsForTest(TMP_InputField screenError, Toggle ancestors, Toggle siblings, Toggle holes,
+        TMP_InputField tileLoads, TMP_InputField cachedBytes, TMP_InputField descendantLimit,
+        Toggle frustum, Toggle fog, Toggle forceError, TMP_InputField culledError,
+        Button apply, TMP_Text diagnostic, TMP_Text screenErrorLabel, TMP_Text tileLoadsLabel,
+        TMP_Text cachedBytesLabel, TMP_Text descendantLimitLabel, TMP_Text culledErrorLabel)
+    {
+        screenSpaceError = screenError;
+        preloadAncestors = ancestors;
+        preloadSiblings = siblings;
+        forbidHoles = holes;
+        maximumSimultaneousTileLoads = tileLoads;
+        maximumCachedBytes = cachedBytes;
+        loadingDescendantLimit = descendantLimit;
+        enableFrustumCulling = frustum;
+        enableFogCulling = fog;
+        enableForceScreenSpaceError = forceError;
+        culledScreenSpaceError = culledError;
+        applyButton = apply;
+        diagnosticLabel = diagnostic;
+        this.screenSpaceErrorLabel = screenErrorLabel;
+        maximumSimultaneousTileLoadsLabel = tileLoadsLabel;
+        maximumCachedBytesLabel = cachedBytesLabel;
+        loadingDescendantLimitLabel = descendantLimitLabel;
+        culledScreenSpaceErrorLabel = culledErrorLabel;
+        WireControls();
+        UpdateAvailability();
+    }
+
+    private void OnEnable() => WireControls();
     public void SetScreenSpaceErrorForTest(string value) => SetDraft(ref screenSpaceErrorDraft, screenSpaceError, value);
     public void SetMaximumSimultaneousTileLoadsForTest(string value) => SetDraft(ref maximumSimultaneousTileLoadsDraft, maximumSimultaneousTileLoads, value);
     public void SetMaximumCachedBytesForTest(string value) => SetDraft(ref maximumCachedBytesDraft, maximumCachedBytes, value);
@@ -73,7 +111,7 @@ public sealed class CesiumSettingsPage : InFlightMenuPage
 
     public override void OnPageSelected()
     {
-        if (IsDirty)
+        if (snapshotInitialized && IsDirty)
         {
             return;
         }
@@ -97,15 +135,20 @@ public sealed class CesiumSettingsPage : InFlightMenuPage
         snapshotEnableForceScreenSpaceError = settings.enableForceScreenSpaceError;
         snapshotCulledScreenSpaceError = settings.culledScreenSpaceError.ToString();
         CopySnapshotToDraft();
+        snapshotInitialized = true;
         ClearErrors();
+        UpdateAvailability();
     }
 
     public override bool TryApplyChanges()
     {
         PrefSettings settings = ResolvePrefSettings();
-        if (settings == null)
+        if (!UpdateAvailability() || settings == null)
         {
-            LoadingDescendantLimitError = "PrefSettings is not assigned.";
+            LoadingDescendantLimitError = string.IsNullOrEmpty(LoadingDescendantLimitError)
+                ? "Assign PrefSettings and all Cesium settings controls before applying."
+                : LoadingDescendantLimitError;
+            SetErrorLabels();
             return false;
         }
 
@@ -122,6 +165,8 @@ public sealed class CesiumSettingsPage : InFlightMenuPage
         CulledScreenSpaceErrorError = valid ? string.Empty : error;
         if (!valid)
         {
+            SetErrorLabels();
+            UpdateAvailability();
             return false;
         }
 
@@ -148,6 +193,8 @@ public sealed class CesiumSettingsPage : InFlightMenuPage
         snapshotEnableFrustumCulling = settings.enableFrustumCulling;
         snapshotEnableFogCulling = settings.enableFogCulling;
         snapshotEnableForceScreenSpaceError = settings.enableForceScreenSpaceError;
+        SetErrorLabels();
+        UpdateAvailability();
         return true;
     }
 
@@ -155,6 +202,7 @@ public sealed class CesiumSettingsPage : InFlightMenuPage
     {
         CopySnapshotToDraft();
         ClearErrors();
+        UpdateAvailability();
     }
 
     private PrefSettings ResolvePrefSettings()
@@ -199,6 +247,94 @@ public sealed class CesiumSettingsPage : InFlightMenuPage
         MaximumCachedBytesError = string.Empty;
         LoadingDescendantLimitError = string.Empty;
         CulledScreenSpaceErrorError = string.Empty;
+        SetErrorLabels();
+    }
+
+    private void WireControls()
+    {
+        if (controlsWired)
+        {
+            if (screenSpaceError != null) screenSpaceError.onValueChanged.RemoveListener(OnScreenSpaceErrorChanged);
+            if (maximumSimultaneousTileLoads != null) maximumSimultaneousTileLoads.onValueChanged.RemoveListener(OnTileLoadsChanged);
+            if (maximumCachedBytes != null) maximumCachedBytes.onValueChanged.RemoveListener(OnCachedBytesChanged);
+            if (loadingDescendantLimit != null) loadingDescendantLimit.onValueChanged.RemoveListener(OnDescendantLimitChanged);
+            if (culledScreenSpaceError != null) culledScreenSpaceError.onValueChanged.RemoveListener(OnCulledErrorChanged);
+            RemoveToggleListener(preloadAncestors, OnAncestorsChanged);
+            RemoveToggleListener(preloadSiblings, OnSiblingsChanged);
+            RemoveToggleListener(forbidHoles, OnHolesChanged);
+            RemoveToggleListener(enableFrustumCulling, OnFrustumChanged);
+            RemoveToggleListener(enableFogCulling, OnFogChanged);
+            RemoveToggleListener(enableForceScreenSpaceError, OnForceErrorChanged);
+        }
+        if (screenSpaceError != null) screenSpaceError.onValueChanged.AddListener(OnScreenSpaceErrorChanged);
+        if (maximumSimultaneousTileLoads != null) maximumSimultaneousTileLoads.onValueChanged.AddListener(OnTileLoadsChanged);
+        if (maximumCachedBytes != null) maximumCachedBytes.onValueChanged.AddListener(OnCachedBytesChanged);
+        if (loadingDescendantLimit != null) loadingDescendantLimit.onValueChanged.AddListener(OnDescendantLimitChanged);
+        if (culledScreenSpaceError != null) culledScreenSpaceError.onValueChanged.AddListener(OnCulledErrorChanged);
+        AddToggleListener(preloadAncestors, OnAncestorsChanged);
+        AddToggleListener(preloadSiblings, OnSiblingsChanged);
+        AddToggleListener(forbidHoles, OnHolesChanged);
+        AddToggleListener(enableFrustumCulling, OnFrustumChanged);
+        AddToggleListener(enableFogCulling, OnFogChanged);
+        AddToggleListener(enableForceScreenSpaceError, OnForceErrorChanged);
+        controlsWired = true;
+    }
+
+    private void OnScreenSpaceErrorChanged(string value) { screenSpaceErrorDraft = value ?? string.Empty; ClearDiagnosticOnEdit(); }
+    private void OnTileLoadsChanged(string value) { maximumSimultaneousTileLoadsDraft = value ?? string.Empty; ClearDiagnosticOnEdit(); }
+    private void OnCachedBytesChanged(string value) { maximumCachedBytesDraft = value ?? string.Empty; ClearDiagnosticOnEdit(); }
+    private void OnDescendantLimitChanged(string value) { loadingDescendantLimitDraft = value ?? string.Empty; ClearDiagnosticOnEdit(); }
+    private void OnCulledErrorChanged(string value) { culledScreenSpaceErrorDraft = value ?? string.Empty; ClearDiagnosticOnEdit(); }
+    private void OnAncestorsChanged(bool value) { preloadAncestorsDraft = value; ClearDiagnosticOnEdit(); }
+    private void OnSiblingsChanged(bool value) { preloadSiblingsDraft = value; ClearDiagnosticOnEdit(); }
+    private void OnHolesChanged(bool value) { forbidHolesDraft = value; ClearDiagnosticOnEdit(); }
+    private void OnFrustumChanged(bool value) { enableFrustumCullingDraft = value; ClearDiagnosticOnEdit(); }
+    private void OnFogChanged(bool value) { enableFogCullingDraft = value; ClearDiagnosticOnEdit(); }
+    private void OnForceErrorChanged(bool value) { enableForceScreenSpaceErrorDraft = value; ClearDiagnosticOnEdit(); }
+
+    private static void AddToggleListener(Toggle toggle, UnityEngine.Events.UnityAction<bool> listener)
+    {
+        if (toggle != null) toggle.onValueChanged.AddListener(listener);
+    }
+
+    private static void RemoveToggleListener(Toggle toggle, UnityEngine.Events.UnityAction<bool> listener)
+    {
+        if (toggle != null) toggle.onValueChanged.RemoveListener(listener);
+    }
+
+    private bool UpdateAvailability()
+    {
+        bool ready = ResolvePrefSettings() != null && screenSpaceError != null && preloadAncestors != null &&
+            preloadSiblings != null && forbidHoles != null && maximumSimultaneousTileLoads != null &&
+            maximumCachedBytes != null && loadingDescendantLimit != null && enableFrustumCulling != null &&
+            enableFogCulling != null && enableForceScreenSpaceError != null && culledScreenSpaceError != null;
+        if (!ready) SetDiagnostic("Assign PrefSettings and every Cesium settings control before applying.");
+        else if (string.IsNullOrEmpty(ScreenSpaceErrorError) && string.IsNullOrEmpty(LoadingDescendantLimitError)) SetDiagnostic(string.Empty);
+        if (applyButton != null) applyButton.interactable = ready && HasNoErrors();
+        return ready;
+    }
+
+    private bool HasNoErrors() => string.IsNullOrEmpty(ScreenSpaceErrorError) && string.IsNullOrEmpty(MaximumSimultaneousTileLoadsError) &&
+        string.IsNullOrEmpty(MaximumCachedBytesError) && string.IsNullOrEmpty(LoadingDescendantLimitError) && string.IsNullOrEmpty(CulledScreenSpaceErrorError);
+
+    private void ClearDiagnosticOnEdit()
+    {
+        ClearErrors();
+        UpdateAvailability();
+    }
+
+    private void SetDiagnostic(string message)
+    {
+        if (diagnosticLabel != null) diagnosticLabel.text = message ?? string.Empty;
+    }
+
+    private void SetErrorLabels()
+    {
+        if (screenSpaceErrorLabel != null) screenSpaceErrorLabel.text = ScreenSpaceErrorError;
+        if (maximumSimultaneousTileLoadsLabel != null) maximumSimultaneousTileLoadsLabel.text = MaximumSimultaneousTileLoadsError;
+        if (maximumCachedBytesLabel != null) maximumCachedBytesLabel.text = MaximumCachedBytesError;
+        if (loadingDescendantLimitLabel != null) loadingDescendantLimitLabel.text = LoadingDescendantLimitError;
+        if (culledScreenSpaceErrorLabel != null) culledScreenSpaceErrorLabel.text = CulledScreenSpaceErrorError;
     }
 
     private static bool GetToggle(Toggle toggle, bool fallback) => toggle == null ? fallback : toggle.isOn;
