@@ -2226,6 +2226,15 @@ MonoBehaviour:
   changeValueLow: 0.005
   changeValueMed: 0.01
   changeValueHigh: 0.015
+  highRateThreshold: 0.4
+  mediumRateThreshold: 0.25
+  rateDeadband: 0.001
+  pilotInputDeadband: 0.1
+  cyclicTrimLimit: 10.3
+  pedalUpperCeiling: 19.5
+  pedalLowerCeiling: -5
+  pedalUpperFloor: 14
+  pedalLowerFloor: -10.5
   _longBaseTrim:
   - 0
   - 0
@@ -2236,6 +2245,7 @@ MonoBehaviour:
   - 0
   - 0
   _autoTrim: 0
+  useMoments: 0
 --- !u!1 &3761230897649520508
 GameObject:
   m_ObjectHideFlags: 0
@@ -20731,7 +20741,6 @@ MonoBehaviour:
   rigidBody: {fileID: 8614924469135384376}
   gForceCalculator: {fileID: 0}
   testObject: {fileID: 0}
-  direcetion: {x: 0, y: 0, z: 0}
   aFinalFilter: 0.5
   controlMode: 0
   motionCueingFactor: 0.8
@@ -22048,8 +22057,8 @@ MonoBehaviour:
   m_type: 1
   m_controlType: 0
   m_inputType: 0
-  m_inputLogic: 0
-  m_startMode: 1
+  m_inputLogic: 1
+  m_startMode: 0
   m_cameraState: 1
   m_engineType: 2
   m_lightState: 1
@@ -23055,7 +23064,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.PlayerInput
   m_Actions: {fileID: -944628639613478452, guid: 754e73d9f655f824c8c6f4774d6f6b39, type: 3}
-  m_NotificationBehavior: 0
+  m_NotificationBehavior: 1
   m_UIInputModule: {fileID: 0}
   m_DeviceLostEvent:
     m_PersistentCalls:
@@ -23235,6 +23244,7 @@ MonoBehaviour:
   remoteOnlyScripts:
   - {fileID: 4403784743731515761}
   remoteOnlyObjects: []
+  debugLogsEnabled: 0
 --- !u!114 &4738646825836105495
 MonoBehaviour:
   m_ObjectHideFlags: 0
