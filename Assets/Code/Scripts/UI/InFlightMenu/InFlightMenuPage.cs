@@ -24,6 +24,12 @@ public abstract class InFlightMenuPage : MonoBehaviour
         return true;
     }
 
+    // UnityEvents require a void method; validation remains in TryApplyChanges.
+    public void ApplyChanges()
+    {
+        TryApplyChanges();
+    }
+
     public virtual void DiscardChanges()
     {
     }

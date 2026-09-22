@@ -21,6 +21,7 @@ public sealed class PauseMenuController : MonoBehaviour
 
     [SerializeField] private List<PauseMenuPageRegistration> pages = new List<PauseMenuPageRegistration>();
     [SerializeField] private GameObject overlayRoot;
+    [SerializeField] private GameObject scrimRoot;
     [SerializeField] private GameObject confirmationRoot;
     [SerializeField] private UnityEngine.UI.Button resumeButton;
     [SerializeField] private UnityEngine.UI.Button applyChangesButton;
@@ -48,6 +49,7 @@ public sealed class PauseMenuController : MonoBehaviour
         {
             overlayRoot.SetActive(false);
         }
+        if (scrimRoot != null) scrimRoot.SetActive(false);
 
         if (confirmationRoot != null)
         {
@@ -78,6 +80,7 @@ public sealed class PauseMenuController : MonoBehaviour
         {
             overlayRoot.SetActive(true);
         }
+        if (scrimRoot != null) scrimRoot.SetActive(true);
 
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
@@ -302,6 +305,7 @@ public sealed class PauseMenuController : MonoBehaviour
         {
             overlayRoot.SetActive(false);
         }
+        if (scrimRoot != null) scrimRoot.SetActive(false);
 
         isOpen = false;
         Cursor.lockState = cursorLockState;

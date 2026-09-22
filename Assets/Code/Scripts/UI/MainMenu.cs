@@ -103,7 +103,6 @@ public class MainMenu : MonoBehaviour
 
     [SerializeField] private WaypointManager waypointManager;
 
-    // Open Menu on escape press
     private void Update()
     {
         if (!helicopterLinkInitialized)
@@ -120,13 +119,6 @@ public class MainMenu : MonoBehaviour
             NewSession();
         }
 
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            if (Time.timeScale == 0)
-            {
-                Time.timeScale = 1;
-            }
-        }
         if (!isTimePaused)
         {
             // Update the time remaining

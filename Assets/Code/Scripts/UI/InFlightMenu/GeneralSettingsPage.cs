@@ -4,6 +4,9 @@ using UnityEngine.UI;
 
 public sealed class GeneralSettingsPage : InFlightMenuPage
 {
+    public enum SettingsScope { All, Controls, Settings }
+
+    [SerializeField] private SettingsScope scope;
     [SerializeField] private PrefSettings prefSettings;
     [SerializeField] private TMP_Dropdown controlScheme;
     [SerializeField] private TMP_InputField volume;
@@ -19,9 +22,12 @@ public sealed class GeneralSettingsPage : InFlightMenuPage
     private bool controlsWired;
     private bool snapshotInitialized;
 
-    public override bool IsDirty => volumeDraft != snapshotVolume ||
-        GetControlSchemeDraft() != snapshotControlScheme ||
-        GetNovaPopupDraft() != snapshotNovaPopup;
+    private bool OwnsControls => scope != SettingsScope.Settings;
+    private bool OwnsSettings => scope != SettingsScope.Controls;
+
+    public override bool IsDirty => OwnsSettings && (volumeDraft != snapshotVolume ||
+        GetNovaPopupDraft() != snapshotNovaPopup) ||
+        OwnsControls && GetControlSchemeDraft() != snapshotControlScheme;
 
     public string VolumeForTest => volumeDraft;
     public string VolumeError => validationError;
@@ -89,7 +95,8 @@ public sealed class GeneralSettingsPage : InFlightMenuPage
             return false;
         }
 
-        if (!NumericSettingParser.TryParseInt(volumeDraft, 0, 200, out int parsedVolume, out validationError))
+        int parsedVolume = settings.volume;
+        if (OwnsSettings && !NumericSettingParser.TryParseInt(volumeDraft, 0, 200, out parsedVolume, out validationError))
         {
             SetDiagnostic(validationError);
             UpdateAvailability();
@@ -98,9 +105,12 @@ public sealed class GeneralSettingsPage : InFlightMenuPage
 
         ControlScheme parsedScheme = GetControlSchemeDraft();
         bool parsedNovaPopup = GetNovaPopupDraft();
-        settings.controlScheme = parsedScheme;
-        settings.volume = parsedVolume;
-        settings.enableNovaPopup = parsedNovaPopup;
+        if (OwnsControls) settings.controlScheme = parsedScheme;
+        if (OwnsSettings)
+        {
+            settings.volume = parsedVolume;
+            settings.enableNovaPopup = parsedNovaPopup;
+        }
         settings.VariablesToObjects();
         snapshotControlScheme = parsedScheme;
         snapshotVolume = parsedVolume.ToString();
@@ -177,10 +187,11 @@ public sealed class GeneralSettingsPage : InFlightMenuPage
 
     private bool UpdateAvailability()
     {
-        bool ready = ResolvePrefSettings() != null && controlScheme != null && volume != null && enableNovaPopup != null;
+        bool ready = ResolvePrefSettings() != null && (!OwnsControls || controlScheme != null) &&
+            (!OwnsSettings || volume != null && enableNovaPopup != null);
         if (!ready)
         {
-            SetDiagnostic("Assign PrefSettings, Control Scheme, Volume, and NOVA Popup controls before applying.");
+            SetDiagnostic("Assign PrefSettings and the controls owned by this settings page before applying.");
         }
         else if (string.IsNullOrEmpty(validationError))
         {
