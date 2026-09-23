@@ -2655,6 +2655,15 @@ MonoBehaviour:
   distanceToProjectedTarget: 0
   targetRb: {fileID: 0}
   DrawDebugLines: 0
+  debugLogsEnabled: 0
+  velocityDivergenceThreshold: 10
+  groundRaycastHeight: 100
+  groundRaycastDistance: 400
+  fallbackGroundOffset: -150
+  minHeightAboveGround: 10
+  maxHeightAboveGround: 400
+  visibilityRaycastPadding: 10
+  maxRepositionAttempts: 100
 --- !u!1 &640335792
 GameObject:
   m_ObjectHideFlags: 0
@@ -2907,6 +2916,7 @@ MonoBehaviour:
   orbitInput: {fileID: -5630151704836100654, guid: 1d6e640e716dc4ff6989b73d02023f2b, type: 3}
   dragButton: {fileID: 1120369429361536294, guid: 1d6e640e716dc4ff6989b73d02023f2b, type: 3}
   inputAxisController: {fileID: 640335794}
+  panelCameraType: 3
 --- !u!114 &640335801
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3985,7 +3995,7 @@ MonoBehaviour:
   m_DisconnectTimeoutMS: 30000
   ConnectionData:
     Address: 127.0.0.1
-    Port: 7777
+    Port: 7779
     WebSocketPath: /
     ServerListenAddress: 127.0.0.1
     ClientBindPort: 0

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
+using UnityEngine.InputSystem.Users;
 
 public interface IBindingOverrideStore
 {
@@ -50,6 +51,38 @@ public readonly struct InputBindingRow
     public bool IsAvailable => BindingIndex >= 0;
 }
 
+public enum YawBindingMode
+{
+    Buttons,
+    Axis,
+}
+
+public interface IYawBindingModeStore
+{
+    YawBindingMode Load();
+    void Save(YawBindingMode mode);
+    void Clear();
+}
+
+public sealed class PlayerPrefsYawBindingModeStore : IYawBindingModeStore
+{
+    public const string Key = "HeliSim.YawBindingMode.v1";
+
+    public YawBindingMode Load() => PlayerPrefs.GetInt(Key, 0) == 1 ? YawBindingMode.Axis : YawBindingMode.Buttons;
+
+    public void Save(YawBindingMode mode)
+    {
+        PlayerPrefs.SetInt(Key, mode == YawBindingMode.Axis ? 1 : 0);
+        PlayerPrefs.Save();
+    }
+
+    public void Clear()
+    {
+        PlayerPrefs.DeleteKey(Key);
+        PlayerPrefs.Save();
+    }
+}
+
 public enum BindingDeviceTab
 {
     KeyboardMouse,
@@ -91,17 +124,54 @@ public static class InputRebindingCommands
 /// <summary>Changes bindings on a local PlayerInput action asset and persists Input System overrides.</summary>
 public sealed class InputRebindingService : IDisposable
 {
+    private const string YawActionName = "Yaw Input";
+    private const string YawButtonsGroup = "YawButtons";
+    private const string YawAxisGroup = "YawAxis";
     private readonly InputActionAsset actions;
     private readonly IBindingOverrideStore store;
+    private readonly IYawBindingModeStore yawModeStore;
     private InputActionRebindingExtensions.RebindingOperation operation;
 
-    public InputRebindingService(InputActionAsset actions, IBindingOverrideStore store)
+    public InputRebindingService(InputActionAsset actions, IBindingOverrideStore store,
+        IYawBindingModeStore yawModeStore = null)
     {
         this.actions = actions ?? throw new ArgumentNullException(nameof(actions));
         this.store = store ?? throw new ArgumentNullException(nameof(store));
+        this.yawModeStore = yawModeStore ?? new PlayerPrefsYawBindingModeStore();
+        ApplyYawBindingMode(this.yawModeStore.Load());
     }
 
     public InputActionAsset Actions => actions;
+    public YawBindingMode YawMode { get; private set; }
+
+    public void SetYawBindingMode(YawBindingMode mode)
+    {
+        ApplyYawBindingMode(mode);
+        yawModeStore.Save(mode);
+    }
+
+    private void ApplyYawBindingMode(YawBindingMode mode)
+    {
+        YawMode = mode == YawBindingMode.Axis ? YawBindingMode.Axis : YawBindingMode.Buttons;
+        InputAction yaw = actions.FindAction(YawActionName, false);
+        if (yaw != null && HasYawModeBindings(yaw))
+            yaw.bindingMask = InputBinding.MaskByGroup(YawMode == YawBindingMode.Axis ? YawAxisGroup : YawButtonsGroup);
+    }
+
+    private static bool HasYawModeBindings(InputAction action)
+    {
+        foreach (InputBinding binding in action.bindings)
+            if (BindingHasGroup(binding, YawAxisGroup)) return true;
+        return false;
+    }
+
+    private static bool BindingHasGroup(InputBinding binding, string group)
+    {
+        if (string.IsNullOrEmpty(binding.groups)) return false;
+        foreach (string candidate in binding.groups.Split(InputBinding.Separator))
+            if (string.Equals(candidate, group, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
 
     public static bool IsDeviceAllowedForTab(InputDevice device, BindingDeviceTab tab)
     {
@@ -142,8 +212,13 @@ public sealed class InputRebindingService : IDisposable
 
             bindingOrdinal++;
             if (deviceTab.HasValue && GetOriginalDeviceTab(binding.path) != deviceTab.Value) continue;
+            if (deviceTab == BindingDeviceTab.Joystick && actionName == YawActionName &&
+                !BindingHasGroup(binding, YawMode == YawBindingMode.Axis ? YawAxisGroup : YawButtonsGroup)) continue;
 
             string name = binding.isPartOfComposite ? binding.name : "Primary " + bindingOrdinal;
+            if (actionName == YawActionName && deviceTab == BindingDeviceTab.Joystick &&
+                YawMode == YawBindingMode.Buttons && binding.isPartOfComposite)
+                name = binding.name == "negative" ? "Left" : binding.name == "positive" ? "Right" : name;
             rows.Add(new InputBindingRow(actionName, index, name, GetDisplayString(actionName, index), null));
         }
 
@@ -207,6 +282,7 @@ public sealed class InputRebindingService : IDisposable
     {
         string json = store.Load();
         actions.RemoveAllBindingOverrides();
+        ApplyYawBindingMode(yawModeStore.Load());
         if (string.IsNullOrWhiteSpace(json))
         {
             return;
@@ -229,6 +305,37 @@ public sealed class InputRebindingService : IDisposable
         return TryApplyBindingPath(actionName, bindingIndex, path, null, out error);
     }
 
+    public void PairConnectedDevices(InputDevice selectedDevice = null)
+    {
+        foreach (InputUser user in InputUser.all)
+        {
+            if (!user.valid || !ReferenceEquals(user.actions, actions)) continue;
+
+            if (selectedDevice != null)
+            {
+                PairUsableDevice(user, selectedDevice);
+                continue;
+            }
+
+            using (var unpairedDevices = InputUser.GetUnpairedInputDevices())
+                foreach (InputDevice device in unpairedDevices)
+                    PairUsableDevice(user, device);
+        }
+    }
+
+    private void PairUsableDevice(InputUser user, InputDevice device)
+    {
+        foreach (InputDevice paired in user.pairedDevices)
+            if (paired == device) return;
+
+        foreach (InputActionMap map in actions.actionMaps)
+        {
+            if (!map.IsUsableWithDevice(device)) continue;
+            InputUser.PerformPairingWithDevice(device, user);
+            return;
+        }
+    }
+
     public string GetJoystickBindingDisplay(string actionName)
     {
         InputAction action = actions.FindAction(actionName, false);
@@ -237,17 +344,21 @@ public sealed class InputRebindingService : IDisposable
         int count = 0;
         int lastIndex = -1;
         bool factoryBindings = true;
+        List<string> deviceNames = new List<string>();
         foreach (int index in GetJoystickBindingIndices(action))
         {
             if (string.IsNullOrEmpty(action.bindings[index].effectivePath)) continue;
             count++;
             lastIndex = index;
             factoryBindings &= string.IsNullOrEmpty(action.bindings[index].overridePath);
+            string deviceName = BindingDeviceDisplayFormatter.FormatPath(action.bindings[index].effectivePath);
+            if (!string.IsNullOrEmpty(deviceName) && !deviceNames.Contains(deviceName)) deviceNames.Add(deviceName);
         }
 
         if (count == 0) return "Unbound";
-        return count == 1 ? GetDisplayString(actionName, lastIndex)
-            : factoryBindings ? "Factory controls" : "Multiple controls";
+        if (count == 1) return GetDisplayString(actionName, lastIndex);
+        string summary = factoryBindings ? "Factory controls" : "Multiple controls";
+        return deviceNames.Count == 0 ? summary : summary + " — " + string.Join(", ", deviceNames);
     }
 
     public bool TryApplyJoystickBindingPath(string actionName, int bindingIndex, string path, out string error)
@@ -325,6 +436,8 @@ public sealed class InputRebindingService : IDisposable
         CancelRebind();
         actions.RemoveAllBindingOverrides();
         store.Clear();
+        yawModeStore.Clear();
+        ApplyYawBindingMode(YawBindingMode.Buttons);
     }
 
     public bool TryStartRebind(string actionName, int bindingIndex, Action<string> onError, Action onChanged,
@@ -404,7 +517,10 @@ public sealed class InputRebindingService : IDisposable
             return action.GetBindingDisplayString(bindingIndex);
         }
 
-        return string.IsNullOrEmpty(binding.effectivePath) ? "Unbound" : action.GetBindingDisplayString(bindingIndex);
+        if (string.IsNullOrEmpty(binding.effectivePath)) return "Unbound";
+        string device = BindingDeviceDisplayFormatter.FormatPath(binding.effectivePath);
+        string control = action.GetBindingDisplayString(bindingIndex);
+        return string.IsNullOrEmpty(device) ? control : control + " — " + device;
     }
 
     public void Dispose()
@@ -430,6 +546,7 @@ public sealed class InputRebindingService : IDisposable
             if (index != bindingIndex) action.ApplyBindingOverride(index, string.Empty);
         }
         Save();
+        PairConnectedDevices(control?.device);
         return true;
     }
 
@@ -447,14 +564,16 @@ public sealed class InputRebindingService : IDisposable
         return false;
     }
 
-    private static List<int> GetJoystickBindingIndices(InputAction action)
+    private List<int> GetJoystickBindingIndices(InputAction action)
     {
         List<int> indices = new List<int>();
         for (int index = 0; index < action.bindings.Count; index++)
         {
             InputBinding binding = action.bindings[index];
             if (!binding.isComposite && !binding.isPartOfComposite &&
-                GetOriginalDeviceTab(binding.path) == BindingDeviceTab.Joystick)
+                GetOriginalDeviceTab(binding.path) == BindingDeviceTab.Joystick &&
+                (action.name != YawActionName || BindingHasGroup(binding,
+                    YawMode == YawBindingMode.Axis ? YawAxisGroup : YawButtonsGroup)))
                 indices.Add(index);
         }
         return indices;
@@ -503,7 +622,11 @@ public sealed class InputRebindingService : IDisposable
         }
 
         action.ApplyBindingOverride(bindingIndex, path);
-        if (saveOverride) Save();
+        if (saveOverride)
+        {
+            Save();
+            PairConnectedDevices(control?.device);
+        }
         error = null;
         return true;
     }

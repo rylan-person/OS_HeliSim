@@ -208,17 +208,6 @@
             "bindings": [
                 {
                     "name": "",
-                    "id": "e8370698-ee38-4852-a4ab-5506a2f1c5c2",
-                    "path": "<HID::Saitek Saitek X52 Flight Control System>/stick/y",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Pitch Input",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
                     "id": "159c3f18-e3e3-4bfd-b422-a44e414f25de",
                     "path": "<HID::Thustmaster Joystick - HOTAS Warthog>/stick/y",
                     "interactions": "",
@@ -377,7 +366,7 @@
                     "path": "1DAxis",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": "YawButtons",
                     "action": "Yaw Input",
                     "isComposite": true,
                     "isPartOfComposite": false
@@ -388,7 +377,7 @@
                     "path": "<HID::Saitek Saitek X52 Flight Control System>/hat/left",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": "YawButtons",
                     "action": "Yaw Input",
                     "isComposite": false,
                     "isPartOfComposite": true
@@ -399,10 +388,21 @@
                     "path": "<HID::Saitek Saitek X52 Flight Control System>/hat/right",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": "YawButtons",
                     "action": "Yaw Input",
                     "isComposite": false,
                     "isPartOfComposite": true
+                },
+                {
+                    "name": "Pedal axis",
+                    "id": "596651ea-19a0-479a-bc28-e279ebaa7c16",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "YawAxis",
+                    "action": "Yaw Input",
+                    "isComposite": false,
+                    "isPartOfComposite": false
                 },
                 {
                     "name": "",
@@ -685,7 +685,7 @@
                     "path": "1DAxis",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": "YawButtons;YawAxis",
                     "action": "Yaw Input",
                     "isComposite": true,
                     "isPartOfComposite": false
@@ -696,7 +696,7 @@
                     "path": "<Keyboard>/q",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": "YawButtons;YawAxis",
                     "action": "Yaw Input",
                     "isComposite": false,
                     "isPartOfComposite": true
@@ -707,7 +707,7 @@
                     "path": "<Keyboard>/e",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": "YawButtons;YawAxis",
                     "action": "Yaw Input",
                     "isComposite": false,
                     "isPartOfComposite": true

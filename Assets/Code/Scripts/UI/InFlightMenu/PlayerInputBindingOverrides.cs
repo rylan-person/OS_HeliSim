@@ -1,3 +1,5 @@
+using System.Collections;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -19,6 +21,24 @@ public sealed class PlayerInputBindingOverrides : MonoBehaviour
 
         service = new InputRebindingService(playerInput.actions, new PlayerPrefsBindingOverrideStore());
         service.Load();
+        // PlayerInput paired devices before these saved overrides made new devices usable.
+        StartCoroutine(PairLocalDevicesWhenReady());
+    }
+
+    private IEnumerator PairLocalDevicesWhenReady()
+    {
+        NetworkObject networkObject = GetComponentInParent<NetworkObject>();
+        NetworkManager networkManager = NetworkManager.Singleton;
+        if (networkObject != null && networkManager != null && networkManager.IsListening)
+        {
+            while (networkObject != null && !networkObject.IsSpawned)
+                yield return null;
+
+            if (networkObject == null || !networkObject.IsOwner)
+                yield break;
+        }
+
+        service?.PairConnectedDevices();
     }
 
     private void OnDestroy()

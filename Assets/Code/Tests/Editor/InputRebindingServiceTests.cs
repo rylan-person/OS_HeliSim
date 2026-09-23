@@ -2,6 +2,8 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Controls;
+using UnityEngine.InputSystem.Users;
 
 public class InputRebindingServiceTests
 {
@@ -110,6 +112,27 @@ public class InputRebindingServiceTests
     }
 
     [Test]
+    public void ShippedActionAsset_HasAssignableYawAxisAndTwoButtonDirections()
+    {
+        InputActionAsset shipped = AssetDatabase.LoadAssetAtPath<InputActionAsset>(
+            "Assets/Code/InputActions/DefaultHeliAction.inputactions");
+        InputAction yaw = shipped.FindAction("Yaw Input");
+        int axisSlots = 0;
+        int buttonDirections = 0;
+        foreach (InputBinding binding in yaw.bindings)
+        {
+            if (binding.groups == "YawAxis" && !binding.isPartOfComposite && !binding.isComposite)
+            {
+                axisSlots++;
+                Assert.That(binding.path, Is.Empty);
+            }
+            if (binding.groups == "YawButtons" && binding.isPartOfComposite) buttonDirections++;
+        }
+        Assert.That(axisSlots, Is.EqualTo(1));
+        Assert.That(buttonDirections, Is.EqualTo(2));
+    }
+
+    [Test]
     public void DeviceTabs_UseOriginalPathsAfterOverridesAreCleared()
     {
         InputAction engine = actions.FindAction("Start Engine Global");
@@ -136,7 +159,8 @@ public class InputRebindingServiceTests
     {
         InputAction engine = actions.FindAction("Start Engine Global");
         engine.AddBinding("<Joystick>/button1");
-        Assert.That(service.GetJoystickBindingDisplay("Start Engine Global"), Is.EqualTo("Factory controls"));
+        Assert.That(service.GetJoystickBindingDisplay("Start Engine Global"), Does.StartWith("Factory controls"));
+        Assert.That(service.GetJoystickBindingDisplay("Start Engine Global"), Does.Contain("Gamepad"));
 
         Assert.That(service.TryApplyJoystickBindingPath("Start Engine Global", 1, "<Gamepad>/buttonNorth", out string applyError), Is.True, applyError);
         Assert.That(engine.bindings[0].effectivePath, Is.EqualTo("<Keyboard>/f1"));
@@ -158,6 +182,143 @@ public class InputRebindingServiceTests
         Assert.That(engine.bindings[1].effectivePath, Is.EqualTo("<Gamepad>/buttonSouth"));
         Assert.That(engine.bindings[2].effectivePath, Is.EqualTo("<Joystick>/button1"));
         Assert.That(engine.bindings[0].effectivePath, Is.EqualTo("<Keyboard>/f1"));
+    }
+
+    [Test]
+    public void JoystickAssignment_PairsNewDeviceWithTheActionsUser()
+    {
+        Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+        Joystick joystick = InputSystem.AddDevice<Joystick>();
+        InputUser user = default;
+        try
+        {
+            user = InputUser.PerformPairingWithDevice(keyboard);
+            user.AssociateActionsWithUser(actions);
+            actions.Enable();
+
+            Assert.That(service.TryApplyJoystickBindingPath("Start Engine Global", 1,
+                "<Joystick>/trigger", out string error), Is.True, error);
+
+            InputAction engine = actions.FindAction("Start Engine Global");
+            Assert.That(engine.controls, Does.Contain(joystick.trigger));
+        }
+        finally
+        {
+            actions.Disable();
+            if (user.valid) user.UnpairDevicesAndRemoveUser();
+            InputSystem.RemoveDevice(joystick);
+            InputSystem.RemoveDevice(keyboard);
+        }
+    }
+
+    [Test]
+    public void SavedJoystickAssignment_ResolvesAfterLocalPlayerLoadsIt()
+    {
+        Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+        Joystick joystick = InputSystem.AddDevice<Joystick>();
+        InputUser user = default;
+        try
+        {
+            user = InputUser.PerformPairingWithDevice(keyboard);
+            user.AssociateActionsWithUser(actions);
+            actions.Enable();
+            Assert.That(service.TryApplyJoystickBindingPath("Start Engine Global", 1,
+                "<Joystick>/trigger", out string error), Is.True, error);
+
+            user.UnpairDevice(joystick);
+            actions.RemoveAllBindingOverrides();
+            service.Load();
+            service.PairConnectedDevices();
+
+            InputAction engine = actions.FindAction("Start Engine Global");
+            Assert.That(engine.bindings[1].effectivePath, Is.EqualTo("<Joystick>/trigger"));
+            Assert.That(engine.controls, Does.Contain(joystick.trigger));
+        }
+        finally
+        {
+            actions.Disable();
+            if (user.valid) user.UnpairDevicesAndRemoveUser();
+            InputSystem.RemoveDevice(joystick);
+            InputSystem.RemoveDevice(keyboard);
+        }
+    }
+
+    [Test]
+    public void YawMode_SwitchesLiveControlsAndKeepsKeyboardYaw()
+    {
+        InputAction yaw = actions.FindAction("Yaw Input", false) ?? actions.FindActionMap("Default").AddAction("Yaw Input", InputActionType.PassThrough);
+        yaw.expectedControlType = "Axis";
+        yaw.AddCompositeBinding("1DAxis")
+            .With("negative", "<Joystick>/trigger", groups: "YawButtons")
+            .With("positive", "<Joystick>/trigger", groups: "YawButtons");
+        yaw.AddCompositeBinding("1DAxis")
+            .With("negative", "<Keyboard>/q", groups: "YawButtons;YawAxis")
+            .With("positive", "<Keyboard>/e", groups: "YawButtons;YawAxis");
+        yaw.AddBinding(string.Empty, groups: "YawAxis");
+        var modeStore = new MemoryYawStore();
+        using (var yawService = new InputRebindingService(actions, store, modeStore))
+        {
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+            Joystick joystick = InputSystem.AddDevice<Joystick>();
+            InputUser user = default;
+            try
+            {
+                user = InputUser.PerformPairingWithDevice(keyboard);
+                user.AssociateActionsWithUser(actions);
+                actions.Enable();
+                yawService.SetYawBindingMode(YawBindingMode.Axis);
+                Assert.That(yawService.GetBindingRows("Yaw Input", BindingDeviceTab.Joystick).Count, Is.EqualTo(1));
+                Assert.That(yawService.TryApplyJoystickBindingPath("Yaw Input", 6, "<Joystick>/stick/x", out string error), Is.True, error);
+                Assert.That(IsPaired(user, joystick), Is.True);
+                Assert.That(ContainsControl(yaw, joystick.stick.x), Is.True);
+                Assert.That(ContainsControl(yaw, keyboard.qKey), Is.True);
+                Assert.That(ContainsControl(yaw, joystick.trigger), Is.False);
+
+                yawService.SetYawBindingMode(YawBindingMode.Buttons);
+                Assert.That(yawService.GetBindingRows("Yaw Input", BindingDeviceTab.Joystick).Count, Is.EqualTo(2));
+                Assert.That(ContainsControl(yaw, joystick.trigger), Is.True);
+                Assert.That(ContainsControl(yaw, keyboard.qKey), Is.True);
+                Assert.That(ContainsControl(yaw, joystick.stick.x), Is.False);
+            }
+            finally
+            {
+                actions.Disable();
+                if (user.valid) user.UnpairDevicesAndRemoveUser();
+                InputSystem.RemoveDevice(joystick);
+                InputSystem.RemoveDevice(keyboard);
+            }
+        }
+    }
+
+    [Test]
+    public void ResetProfile_ClearsPedalAxisAndRestoresButtonMode()
+    {
+        InputAction yaw = actions.FindActionMap("Default").AddAction("Yaw Input", InputActionType.PassThrough);
+        yaw.expectedControlType = "Axis";
+        yaw.AddCompositeBinding("1DAxis")
+            .With("negative", "<Joystick>/trigger", groups: "YawButtons")
+            .With("positive", "<Joystick>/trigger", groups: "YawButtons");
+        yaw.AddBinding(string.Empty, groups: "YawAxis");
+        yaw.AddCompositeBinding("1DAxis")
+            .With("negative", "<Keyboard>/q", groups: "YawButtons;YawAxis")
+            .With("positive", "<Keyboard>/e", groups: "YawButtons;YawAxis");
+        var modeStore = new MemoryYawStore();
+        using (var yawService = new InputRebindingService(actions, store, modeStore))
+        {
+            yawService.SetYawBindingMode(YawBindingMode.Axis);
+            Assert.That(yawService.TryApplyJoystickBindingPath("Yaw Input", 3, "<Joystick>/stick/x", out string error), Is.True, error);
+            Assert.That(yaw.bindings[3].effectivePath, Is.EqualTo("<Joystick>/stick/x"));
+            yawService.Load();
+            Assert.That(yawService.YawMode, Is.EqualTo(YawBindingMode.Axis));
+            Assert.That(yaw.bindings[3].effectivePath, Is.EqualTo("<Joystick>/stick/x"));
+            yawService.ResetProfile();
+            Assert.That(yawService.YawMode, Is.EqualTo(YawBindingMode.Buttons));
+            Assert.That(modeStore.Load(), Is.EqualTo(YawBindingMode.Buttons));
+            Assert.That(yaw.bindings[3].effectivePath, Is.Empty);
+            Assert.That(yaw.bindings[1].effectivePath, Is.EqualTo("<Joystick>/trigger"));
+            Assert.That(yaw.bindings[2].effectivePath, Is.EqualTo("<Joystick>/trigger"));
+            Assert.That(store.Json, Is.Null);
+        }
     }
 
     [Test]
@@ -223,5 +384,27 @@ public class InputRebindingServiceTests
         public string Load() => Json;
         public void Save(string json) => Json = json;
         public void Clear() => Json = null;
+    }
+
+    private static bool ContainsControl(InputAction action, InputControl control)
+    {
+        foreach (InputControl candidate in action.controls)
+            if (candidate == control) return true;
+        return false;
+    }
+
+    private static bool IsPaired(InputUser user, InputDevice device)
+    {
+        foreach (InputDevice paired in user.pairedDevices)
+            if (paired == device) return true;
+        return false;
+    }
+
+    private sealed class MemoryYawStore : IYawBindingModeStore
+    {
+        private YawBindingMode mode;
+        public YawBindingMode Load() => mode;
+        public void Save(YawBindingMode value) => mode = value;
+        public void Clear() => mode = YawBindingMode.Buttons;
     }
 }

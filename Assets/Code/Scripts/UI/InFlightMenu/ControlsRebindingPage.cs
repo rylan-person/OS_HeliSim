@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using HeliSim.InFlightMenu;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -16,6 +17,8 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
     [SerializeField] private TMP_Text hardwareSummaryLabel;
     [SerializeField] private Button keyboardTabButton;
     [SerializeField] private Button joystickTabButton;
+    [SerializeField] private GameObject yawModeRoot;
+    [SerializeField] private Toggle yawModeToggle;
     [SerializeField] private GameObject bindingDialogRoot;
     [SerializeField] private TMP_Text dialogTitleLabel;
     [SerializeField] private TMP_Text dialogBindingLabel;
@@ -64,6 +67,7 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
         selectedTab = BindingDeviceTab.KeyboardMouse;
         UpdateTabButtons();
         ResolveService();
+        UpdateYawModeControls();
         RebuildRows();
         RefreshHardwareSummary();
     }
@@ -147,6 +151,7 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
                     service = loadedService;
                 }
 
+                loadedService.PairConnectedDevices();
                 SetDiagnostic(string.Empty);
                 return;
             }
@@ -159,6 +164,7 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
                 service = ownedService;
             }
 
+            ownedService.PairConnectedDevices();
             SetDiagnostic(string.Empty);
             return;
         }
@@ -201,6 +207,8 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
                 ? service.GetBindingRows(command.ActionName, selectedTab)
                 : new InputBindingRow[0];
             if (bindings.Count == 0) continue;
+            if (command.ActionName == "Yaw Input" && selectedTab == BindingDeviceTab.Joystick && yawModeRoot != null)
+                yawModeRoot.transform.SetAsLastSibling();
             string nextCategory = GetCategory(command.ActionName);
             if (nextCategory != category && categoryHeadingPrefab != null)
             {
@@ -266,6 +274,7 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
         CloseDialog();
         selectedTab = tab;
         UpdateTabButtons();
+        UpdateYawModeControls();
         RebuildRows();
     }
 
@@ -273,6 +282,28 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
     {
         if (keyboardTabButton != null) keyboardTabButton.interactable = selectedTab != BindingDeviceTab.KeyboardMouse;
         if (joystickTabButton != null) joystickTabButton.interactable = selectedTab != BindingDeviceTab.Joystick;
+    }
+
+    private void UpdateYawModeControls()
+    {
+        if (yawModeRoot != null) yawModeRoot.SetActive(service != null && selectedTab == BindingDeviceTab.Joystick);
+        if (yawModeToggle != null)
+        {
+            yawModeToggle.interactable = service != null;
+            yawModeToggle.SetIsOnWithoutNotify(service != null && service.YawMode == YawBindingMode.Axis);
+            yawModeRoot?.GetComponent<SettingsToggleVisual>()?.Refresh();
+        }
+    }
+
+    private void OnYawModeChanged(bool axis) => SetYawMode(axis ? YawBindingMode.Axis : YawBindingMode.Buttons);
+
+    private void SetYawMode(YawBindingMode mode)
+    {
+        if (service == null) return;
+        CloseDialog();
+        service.SetYawBindingMode(mode);
+        UpdateYawModeControls();
+        RebuildRows();
     }
 
     private void OpenDialog(ControlsBindingRow row)
@@ -357,6 +388,7 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
         if (presentationWired) return;
         if (keyboardTabButton != null) keyboardTabButton.onClick.AddListener(ShowKeyboardTab);
         if (joystickTabButton != null) joystickTabButton.onClick.AddListener(ShowJoystickTab);
+        if (yawModeToggle != null) yawModeToggle.onValueChanged.AddListener(OnYawModeChanged);
         if (dialogCancelButton != null) dialogCancelButton.onClick.AddListener(CloseDialog);
         if (dialogClearButton != null) dialogClearButton.onClick.AddListener(ClearSelected);
         if (dialogRestoreButton != null) dialogRestoreButton.onClick.AddListener(RestoreSelected);
@@ -368,6 +400,7 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
         if (!presentationWired) return;
         if (keyboardTabButton != null) keyboardTabButton.onClick.RemoveListener(ShowKeyboardTab);
         if (joystickTabButton != null) joystickTabButton.onClick.RemoveListener(ShowJoystickTab);
+        if (yawModeToggle != null) yawModeToggle.onValueChanged.RemoveListener(OnYawModeChanged);
         if (dialogCancelButton != null) dialogCancelButton.onClick.RemoveListener(CloseDialog);
         if (dialogClearButton != null) dialogClearButton.onClick.RemoveListener(ClearSelected);
         if (dialogRestoreButton != null) dialogRestoreButton.onClick.RemoveListener(RestoreSelected);
@@ -392,6 +425,7 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
 
         service.ResetProfile();
         SetDiagnostic("Binding profile reset to defaults.");
+        UpdateYawModeControls();
         RefreshRows();
     }
 
