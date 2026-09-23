@@ -21925,6 +21925,7 @@ GameObject:
   - component: {fileID: 8551160670341625208}
   - component: {fileID: 8595651317394856689}
   - component: {fileID: 1633244482264339597}
+  - component: {fileID: 4872175348492820491}
   - component: {fileID: 8331503162210247526}
   - component: {fileID: 373149123627968513}
   - component: {fileID: 3064439829518475968}
@@ -21991,6 +21992,7 @@ MonoBehaviour:
   - {fileID: 8551160670341625208}
   - {fileID: 8595651317394856689}
   - {fileID: 1633244482264339597}
+  - {fileID: 4872175348492820491}
   - {fileID: 8331503162210247526}
 --- !u!54 &8614924469135384376
 Rigidbody:
@@ -23081,6 +23083,18 @@ MonoBehaviour:
   m_DefaultActionMap: Default
   m_SplitScreenIndex: -1
   m_Camera: {fileID: 0}
+--- !u!114 &4872175348492820491
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8595651317394856688}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1cb090d789f457baec5542b4d03eec4, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerInputBindingOverrides
 --- !u!114 &8331503162210247526
 MonoBehaviour:
   m_ObjectHideFlags: 0

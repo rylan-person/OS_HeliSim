@@ -5,6 +5,8 @@ using Oyedoyin.RotaryWing;
 using UnityEngine;
 using System.IO; 
 using System;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 public enum ControlScheme
 {
@@ -14,6 +16,10 @@ public enum ControlScheme
 
 public class PrefSettings : MonoBehaviour
 {
+    public const uint MaximumCesiumTileLimit = 1000;
+    private uint lastValidMaximumSimultaneousTileLoads = 28;
+    private uint lastValidLoadingDescendantLimit = 10;
+
     #region Cesium Settings
     [SerializeField] private Cesium3DTileset cesiumAsset;
 
@@ -32,11 +38,13 @@ public class PrefSettings : MonoBehaviour
     public bool preloadSiblings = true;
     public bool forbidHoles = true;
 
-    [Range(1, 1000)]
+    // Cesium 1.23.2 accepts zero in this uint setter.
+    [Range(0, 1000)]
     public uint MaximumSimultaneousTileLoads = 28;
 
     public int MaximumCachedBytes = 1684354560;
 
+    // Cesium documents zero as loading each level of detail successively.
     [Range(0, 1000)]
     public uint LoadingDescendantLimit = 10;
     [Space(5)]
@@ -57,22 +65,60 @@ public class PrefSettings : MonoBehaviour
     public bool enableNovaPopup = true;
     public int volume = 10;
 
+    public static bool TryParseCesiumTileLimit(int value, out uint parsed)
+    {
+        parsed = 0;
+        if (value < 0 || value > MaximumCesiumTileLimit)
+        {
+            return false;
+        }
+
+        parsed = (uint)value;
+        return true;
+    }
+
+    private bool HasValidCesiumTileLimits() =>
+        MaximumSimultaneousTileLoads <= MaximumCesiumTileLimit &&
+        LoadingDescendantLimit <= MaximumCesiumTileLimit;
+
+    private void Awake()
+    {
+        if (HasValidCesiumTileLimits())
+        {
+            RememberValidCesiumTileLimits();
+        }
+    }
+
+    private void RememberValidCesiumTileLimits()
+    {
+        lastValidMaximumSimultaneousTileLoads = MaximumSimultaneousTileLoads;
+        lastValidLoadingDescendantLimit = LoadingDescendantLimit;
+    }
+
     public void VariablesToObjects()
     {
         // Set the cesium asset settings
-        if (cesiumAsset != null)
+        if (HasValidCesiumTileLimits())
         {
-            cesiumAsset.maximumScreenSpaceError = screenSpaceError;
-            cesiumAsset.preloadAncestors = preloadAncestors;
-            cesiumAsset.preloadSiblings = preloadSiblings;
-            cesiumAsset.forbidHoles = forbidHoles;
-            cesiumAsset.maximumSimultaneousTileLoads = MaximumSimultaneousTileLoads;
-            cesiumAsset.maximumCachedBytes = MaximumCachedBytes;
-            cesiumAsset.loadingDescendantLimit = LoadingDescendantLimit;
-            cesiumAsset.enableFrustumCulling = enableFrustumCulling;
-            cesiumAsset.enableFogCulling = enableFogCulling;
-            cesiumAsset.enforceCulledScreenSpaceError = enableForceScreenSpaceError;
-            cesiumAsset.culledScreenSpaceError = culledScreenSpaceError;
+            if (cesiumAsset != null)
+            {
+                cesiumAsset.maximumScreenSpaceError = screenSpaceError;
+                cesiumAsset.preloadAncestors = preloadAncestors;
+                cesiumAsset.preloadSiblings = preloadSiblings;
+                cesiumAsset.forbidHoles = forbidHoles;
+                cesiumAsset.maximumSimultaneousTileLoads = MaximumSimultaneousTileLoads;
+                cesiumAsset.maximumCachedBytes = MaximumCachedBytes;
+                cesiumAsset.loadingDescendantLimit = LoadingDescendantLimit;
+                cesiumAsset.enableFrustumCulling = enableFrustumCulling;
+                cesiumAsset.enableFogCulling = enableFogCulling;
+                cesiumAsset.enforceCulledScreenSpaceError = enableForceScreenSpaceError;
+                cesiumAsset.culledScreenSpaceError = culledScreenSpaceError;
+            }
+            RememberValidCesiumTileLimits();
+        }
+        else
+        {
+            Debug.LogWarning("Cesium tile limits must be between 0 and 1000. Cesium settings were not applied.");
         }
     
         // Get the helicopter controller
@@ -107,9 +153,15 @@ public class PrefSettings : MonoBehaviour
         preloadAncestors = PlayerPrefs.GetInt("preloadAncestors", preloadAncestors ? 1 : 0) == 1;
         preloadSiblings = PlayerPrefs.GetInt("preloadSiblings", preloadSiblings ? 1 : 0) == 1;
         forbidHoles = PlayerPrefs.GetInt("forbidHoles", forbidHoles ? 1 : 0) == 1;
-        MaximumSimultaneousTileLoads = (uint)PlayerPrefs.GetInt("MaximumSimultaneousTileLoads", (int)MaximumSimultaneousTileLoads);
+        if (TryParseCesiumTileLimit(PlayerPrefs.GetInt("MaximumSimultaneousTileLoads", (int)MaximumSimultaneousTileLoads), out uint tileLoads))
+        {
+            MaximumSimultaneousTileLoads = tileLoads;
+        }
         MaximumCachedBytes = PlayerPrefs.GetInt("MaximumCachedBytes", MaximumCachedBytes);
-        LoadingDescendantLimit = (uint)PlayerPrefs.GetInt("LoadingDescendantLimit", (int)LoadingDescendantLimit);
+        if (TryParseCesiumTileLimit(PlayerPrefs.GetInt("LoadingDescendantLimit", (int)LoadingDescendantLimit), out uint descendantLimit))
+        {
+            LoadingDescendantLimit = descendantLimit;
+        }
         enableFrustumCulling = PlayerPrefs.GetInt("enableFrustumCulling", enableFrustumCulling ? 1 : 0) == 1;
         enableFogCulling = PlayerPrefs.GetInt("enableFogCulling", enableFogCulling ? 1 : 0) == 1;
         enableForceScreenSpaceError = PlayerPrefs.GetInt("enableForceScreenSpaceError", enableForceScreenSpaceError ? 1 : 0) == 1;
@@ -124,18 +176,21 @@ public class PrefSettings : MonoBehaviour
     {
         Debug.Log("Variables to Settings");
         // Get the PlayerPrefs from the variables
-        PlayerPrefs.SetInt("screenSpaceError", screenSpaceError);
-        Debug.Log("screenSpaceError: " + PlayerPrefs.GetInt("screenSpaceError", screenSpaceError));
-        PlayerPrefs.SetInt("preloadAncestors", preloadAncestors ? 1 : 0);
-        PlayerPrefs.SetInt("preloadSiblings", preloadSiblings ? 1 : 0);
-        PlayerPrefs.SetInt("forbidHoles", forbidHoles ? 1 : 0);
-        PlayerPrefs.SetInt("MaximumSimultaneousTileLoads", (int)MaximumSimultaneousTileLoads);
-        PlayerPrefs.SetInt("MaximumCachedBytes", MaximumCachedBytes);
-        PlayerPrefs.SetInt("LoadingDescendantLimit", (int)LoadingDescendantLimit);
-        PlayerPrefs.SetInt("enableFrustumCulling", enableFrustumCulling ? 1 : 0);
-        PlayerPrefs.SetInt("enableFogCulling", enableFogCulling ? 1 : 0);
-        PlayerPrefs.SetInt("enableForceScreenSpaceError", enableForceScreenSpaceError ? 1 : 0);
-        PlayerPrefs.SetInt("culledScreenSpaceError", culledScreenSpaceError);
+        if (HasValidCesiumTileLimits())
+        {
+            PlayerPrefs.SetInt("screenSpaceError", screenSpaceError);
+            Debug.Log("screenSpaceError: " + PlayerPrefs.GetInt("screenSpaceError", screenSpaceError));
+            PlayerPrefs.SetInt("preloadAncestors", preloadAncestors ? 1 : 0);
+            PlayerPrefs.SetInt("preloadSiblings", preloadSiblings ? 1 : 0);
+            PlayerPrefs.SetInt("forbidHoles", forbidHoles ? 1 : 0);
+            PlayerPrefs.SetInt("MaximumSimultaneousTileLoads", (int)MaximumSimultaneousTileLoads);
+            PlayerPrefs.SetInt("MaximumCachedBytes", MaximumCachedBytes);
+            PlayerPrefs.SetInt("LoadingDescendantLimit", (int)LoadingDescendantLimit);
+            PlayerPrefs.SetInt("enableFrustumCulling", enableFrustumCulling ? 1 : 0);
+            PlayerPrefs.SetInt("enableFogCulling", enableFogCulling ? 1 : 0);
+            PlayerPrefs.SetInt("enableForceScreenSpaceError", enableForceScreenSpaceError ? 1 : 0);
+            PlayerPrefs.SetInt("culledScreenSpaceError", culledScreenSpaceError);
+        }
 
         PlayerPrefs.SetInt("controlScheme", (int)controlScheme);
         PlayerPrefs.SetInt("enableNovaPopup", enableNovaPopup ? 1 : 0);
@@ -148,10 +203,32 @@ public class PrefSettings : MonoBehaviour
         try
         {
             // Serialize the current settings to JSON
-            string json = JsonUtility.ToJson(this, true); // 'this' refers to the PrefSettings instance
+            string json;
+            if (HasValidCesiumTileLimits())
+            {
+                json = JsonUtility.ToJson(this, true);
+            }
+            else
+            {
+                uint draftTileLoads = MaximumSimultaneousTileLoads;
+                uint draftDescendantLimit = LoadingDescendantLimit;
+                try
+                {
+                    MaximumSimultaneousTileLoads = lastValidMaximumSimultaneousTileLoads;
+                    LoadingDescendantLimit = lastValidLoadingDescendantLimit;
+                    json = JsonUtility.ToJson(this, true);
+                }
+                finally
+                {
+                    MaximumSimultaneousTileLoads = draftTileLoads;
+                    LoadingDescendantLimit = draftDescendantLimit;
+                }
+            }
 
             // Define the path for the JSON file
-            string path = Application.persistentDataPath + "/Settings/settings.json";
+            string directory = Path.Combine(Application.persistentDataPath, "Settings");
+            Directory.CreateDirectory(directory);
+            string path = Path.Combine(directory, "settings.json");
 
             // Write the JSON string to the file
             File.WriteAllText(path, json);
@@ -178,13 +255,14 @@ public class PrefSettings : MonoBehaviour
                 // Read the JSON string from the file
                 string json = File.ReadAllText(path);
 
-                Cesium3DTileset oldTileset = cesiumAsset;
-                // Populate this object with the data from the JSON
-                JsonUtility.FromJsonOverwrite(json, this);
-
-                cesiumAsset = oldTileset;
-
-                Debug.Log("Settings loaded from JSON: " + path);
+                if (TryLoadFromJson(json))
+                {
+                    Debug.Log("Settings loaded from JSON: " + path);
+                }
+                else
+                {
+                    Debug.LogWarning("Invalid Cesium tile limits in settings JSON were ignored; other settings were loaded.");
+                }
             }
             else
             {
@@ -203,6 +281,54 @@ public class PrefSettings : MonoBehaviour
     {
         JSONToVariables();
         VariablesToObjects();
+    }
+
+    public bool TryLoadFromJson(string json)
+    {
+        if (string.IsNullOrEmpty(json))
+        {
+            return false;
+        }
+
+        Cesium3DTileset oldTileset = cesiumAsset;
+        string previousJson = JsonUtility.ToJson(this);
+        bool allTileLimitsValid = true;
+        string sanitizedJson = ReplaceInvalidJsonTileLimit(json, nameof(MaximumSimultaneousTileLoads),
+            MaximumSimultaneousTileLoads <= MaximumCesiumTileLimit ? MaximumSimultaneousTileLoads : lastValidMaximumSimultaneousTileLoads,
+            ref allTileLimitsValid);
+        sanitizedJson = ReplaceInvalidJsonTileLimit(sanitizedJson, nameof(LoadingDescendantLimit),
+            LoadingDescendantLimit <= MaximumCesiumTileLimit ? LoadingDescendantLimit : lastValidLoadingDescendantLimit,
+            ref allTileLimitsValid);
+        JsonUtility.FromJsonOverwrite(sanitizedJson, this);
+        cesiumAsset = oldTileset;
+        if (!HasValidCesiumTileLimits())
+        {
+            JsonUtility.FromJsonOverwrite(previousJson, this);
+            cesiumAsset = oldTileset;
+            return false;
+        }
+
+        return allTileLimitsValid;
+    }
+
+    private static string ReplaceInvalidJsonTileLimit(string json, string fieldName, uint fallback, ref bool allValid)
+    {
+        string pattern = "(\"" + fieldName + "\"\\s*:\\s*)([^,}\\r\\n]+)";
+        bool invalidFound = false;
+        string sanitized = Regex.Replace(json, pattern, match =>
+        {
+            if (!int.TryParse(match.Groups[2].Value.Trim(), NumberStyles.Integer,
+                    CultureInfo.InvariantCulture, out int value) ||
+                !TryParseCesiumTileLimit(value, out _))
+            {
+                invalidFound = true;
+                return match.Groups[1].Value + fallback.ToString(CultureInfo.InvariantCulture);
+            }
+
+            return match.Value;
+        });
+        if (invalidFound) allValid = false;
+        return sanitized;
     }
 
     // On "backspace" press variables to object

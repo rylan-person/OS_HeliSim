@@ -13,6 +13,7 @@ public static class NumericSettingParser
 
         if (value < minimum || value > maximum)
         {
+            value = 0;
             error = $"Enter a value from {minimum} to {maximum}.";
             return false;
         }

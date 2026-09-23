@@ -1,7 +1,10 @@
 using System.Collections.Generic;
+using System.IO;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.TestTools;
 using UnityEngine.UI;
 
 public class SettingsPageValidationTests
@@ -12,17 +15,39 @@ public class SettingsPageValidationTests
     private CesiumSettingsPage cesiumPage;
     private TMP_InputField generalVolume;
     private TMP_InputField cesiumScreenSpaceError;
+    private static readonly string[] PreferenceKeys =
+    {
+        "screenSpaceError", "preloadAncestors", "preloadSiblings", "forbidHoles",
+        "MaximumSimultaneousTileLoads", "MaximumCachedBytes", "LoadingDescendantLimit",
+        "enableFrustumCulling", "enableFogCulling", "enableForceScreenSpaceError",
+        "culledScreenSpaceError", "controlScheme", "enableNovaPopup", "volume",
+    };
+    private readonly Dictionary<string, int> previousPreferences = new Dictionary<string, int>();
+    private readonly HashSet<string> existingPreferences = new HashSet<string>();
+    private string settingsPath;
+    private byte[] previousSettingsFile;
+    private bool hadSettingsFile;
 
     [SetUp]
     public void SetUp()
     {
+        previousPreferences.Clear();
+        existingPreferences.Clear();
+        foreach (string key in PreferenceKeys)
+        {
+            if (PlayerPrefs.HasKey(key)) existingPreferences.Add(key);
+            previousPreferences[key] = PlayerPrefs.GetInt(key);
+        }
+        settingsPath = Path.Combine(Application.persistentDataPath, "Settings", "settings.json");
+        hadSettingsFile = File.Exists(settingsPath);
+        previousSettingsFile = hadSettingsFile ? File.ReadAllBytes(settingsPath) : null;
         prefSettings = CreateGameObject("PrefSettings").AddComponent<PrefSettings>();
         generalPage = CreateGameObject("GeneralSettingsPage").AddComponent<GeneralSettingsPage>();
         cesiumPage = CreateGameObject("CesiumSettingsPage").AddComponent<CesiumSettingsPage>();
         generalPage.SetPrefSettingsForTest(prefSettings);
         cesiumPage.SetPrefSettingsForTest(prefSettings);
         generalVolume = CreateComponent<TMP_InputField>();
-        generalPage.SetControlsForTest(CreateComponent<TMP_Dropdown>(), generalVolume,
+        generalPage.SetControlsForTest(generalVolume,
             CreateComponent<Toggle>(), CreateComponent<Button>(), CreateComponent<TextMeshProUGUI>());
         cesiumScreenSpaceError = CreateComponent<TMP_InputField>();
         cesiumPage.SetControlsForTest(cesiumScreenSpaceError, CreateComponent<Toggle>(), CreateComponent<Toggle>(),
@@ -38,6 +63,14 @@ public class SettingsPageValidationTests
     [TearDown]
     public void TearDown()
     {
+        foreach (string key in PreferenceKeys)
+        {
+            if (existingPreferences.Contains(key)) PlayerPrefs.SetInt(key, previousPreferences[key]);
+            else PlayerPrefs.DeleteKey(key);
+        }
+        PlayerPrefs.Save();
+        if (hadSettingsFile) File.WriteAllBytes(settingsPath, previousSettingsFile);
+        else if (File.Exists(settingsPath)) File.Delete(settingsPath);
         foreach (Object createdObject in createdObjects)
         {
             Object.DestroyImmediate(createdObject);
@@ -98,7 +131,8 @@ public class SettingsPageValidationTests
         Assert.That(prefSettings.screenSpaceError, Is.EqualTo(expectedResult ? int.Parse(value) : 64));
     }
 
-    [TestCase("0", false)]
+    [TestCase("-1", false)]
+    [TestCase("0", true)]
     [TestCase("1", true)]
     [TestCase("1000", true)]
     [TestCase("1001", false)]
@@ -120,6 +154,126 @@ public class SettingsPageValidationTests
 
         Assert.That(cesiumPage.TryApplyChanges(), Is.EqualTo(expectedResult));
         Assert.That(prefSettings.LoadingDescendantLimit, Is.EqualTo(expectedResult ? uint.Parse(value) : 10));
+    }
+
+    [TestCase(-1, false, 0u)]
+    [TestCase(0, true, 0u)]
+    [TestCase(1000, true, 1000u)]
+    [TestCase(1001, false, 0u)]
+    public void PrefSettings_TileLimitParserAcceptsInclusiveRangeWithoutWrappingNegativeValues(
+        int value, bool expectedResult, uint expectedValue)
+    {
+        Assert.That(PrefSettings.TryParseCesiumTileLimit(value, out uint parsed), Is.EqualTo(expectedResult));
+        Assert.That(parsed, Is.EqualTo(expectedValue));
+    }
+
+    [TestCase("MaximumSimultaneousTileLoads", -1, 28u)]
+    [TestCase("MaximumSimultaneousTileLoads", 0, 0u)]
+    [TestCase("MaximumSimultaneousTileLoads", 1000, 1000u)]
+    [TestCase("MaximumSimultaneousTileLoads", 1001, 28u)]
+    [TestCase("LoadingDescendantLimit", -1, 10u)]
+    [TestCase("LoadingDescendantLimit", 0, 0u)]
+    [TestCase("LoadingDescendantLimit", 1000, 1000u)]
+    [TestCase("LoadingDescendantLimit", 1001, 10u)]
+    public void PrefSettings_PlayerPrefsLoadKeepsPreviousValueWhenLimitInvalid(
+        string key, int storedValue, uint expectedValue)
+    {
+        bool hadValue = PlayerPrefs.HasKey(key);
+        int previousValue = PlayerPrefs.GetInt(key);
+        try
+        {
+            PlayerPrefs.SetInt(key, storedValue);
+            prefSettings.SettingsToVariables();
+
+            uint actualValue = key == "MaximumSimultaneousTileLoads"
+                ? prefSettings.MaximumSimultaneousTileLoads
+                : prefSettings.LoadingDescendantLimit;
+            Assert.That(actualValue, Is.EqualTo(expectedValue));
+        }
+        finally
+        {
+            if (hadValue) PlayerPrefs.SetInt(key, previousValue);
+            else PlayerPrefs.DeleteKey(key);
+        }
+    }
+
+    [TestCase("MaximumSimultaneousTileLoads", -1, false)]
+    [TestCase("MaximumSimultaneousTileLoads", 0, true)]
+    [TestCase("MaximumSimultaneousTileLoads", 1000, true)]
+    [TestCase("MaximumSimultaneousTileLoads", 1001, false)]
+    [TestCase("LoadingDescendantLimit", -1, false)]
+    [TestCase("LoadingDescendantLimit", 0, true)]
+    [TestCase("LoadingDescendantLimit", 1000, true)]
+    [TestCase("LoadingDescendantLimit", 1001, false)]
+    public void PrefSettings_JsonLoadIgnoresOutOfRangeTileValueButLoadsGeneralValue(string key, int storedValue, bool expectedResult)
+    {
+        string json = "{\"" + key + "\":" + storedValue + ",\"volume\":42}";
+
+        Assert.That(prefSettings.TryLoadFromJson(json), Is.EqualTo(expectedResult));
+        Assert.That(prefSettings.volume, Is.EqualTo(42));
+        uint actualValue = key == "MaximumSimultaneousTileLoads"
+            ? prefSettings.MaximumSimultaneousTileLoads
+            : prefSettings.LoadingDescendantLimit;
+        uint previousValue = key == "MaximumSimultaneousTileLoads" ? 28u : 10u;
+        Assert.That(actualValue, Is.EqualTo(expectedResult ? (uint)storedValue : previousValue));
+    }
+
+    [Test]
+    public void PrefSettings_InvalidCesiumLimitStillAppliesAndPersistsGeneralSettings()
+    {
+        const string tileKey = "MaximumSimultaneousTileLoads";
+        const string volumeKey = "volume";
+        bool hadTile = PlayerPrefs.HasKey(tileKey);
+        bool hadVolume = PlayerPrefs.HasKey(volumeKey);
+        int previousTile = PlayerPrefs.GetInt(tileKey);
+        int previousVolume = PlayerPrefs.GetInt(volumeKey);
+        float previousAudioVolume = AudioListener.volume;
+        string settingsPath = Path.Combine(Application.persistentDataPath, "Settings", "settings.json");
+        bool hadSettingsFile = File.Exists(settingsPath);
+        byte[] previousSettingsFile = hadSettingsFile ? File.ReadAllBytes(settingsPath) : null;
+        try
+        {
+            PlayerPrefs.SetInt(tileKey, 28);
+            prefSettings.MaximumSimultaneousTileLoads = 1001;
+            prefSettings.volume = 40;
+            LogAssert.Expect(LogType.Warning, "Cesium tile limits must be between 0 and 1000. Cesium settings were not applied.");
+
+            prefSettings.VariablesToObjects();
+
+            Assert.That(prefSettings.MaximumSimultaneousTileLoads, Is.EqualTo(1001));
+            Assert.That(AudioListener.volume, Is.EqualTo(0.2f).Within(0.0001f));
+            Assert.That(PlayerPrefs.GetInt(volumeKey), Is.EqualTo(40));
+            Assert.That(PlayerPrefs.GetInt(tileKey), Is.EqualTo(28));
+            string savedJson = File.ReadAllText(settingsPath);
+            Assert.That(Regex.IsMatch(savedJson, "\"volume\"\\s*:\\s*40"), Is.True);
+            Assert.That(Regex.IsMatch(savedJson, "\"MaximumSimultaneousTileLoads\"\\s*:\\s*28"), Is.True);
+        }
+        finally
+        {
+            AudioListener.volume = previousAudioVolume;
+            if (hadTile) PlayerPrefs.SetInt(tileKey, previousTile);
+            else PlayerPrefs.DeleteKey(tileKey);
+            if (hadVolume) PlayerPrefs.SetInt(volumeKey, previousVolume);
+            else PlayerPrefs.DeleteKey(volumeKey);
+            if (hadSettingsFile) File.WriteAllBytes(settingsPath, previousSettingsFile);
+            else if (File.Exists(settingsPath)) File.Delete(settingsPath);
+        }
+    }
+
+    [Test]
+    public void CesiumPage_InvalidTileLimitDoesNotApplyOtherDraftsAndDiscardRestoresSnapshot()
+    {
+        cesiumPage.SetScreenSpaceErrorForTest("128");
+        cesiumPage.SetMaximumSimultaneousTileLoadsForTest("1001");
+
+        Assert.That(cesiumPage.TryApplyChanges(), Is.False);
+        Assert.That(prefSettings.screenSpaceError, Is.EqualTo(64));
+        Assert.That(prefSettings.MaximumSimultaneousTileLoads, Is.EqualTo(28));
+        Assert.That(cesiumPage.MaximumSimultaneousTileLoadsError, Does.Contain("1000"));
+
+        cesiumPage.DiscardChanges();
+        Assert.That(cesiumPage.IsDirty, Is.False);
+        Assert.That(cesiumPage.MaximumSimultaneousTileLoadsError, Is.Empty);
     }
 
     [TestCase("0", true)]

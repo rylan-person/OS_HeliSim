@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 
@@ -13,6 +14,7 @@ public class PauseMenuControllerTests
     private PauseMenuController controller;
     private GameObject overlayRoot;
     private GameObject confirmationRoot;
+    private EventSystem eventSystem;
     private TestInFlightMenuPage firstPage;
     private TestInFlightMenuPage secondPage;
     private TestInFlightMenuPage dirtyPage;
@@ -25,6 +27,7 @@ public class PauseMenuControllerTests
 
         overlayRoot = CreateGameObject("Overlay");
         confirmationRoot = CreateGameObject("Confirmation");
+        eventSystem = CreateGameObject("EventSystem").AddComponent<EventSystem>();
         firstPage = CreatePage("first");
         secondPage = CreatePage("second");
         dirtyPage = CreatePage("dirty");
@@ -71,6 +74,24 @@ public class PauseMenuControllerTests
 
         Assert.That(overlayRoot.activeSelf, Is.True);
         Assert.That(confirmationRoot.activeSelf, Is.True);
+    }
+
+    [Test]
+    public void RequestClose_WhenActivePageIsDirty_SelectsModalActionAndDisablesUnderlyingControls()
+    {
+        Button initialButton = CreateButton("Initial", firstPage.ContentRoot.transform);
+        firstPage.SetInitialSelectable(initialButton);
+        Button cancelButton = CreateButton("Cancel", confirmationRoot.transform);
+        SetPrivateField(controller, "cancelCloseButton", cancelButton);
+        dirtyPage.SetDirty(true);
+        controller.Open();
+        controller.SelectPage("dirty");
+
+        controller.Close();
+
+        Assert.That(eventSystem.currentSelectedGameObject, Is.EqualTo(cancelButton.gameObject));
+        Assert.That(initialButton.interactable, Is.False);
+        Assert.That(cancelButton.navigation.mode, Is.EqualTo(Navigation.Mode.Explicit));
     }
 
     [Test]
@@ -175,6 +196,67 @@ public class PauseMenuControllerTests
         Assert.That(dirtyPage.ContentRoot.activeSelf, Is.True);
     }
 
+    [Test]
+    public void ResolvePendingClose_Cancel_RestoresThePreviousPageSelectionAndInteractivity()
+    {
+        Button initialButton = CreateButton("Initial", dirtyPage.ContentRoot.transform);
+        dirtyPage.SetInitialSelectable(initialButton);
+        Button applyButton = CreateButton("Apply", confirmationRoot.transform);
+        SetPrivateField(controller, "applyChangesButton", applyButton);
+        dirtyPage.SetDirty(true);
+        controller.Open();
+        controller.SelectPage("dirty");
+        controller.Close();
+
+        controller.ResolvePendingClose(DirtyPageChoice.Cancel);
+
+        Assert.That(eventSystem.currentSelectedGameObject, Is.EqualTo(initialButton.gameObject));
+        Assert.That(initialButton.interactable, Is.True);
+    }
+
+    [Test]
+    public void Close_WhenConfirmationIsOpen_CancelsWithoutOverwritingTheSavedSelection()
+    {
+        Button initialButton = CreateButton("Initial", dirtyPage.ContentRoot.transform);
+        dirtyPage.SetInitialSelectable(initialButton);
+        Button applyButton = CreateButton("Apply", confirmationRoot.transform);
+        SetPrivateField(controller, "applyChangesButton", applyButton);
+        dirtyPage.SetDirty(true);
+        controller.Open();
+        controller.SelectPage("dirty");
+        controller.Close();
+
+        controller.Close();
+
+        Assert.That(confirmationRoot.activeSelf, Is.False);
+        Assert.That(eventSystem.currentSelectedGameObject, Is.EqualTo(initialButton.gameObject));
+        Assert.That(initialButton.interactable, Is.True);
+    }
+
+    [Test]
+    public void Open_ConfiguresPageControlsForAutomaticKeyboardNavigation()
+    {
+        Button initialButton = CreateButton("Initial", firstPage.ContentRoot.transform);
+        initialButton.navigation = new Navigation { mode = Navigation.Mode.None };
+        firstPage.SetInitialSelectable(initialButton);
+
+        controller.Open();
+
+        Assert.That(initialButton.navigation.mode, Is.EqualTo(Navigation.Mode.Automatic));
+    }
+
+    [Test]
+    public void SelectPage_ResetsTheSharedPageScrollToTop()
+    {
+        ScrollRect scrollRect = CreateScrollRect(overlayRoot.transform);
+        scrollRect.verticalNormalizedPosition = 0.25f;
+
+        controller.Open();
+        controller.SelectPage("second");
+
+        Assert.That(scrollRect.verticalNormalizedPosition, Is.EqualTo(1f));
+    }
+
     private PauseMenuController CreateController(IEnumerable<TestInFlightMenuPage> pages)
     {
         GameObject controllerRoot = CreateGameObject("Controller");
@@ -182,8 +264,10 @@ public class PauseMenuControllerTests
         PauseMenuController result = controllerRoot.AddComponent<PauseMenuController>();
         SetPrivateField(result, "overlayRoot", overlayRoot);
         SetPrivateField(result, "confirmationRoot", confirmationRoot);
+        SetPrivateField(result, "eventSystem", eventSystem != null && eventSystem.gameObject.activeInHierarchy ? eventSystem : null);
         SetPrivateField(result, "pages", CreateRegistrations(pages));
         controllerRoot.SetActive(true);
+        typeof(PauseMenuController).GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(result, null);
         return result;
     }
 
@@ -215,6 +299,39 @@ public class PauseMenuControllerTests
         return gameObject;
     }
 
+    private Button CreateButton(string name, Transform parent)
+    {
+        GameObject buttonObject = CreateUiGameObject(name);
+        buttonObject.transform.SetParent(parent);
+        buttonObject.AddComponent<Image>();
+        return buttonObject.AddComponent<Button>();
+    }
+
+    private ScrollRect CreateScrollRect(Transform parent)
+    {
+        GameObject scrollObject = CreateUiGameObject("PageScroll");
+        scrollObject.transform.SetParent(parent);
+        scrollObject.AddComponent<Image>();
+        ScrollRect scrollRect = scrollObject.AddComponent<ScrollRect>();
+        GameObject viewport = CreateUiGameObject("Viewport");
+        viewport.transform.SetParent(scrollObject.transform);
+        viewport.AddComponent<Image>();
+        GameObject content = CreateUiGameObject("Content");
+        content.transform.SetParent(viewport.transform);
+        viewport.GetComponent<RectTransform>().sizeDelta = new Vector2(100f, 100f);
+        content.GetComponent<RectTransform>().sizeDelta = new Vector2(100f, 200f);
+        scrollRect.viewport = viewport.GetComponent<RectTransform>();
+        scrollRect.content = content.GetComponent<RectTransform>();
+        return scrollRect;
+    }
+
+    private GameObject CreateUiGameObject(string name)
+    {
+        GameObject gameObject = new GameObject(name, typeof(RectTransform));
+        createdObjects.Add(gameObject);
+        return gameObject;
+    }
+
     private static void SetPrivateField(object target, string fieldName, object value)
     {
         target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(target, value);
@@ -242,6 +359,11 @@ public class PauseMenuControllerTests
         public void SetContentRoot(GameObject contentRoot)
         {
             typeof(InFlightMenuPage).GetField("contentRoot", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(this, contentRoot);
+        }
+
+        public void SetInitialSelectable(Selectable selectable)
+        {
+            typeof(InFlightMenuPage).GetField("initialSelectable", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(this, selectable);
         }
 
         public void SetDirty(bool value)

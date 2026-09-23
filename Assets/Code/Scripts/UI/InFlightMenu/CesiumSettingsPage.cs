@@ -155,11 +155,11 @@ public sealed class CesiumSettingsPage : InFlightMenuPage
         ClearErrors();
         bool valid = NumericSettingParser.TryParseInt(screenSpaceErrorDraft, 10, 256, out int parsedScreenSpaceError, out string error);
         ScreenSpaceErrorError = valid ? string.Empty : error;
-        valid &= NumericSettingParser.TryParseInt(maximumSimultaneousTileLoadsDraft, 1, 1000, out int parsedTileLoads, out error);
+        valid &= NumericSettingParser.TryParseInt(maximumSimultaneousTileLoadsDraft, 0, (int)PrefSettings.MaximumCesiumTileLimit, out int parsedTileLoads, out error);
         MaximumSimultaneousTileLoadsError = valid ? string.Empty : error;
         valid &= NumericSettingParser.TryParseInt(maximumCachedBytesDraft, 0, int.MaxValue, out int parsedCachedBytes, out error);
         MaximumCachedBytesError = valid ? string.Empty : error;
-        valid &= NumericSettingParser.TryParseInt(loadingDescendantLimitDraft, 0, 1000, out int parsedDescendantLimit, out error);
+        valid &= NumericSettingParser.TryParseInt(loadingDescendantLimitDraft, 0, (int)PrefSettings.MaximumCesiumTileLimit, out int parsedDescendantLimit, out error);
         LoadingDescendantLimitError = valid ? string.Empty : error;
         valid &= NumericSettingParser.TryParseInt(culledScreenSpaceErrorDraft, 0, 256, out int parsedCulledError, out error);
         CulledScreenSpaceErrorError = valid ? string.Empty : error;
