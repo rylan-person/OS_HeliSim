@@ -187,7 +187,7 @@ public class PlayerTimeTrialState : NetworkBehaviour
 
     public static void SetActiveState(PlayerTimeTrialState state)
     {
-        if (ActiveState == state)
+        if (ReferenceEquals(ActiveState, state))
         {
             return;
         }
@@ -233,6 +233,22 @@ public class PlayerTimeTrialState : NetworkBehaviour
     private void Start()
     {
         TryAutoAssignAsActive();
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (ReferenceEquals(ActiveState, this))
+        {
+            SetActiveState(null);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (ReferenceEquals(ActiveState, this))
+        {
+            SetActiveState(null);
+        }
     }
 
     private void Update()

@@ -83,10 +83,53 @@ public class WaypointManager : MonoBehaviour
         }
     }
 
+    public void BindLocalHelicopter(Transform helicopter, PlayerTimeTrialState state)
+    {
+        if (helicopter == null)
+        {
+            return;
+        }
+
+        if (helicopterTransform != helicopter)
+        {
+            helicopterTransform = helicopter;
+            startingPosition = helicopter.position;
+            playerTimeTrialState = state;
+            goLock = false;
+            lastLapTime = 0f;
+            lastLapDiffTime = 0f;
+            lastLapWasNewBest = false;
+            ResetLapDataToDefault();
+        }
+        else
+        {
+            playerTimeTrialState = state;
+            PublishPlayerProgress();
+        }
+    }
+
+    public void UnbindLocalHelicopter(Transform helicopter)
+    {
+        if (helicopterTransform != helicopter)
+        {
+            return;
+        }
+
+        helicopterTransform = null;
+        playerTimeTrialState = null;
+        lapActive = false;
+    }
+
+    public bool IsTrackedHelicopter(Transform helicopter)
+    {
+        return helicopterTransform != null && helicopter != null &&
+               (helicopter == helicopterTransform || helicopter.IsChildOf(helicopterTransform));
+    }
+
     public bool finishWaypoint(int waypointNumber)
     {
         LogDebug("WaypointNumber: " + waypointNumber + " : currentWaypoint: " + currentWaypoint);
-        if (currentWaypoint == waypointNumber - 1)
+        if (currentWaypoint >= 0 && currentWaypoint < waypoints.Length && currentWaypoint == waypointNumber - 1)
         {
             var waypoint = waypoints[currentWaypoint].GetComponentInChildren<Waypoint>();
             if (waypoint == null)
@@ -124,11 +167,14 @@ public class WaypointManager : MonoBehaviour
 
     public void finishSector(int sectorNumber)
     {
-        if (sectorNumber == currentSector + 1)
+        if (sectorNumber == currentSector + 1 && currentSector >= 0 && currentSector < _sectors &&
+            currentSector < currentLapSectors.Count && currentSector < averageSectors.Count &&
+            currentSector < bestSectors.Count && currentSector < bestLapSectors.Count)
         {
             currentLapSectors[currentSector] = currentSectorTime;
-            for (int i = 0; i < timingManagers.Length; i++)
+            for (int i = 0; timingManagers != null && i < timingManagers.Length; i++)
             {
+                if (!CanDisplaySector(timingManagers[i], currentSector)) continue;
                 timingManagers[i].updateSectorTime(currentSector, currentLapSectors[currentSector]);
                 timingManagers[i].updateSectorTimeDifference(currentSector, currentLapSectors[currentSector], averageSectors[currentSector], bestSectors[currentSector], bestLapSectors[currentSector]);
             }
@@ -148,13 +194,14 @@ public class WaypointManager : MonoBehaviour
     private void finishLap()
     {
         // Add the lap to lap times
+        int previousLapCount = lapTimes.Count;
         lapTimes.Add(currentLapTime);
 
         // if the new best lap true
         bool newBest = false;
 
         lastLapTime = currentLapTime;
-        lastLapDiffTime = lastLapTime - bestLap;
+        lastLapDiffTime = bestLap >= float.MaxValue * 0.5f ? 0f : lastLapTime - bestLap;
 
         // Check if the lap is the best lap
         if (currentLapTime < bestLap)
@@ -181,7 +228,7 @@ public class WaypointManager : MonoBehaviour
         // Calculate the new average sectors
         for (int i = 0; i < averageSectors.Count; i++)
         {
-            averageSectors[i] = (averageSectors[i] * lapTimes.Count + currentLapSectors[i]) / (lapTimes.Count + 1);
+            averageSectors[i] = (averageSectors[i] * previousLapCount + currentLapSectors[i]) / lapTimes.Count;
         }
 
         averageLap = 0;
@@ -194,8 +241,8 @@ public class WaypointManager : MonoBehaviour
         goLock = true;
         lastLapWasNewBest = newBest;
 
-        updateDisplayTimes(newBest);
         updateOptLap();
+        updateDisplayTimes(newBest);
         PublishPlayerComparisons(newBest);
 
         SaveTimesToCSV();
@@ -209,8 +256,9 @@ public class WaypointManager : MonoBehaviour
             averageLap += averageSectors[i];
         }
 
-        for (int i = 0; i < timingManagers.Length; i++)
+        for (int i = 0; timingManagers != null && i < timingManagers.Length; i++)
         {
+            if (!CanDisplayTiming(timingManagers[i])) continue;
             if (resetLapTimes)
             {
                 timingManagers[i].resetCurrentLapTime();
@@ -398,13 +446,17 @@ public class WaypointManager : MonoBehaviour
             currentLapTime += Time.deltaTime;
             currentSectorTime += Time.deltaTime;
 
-            for (int i = 0; i < timingManagers.Length; i++)
+            for (int i = 0; timingManagers != null && i < timingManagers.Length; i++)
             {
+                if (!CanDisplayTiming(timingManagers[i])) continue;
                 // update the current lap time in minuites and seconds
                 timingManagers[i].updateCurrentLapTime(currentLapTime);
 
                 // update the current sector time and difference
-                timingManagers[i].updateSectorTime(currentSector, currentSectorTime);
+                if (CanDisplaySector(timingManagers[i], currentSector))
+                {
+                    timingManagers[i].updateSectorTime(currentSector, currentSectorTime);
+                }
             }
         }
 
@@ -535,18 +587,23 @@ public class WaypointManager : MonoBehaviour
 
     private void ResolvePlayerState()
     {
-        if (playerTimeTrialState != null)
+        if (helicopterTransform == null)
+        {
+            playerTimeTrialState = null;
+            return;
+        }
+
+        if (playerTimeTrialState != null &&
+            (playerTimeTrialState.transform == helicopterTransform ||
+             helicopterTransform.IsChildOf(playerTimeTrialState.transform)))
         {
             return;
         }
 
-        if (helicopterTransform != null)
+        playerTimeTrialState = helicopterTransform.GetComponentInParent<PlayerTimeTrialState>();
+        if (playerTimeTrialState == null)
         {
-            playerTimeTrialState = helicopterTransform.GetComponentInParent<PlayerTimeTrialState>();
-            if (playerTimeTrialState == null)
-            {
-                playerTimeTrialState = helicopterTransform.GetComponentInChildren<PlayerTimeTrialState>();
-            }
+            playerTimeTrialState = helicopterTransform.GetComponentInChildren<PlayerTimeTrialState>();
         }
 
     }
@@ -594,7 +651,7 @@ public class WaypointManager : MonoBehaviour
         {
             for (int i = 0; i < timingManagers.Length; i++)
             {
-                if (timingManagers[i] != null && !managers.Contains(timingManagers[i]))
+                if (timingManagers[i] != null && !timingManagers[i].IsExternallyDriven && !managers.Contains(timingManagers[i]))
                 {
                     managers.Add(timingManagers[i]);
                 }
@@ -606,7 +663,7 @@ public class WaypointManager : MonoBehaviour
             var fromHelicopter = helicopterTransform.GetComponentsInChildren<Timing>(true);
             for (int i = 0; i < fromHelicopter.Length; i++)
             {
-                if (fromHelicopter[i] != null && !managers.Contains(fromHelicopter[i]))
+                if (fromHelicopter[i] != null && !fromHelicopter[i].IsExternallyDriven && !managers.Contains(fromHelicopter[i]))
                 {
                     managers.Add(fromHelicopter[i]);
                 }
@@ -618,7 +675,7 @@ public class WaypointManager : MonoBehaviour
             var allTimingManagers = FindObjectsByType<Timing>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             for (int i = 0; i < allTimingManagers.Length; i++)
             {
-                if (allTimingManagers[i] != null && !managers.Contains(allTimingManagers[i]))
+                if (allTimingManagers[i] != null && !allTimingManagers[i].IsExternallyDriven && !managers.Contains(allTimingManagers[i]))
                 {
                     managers.Add(allTimingManagers[i]);
                 }
@@ -626,6 +683,34 @@ public class WaypointManager : MonoBehaviour
         }
 
         timingManagers = managers.ToArray();
+    }
+
+    private static bool CanDisplayTiming(Timing timing)
+    {
+        if (timing == null || timing.IsExternallyDriven || timing.sectorTimesText == null ||
+            timing.sectorTimesDifferenceText == null ||
+            timing.sectorTimesDifferenceText.Length < timing.sectorTimesText.Length)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < timing.sectorTimesText.Length; i++)
+        {
+            if (!CanDisplaySector(timing, i)) return false;
+        }
+
+        return timing.currentLapTimeText != null &&
+               timing.bestLapTimeText != null && timing.optLapTimeText != null &&
+               timing.lastLapTimeText != null && timing.lastLapTimeDifferenceText != null;
+    }
+
+    private static bool CanDisplaySector(Timing timing, int sector)
+    {
+        return timing != null && sector >= 0 &&
+               timing.sectorTimesText != null && sector < timing.sectorTimesText.Length &&
+               timing.sectorTimesText[sector] != null &&
+               timing.sectorTimesDifferenceText != null && sector < timing.sectorTimesDifferenceText.Length &&
+               timing.sectorTimesDifferenceText[sector] != null;
     }
 
 }

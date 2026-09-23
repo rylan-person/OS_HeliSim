@@ -32,13 +32,16 @@ public class Waypoint : MonoBehaviour
     // If colliding with the helicopter call the finishSector method in the waypoint manager
     private void OnTriggerEnter(Collider other)
     {
-        if (!other.CompareTag("Helicopter"))
+        if (!other.CompareTag("Helicopter") || waypointManager == null ||
+            !waypointManager.IsTrackedHelicopter(other.transform))
         {
             return;
         }
 
         var networkObject = other.GetComponentInParent<NetworkObject>();
-        if (networkObject != null && !networkObject.IsOwner)
+        var networkManager = Unity.Netcode.NetworkManager.Singleton;
+        if (networkManager != null && networkManager.IsListening &&
+            (networkObject == null || !networkObject.IsSpawned || !networkObject.IsOwner))
         {
             return;
         }

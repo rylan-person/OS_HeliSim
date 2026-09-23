@@ -65,7 +65,10 @@ public class LocalPlayerSetup : NetworkBehaviour
         }
         else
         {
-            if (WaypointManager.Instance != null) WaypointManager.Instance.helicopterTransform = this.transform;
+            if (WaypointManager.Instance != null)
+            {
+                WaypointManager.Instance.BindLocalHelicopter(transform, GetComponent<PlayerTimeTrialState>());
+            }
             // Move cameratarget to be a child of this player
             var cameraTarget = GetCameraTarget();
             if (cameraTarget != null)
@@ -85,6 +88,14 @@ public class LocalPlayerSetup : NetworkBehaviour
             // Disable any GameObjects (Cameras, UI, etc.)
             foreach (var go in remoteOnlyObjects)
                 if (go != null) go.SetActive(false);
+        }
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (IsOwner && WaypointManager.Instance != null)
+        {
+            WaypointManager.Instance.UnbindLocalHelicopter(transform);
         }
     }
 
