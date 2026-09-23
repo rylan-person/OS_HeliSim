@@ -50,6 +50,12 @@ public readonly struct InputBindingRow
     public bool IsAvailable => BindingIndex >= 0;
 }
 
+public enum BindingDeviceTab
+{
+    KeyboardMouse,
+    Joystick,
+}
+
 public readonly struct InputRebindingCommand
 {
     public readonly string Label;
@@ -97,16 +103,35 @@ public sealed class InputRebindingService : IDisposable
 
     public InputActionAsset Actions => actions;
 
+    public static bool IsDeviceAllowedForTab(InputDevice device, BindingDeviceTab tab)
+    {
+        if (device == null) return false;
+        bool keyboardOrMouse = device is Keyboard || device is Mouse;
+        return tab == BindingDeviceTab.KeyboardMouse ? keyboardOrMouse : !keyboardOrMouse;
+    }
+
     public IReadOnlyList<InputBindingRow> GetBindingRows(string actionName)
+    {
+        return GetBindingRowsInternal(actionName, null);
+    }
+
+    public IReadOnlyList<InputBindingRow> GetBindingRows(string actionName, BindingDeviceTab deviceTab)
+    {
+        return GetBindingRowsInternal(actionName, deviceTab);
+    }
+
+    private IReadOnlyList<InputBindingRow> GetBindingRowsInternal(string actionName, BindingDeviceTab? deviceTab)
     {
         List<InputBindingRow> rows = new List<InputBindingRow>();
         InputAction action = actions.FindAction(actionName, false);
         if (action == null)
         {
-            rows.Add(new InputBindingRow(actionName, -1, string.Empty, "Unavailable", "This command has no Input System action yet."));
+            if (!deviceTab.HasValue || deviceTab.Value == BindingDeviceTab.KeyboardMouse)
+                rows.Add(new InputBindingRow(actionName, -1, string.Empty, "Unavailable", "This command has no Input System action yet."));
             return rows;
         }
 
+        int bindingOrdinal = 0;
         for (int index = 0; index < action.bindings.Count; index++)
         {
             InputBinding binding = action.bindings[index];
@@ -115,16 +140,27 @@ public sealed class InputRebindingService : IDisposable
                 continue;
             }
 
-            string name = binding.isPartOfComposite ? binding.name : "Primary " + (rows.Count + 1);
+            bindingOrdinal++;
+            if (deviceTab.HasValue && GetOriginalDeviceTab(binding.path) != deviceTab.Value) continue;
+
+            string name = binding.isPartOfComposite ? binding.name : "Primary " + bindingOrdinal;
             rows.Add(new InputBindingRow(actionName, index, name, GetDisplayString(actionName, index), null));
         }
 
-        if (rows.Count == 0)
+        if (rows.Count == 0 && !deviceTab.HasValue)
         {
             rows.Add(new InputBindingRow(actionName, -1, string.Empty, "Unavailable", "This command has no bindings yet."));
         }
 
         return rows;
+    }
+
+    private static BindingDeviceTab GetOriginalDeviceTab(string path)
+    {
+        return !string.IsNullOrEmpty(path) &&
+            (path.StartsWith("<Keyboard>/", StringComparison.OrdinalIgnoreCase) ||
+             path.StartsWith("<Mouse>/", StringComparison.OrdinalIgnoreCase))
+            ? BindingDeviceTab.KeyboardMouse : BindingDeviceTab.Joystick;
     }
 
     public string GetPrimaryBindingDisplay(string actionName)
@@ -193,6 +229,48 @@ public sealed class InputRebindingService : IDisposable
         return TryApplyBindingPath(actionName, bindingIndex, path, null, out error);
     }
 
+    public string GetJoystickBindingDisplay(string actionName)
+    {
+        InputAction action = actions.FindAction(actionName, false);
+        if (action == null) return "Unavailable";
+
+        int count = 0;
+        int lastIndex = -1;
+        bool factoryBindings = true;
+        foreach (int index in GetJoystickBindingIndices(action))
+        {
+            if (string.IsNullOrEmpty(action.bindings[index].effectivePath)) continue;
+            count++;
+            lastIndex = index;
+            factoryBindings &= string.IsNullOrEmpty(action.bindings[index].overridePath);
+        }
+
+        if (count == 0) return "Unbound";
+        return count == 1 ? GetDisplayString(actionName, lastIndex)
+            : factoryBindings ? "Factory controls" : "Multiple controls";
+    }
+
+    public bool TryApplyJoystickBindingPath(string actionName, int bindingIndex, string path, out string error)
+    {
+        return TryApplyJoystickBindingPath(actionName, bindingIndex, path, null, out error);
+    }
+
+    public bool TryClearJoystickBindings(string actionName, out string error)
+    {
+        if (!TryGetJoystickBindings(actionName, out InputAction action, out List<int> indices, out error)) return false;
+        foreach (int index in indices) action.ApplyBindingOverride(index, string.Empty);
+        Save();
+        return true;
+    }
+
+    public bool TryResetJoystickBindings(string actionName, out string error)
+    {
+        if (!TryGetJoystickBindings(actionName, out InputAction action, out List<int> indices, out error)) return false;
+        foreach (int index in indices) action.RemoveBindingOverride(index);
+        Save();
+        return true;
+    }
+
     public bool TryClear(string actionName, int bindingIndex, out string error)
     {
         if (!TryGetBinding(actionName, bindingIndex, out InputAction action, out InputBinding binding, out error))
@@ -249,7 +327,8 @@ public sealed class InputRebindingService : IDisposable
         store.Clear();
     }
 
-    public bool TryStartRebind(string actionName, int bindingIndex, Action<string> onError, Action onChanged)
+    public bool TryStartRebind(string actionName, int bindingIndex, Action<string> onError, Action onChanged,
+        Action onCancelled = null, Func<InputControl, bool> acceptControl = null, bool replaceJoystickBindings = false)
     {
         if (!TryGetBinding(actionName, bindingIndex, out InputAction action, out InputBinding binding, out string error))
         {
@@ -270,21 +349,40 @@ public sealed class InputRebindingService : IDisposable
             action.Disable();
         }
 
+        bool bindingChanged = false;
         operation = action.PerformInteractiveRebinding(bindingIndex)
             .WithCancelingThrough("<Keyboard>/escape")
             .OnApplyBinding((rebind, path) =>
             {
-                if (TryApplyBindingPath(actionName, bindingIndex, path, rebind.selectedControl, out string applyError))
+                bool applied = replaceJoystickBindings
+                    ? TryApplyJoystickBindingPath(actionName, bindingIndex, path, rebind.selectedControl, out string applyError)
+                    : TryApplyBindingPath(actionName, bindingIndex, path, rebind.selectedControl, out applyError);
+                if (applied)
                 {
-                    onChanged?.Invoke();
+                    bindingChanged = true;
                 }
                 else
                 {
                     onError?.Invoke(applyError);
                 }
             })
-            .OnComplete(rebind => FinishRebind(action, wasEnabled))
-            .OnCancel(rebind => FinishRebind(action, wasEnabled));
+            .OnComplete(rebind => { FinishRebind(action, wasEnabled); if (bindingChanged) onChanged?.Invoke(); })
+            .OnCancel(rebind => { FinishRebind(action, wasEnabled); onCancelled?.Invoke(); });
+        if (acceptControl != null)
+        {
+            // UI pointer events must reach the dialog buttons even while listening.
+            operation.WithMatchingEventsBeingSuppressed(false)
+                .OnPotentialMatch(rebind =>
+                {
+                    for (int index = rebind.candidates.Count - 1; index >= 0; index--)
+                    {
+                        InputControl candidate = rebind.candidates[index];
+                        if (!acceptControl(candidate)) rebind.RemoveCandidate(candidate);
+                    }
+
+                    if (rebind.candidates.Count > 0) rebind.Complete();
+                });
+        }
         operation.Start();
         return true;
     }
@@ -316,7 +414,54 @@ public sealed class InputRebindingService : IDisposable
         operation = null;
     }
 
-    private bool TryApplyBindingPath(string actionName, int bindingIndex, string path, InputControl control, out string error)
+    private bool TryApplyJoystickBindingPath(string actionName, int bindingIndex, string path,
+        InputControl control, out string error)
+    {
+        if (!TryGetJoystickBindings(actionName, out InputAction action, out List<int> indices, out error)) return false;
+        if (!indices.Contains(bindingIndex))
+        {
+            error = "Select a joystick binding to reassign.";
+            return false;
+        }
+
+        if (!TryApplyBindingPath(actionName, bindingIndex, path, control, out error, false)) return false;
+        foreach (int index in indices)
+        {
+            if (index != bindingIndex) action.ApplyBindingOverride(index, string.Empty);
+        }
+        Save();
+        return true;
+    }
+
+    private bool TryGetJoystickBindings(string actionName, out InputAction action, out List<int> indices, out string error)
+    {
+        action = actions.FindAction(actionName, false);
+        indices = action != null ? GetJoystickBindingIndices(action) : new List<int>();
+        if (indices.Count > 0)
+        {
+            error = null;
+            return true;
+        }
+
+        error = action == null ? "This command has no Input System action yet." : "This command has no joystick binding.";
+        return false;
+    }
+
+    private static List<int> GetJoystickBindingIndices(InputAction action)
+    {
+        List<int> indices = new List<int>();
+        for (int index = 0; index < action.bindings.Count; index++)
+        {
+            InputBinding binding = action.bindings[index];
+            if (!binding.isComposite && !binding.isPartOfComposite &&
+                GetOriginalDeviceTab(binding.path) == BindingDeviceTab.Joystick)
+                indices.Add(index);
+        }
+        return indices;
+    }
+
+    private bool TryApplyBindingPath(string actionName, int bindingIndex, string path, InputControl control,
+        out string error, bool saveOverride = true)
     {
         if (!TryGetBinding(actionName, bindingIndex, out InputAction action, out InputBinding binding, out error))
         {
@@ -358,7 +503,7 @@ public sealed class InputRebindingService : IDisposable
         }
 
         action.ApplyBindingOverride(bindingIndex, path);
-        Save();
+        if (saveOverride) Save();
         error = null;
         return true;
     }

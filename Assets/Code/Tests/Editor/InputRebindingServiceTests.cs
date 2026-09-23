@@ -110,6 +110,79 @@ public class InputRebindingServiceTests
     }
 
     [Test]
+    public void DeviceTabs_UseOriginalPathsAfterOverridesAreCleared()
+    {
+        InputAction engine = actions.FindAction("Start Engine Global");
+        engine.AddBinding("<Mouse>/leftButton");
+        engine.AddBinding("<HID::Flight Stick>/button1");
+        Assert.That(service.TryClear("Start Engine Global", 1, out string error), Is.True, error);
+
+        var keyboardRows = service.GetBindingRows("Start Engine Global", BindingDeviceTab.KeyboardMouse);
+        var joystickRows = service.GetBindingRows("Start Engine Global", BindingDeviceTab.Joystick);
+
+        Assert.That(keyboardRows.Count, Is.EqualTo(2));
+        Assert.That(keyboardRows[0].BindingIndex, Is.EqualTo(0));
+        Assert.That(keyboardRows[1].BindingIndex, Is.EqualTo(2));
+        Assert.That(joystickRows.Count, Is.EqualTo(2));
+        Assert.That(joystickRows[0].BindingIndex, Is.EqualTo(1));
+        Assert.That(joystickRows[0].Display, Is.EqualTo("Unbound"));
+        Assert.That(joystickRows[1].BindingIndex, Is.EqualTo(3));
+        Assert.That(service.GetBindingRows("Missing Action", BindingDeviceTab.KeyboardMouse).Count, Is.EqualTo(1));
+        Assert.That(service.GetBindingRows("Missing Action", BindingDeviceTab.Joystick), Is.Empty);
+    }
+
+    [Test]
+    public void JoystickSetting_ReplacesAllHardwarePathsAndRestoresFactoryBindings()
+    {
+        InputAction engine = actions.FindAction("Start Engine Global");
+        engine.AddBinding("<Joystick>/button1");
+        Assert.That(service.GetJoystickBindingDisplay("Start Engine Global"), Is.EqualTo("Factory controls"));
+
+        Assert.That(service.TryApplyJoystickBindingPath("Start Engine Global", 1, "<Gamepad>/buttonNorth", out string applyError), Is.True, applyError);
+        Assert.That(engine.bindings[0].effectivePath, Is.EqualTo("<Keyboard>/f1"));
+        Assert.That(engine.bindings[1].effectivePath, Is.EqualTo("<Gamepad>/buttonNorth"));
+        Assert.That(engine.bindings[2].effectivePath, Is.Empty);
+        Assert.That(service.GetJoystickBindingDisplay("Start Engine Global"), Is.Not.EqualTo("Factory controls"));
+
+        actions.RemoveAllBindingOverrides();
+        service.Load();
+        Assert.That(engine.bindings[1].effectivePath, Is.EqualTo("<Gamepad>/buttonNorth"));
+        Assert.That(engine.bindings[2].effectivePath, Is.Empty);
+
+        Assert.That(service.TryClearJoystickBindings("Start Engine Global", out string clearError), Is.True, clearError);
+        Assert.That(engine.bindings[1].effectivePath, Is.Empty);
+        Assert.That(engine.bindings[2].effectivePath, Is.Empty);
+        Assert.That(service.GetJoystickBindingDisplay("Start Engine Global"), Is.EqualTo("Unbound"));
+
+        Assert.That(service.TryResetJoystickBindings("Start Engine Global", out string resetError), Is.True, resetError);
+        Assert.That(engine.bindings[1].effectivePath, Is.EqualTo("<Gamepad>/buttonSouth"));
+        Assert.That(engine.bindings[2].effectivePath, Is.EqualTo("<Joystick>/button1"));
+        Assert.That(engine.bindings[0].effectivePath, Is.EqualTo("<Keyboard>/f1"));
+    }
+
+    [Test]
+    public void DeviceTabs_RejectControlsFromTheOtherTab()
+    {
+        Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+        Mouse mouse = InputSystem.AddDevice<Mouse>();
+        Gamepad gamepad = InputSystem.AddDevice<Gamepad>();
+        try
+        {
+            Assert.That(InputRebindingService.IsDeviceAllowedForTab(keyboard, BindingDeviceTab.KeyboardMouse), Is.True);
+            Assert.That(InputRebindingService.IsDeviceAllowedForTab(mouse, BindingDeviceTab.KeyboardMouse), Is.True);
+            Assert.That(InputRebindingService.IsDeviceAllowedForTab(gamepad, BindingDeviceTab.KeyboardMouse), Is.False);
+            Assert.That(InputRebindingService.IsDeviceAllowedForTab(gamepad, BindingDeviceTab.Joystick), Is.True);
+            Assert.That(InputRebindingService.IsDeviceAllowedForTab(keyboard, BindingDeviceTab.Joystick), Is.False);
+        }
+        finally
+        {
+            InputSystem.RemoveDevice(keyboard);
+            InputSystem.RemoveDevice(mouse);
+            InputSystem.RemoveDevice(gamepad);
+        }
+    }
+
+    [Test]
     public void KeyboardFallback_AndEscapeRecoverySurviveClearAndLoadedOverrides()
     {
         Assert.That(service.TryClear("Start Engine Global", 0, out string fallbackError), Is.False);

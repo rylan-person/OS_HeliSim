@@ -51,6 +51,37 @@ public sealed class MenuPrefabRefinementTests
         }
     }
 
+    [Test]
+    public void ControlsPage_HasDeviceTabsCompactRowsAndDialogOutsideScrollViewport()
+    {
+        GameObject menu = AssetDatabase.LoadAssetAtPath<GameObject>(MenuPath);
+        Transform controls = Find(menu.transform, "ControlsPage");
+        Transform tabs = Find(controls, "DeviceTabs");
+        Transform row = Find(controls, "BindingRowTemplate");
+        Transform dialog = Find(menu.transform, "BindingDialog");
+
+        Assert.That(Find(tabs, "KeyboardTab").GetComponent<Button>(), Is.Not.Null);
+        Assert.That(Find(tabs, "JoystickTab").GetComponent<Button>(), Is.Not.Null);
+        Assert.That(row.GetComponent<Button>(), Is.Not.Null);
+        Assert.That(row.GetComponent<LayoutElement>().preferredHeight, Is.LessThanOrEqualTo(56));
+        Assert.That(Find(controls, "CategoryHeadingTemplate"), Is.Not.Null);
+        Assert.That(dialog.gameObject.activeSelf, Is.False);
+        Assert.That(dialog.IsChildOf(Find(menu.transform, "PageViewport")), Is.False);
+    }
+
+    [Test]
+    public void BooleanSettings_UseSegmentedOffOnVisuals()
+    {
+        GameObject menu = AssetDatabase.LoadAssetAtPath<GameObject>(MenuPath);
+        foreach (string name in new[] { "EnableNovaPopup", "VSync", "PreloadAncestors", "EnableFogCulling" })
+        {
+            Transform row = Find(menu.transform, name);
+            Assert.That(row.GetComponent<HeliSim.InFlightMenu.SettingsToggleVisual>(), Is.Not.Null, name);
+            Assert.That(Find(row, "OffSegment"), Is.Not.Null, name);
+            Assert.That(Find(row, "OnSegment"), Is.Not.Null, name);
+        }
+    }
+
     private static Transform Find(Transform root, string name)
     {
         if (root == null) return null;

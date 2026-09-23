@@ -69,6 +69,10 @@ public sealed class PauseMenuController : MonoBehaviour
     {
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
+            if (activePage is ControlsRebindingPage controlsPage && controlsPage.TryHandleEscape())
+            {
+                return;
+            }
             Toggle();
         }
     }

@@ -12,11 +12,14 @@ public sealed class ControlsBindingRow : MonoBehaviour
     [SerializeField] private Button rebindButton;
     [SerializeField] private Button clearButton;
     [SerializeField] private Button resetButton;
+    [SerializeField] private Button rowButton;
 
     private InputRebindingService service;
     private string actionName;
     private int bindingIndex;
     private Action changed;
+    private Action<ControlsBindingRow> rowSelected;
+    private bool groupedJoystick;
     private bool listenersWired;
 
     private void Awake() => WireListeners();
@@ -31,20 +34,25 @@ public sealed class ControlsBindingRow : MonoBehaviour
         if (rebindButton != null) rebindButton.onClick.RemoveListener(Rebind);
         if (clearButton != null) clearButton.onClick.RemoveListener(Clear);
         if (resetButton != null) resetButton.onClick.RemoveListener(Reset);
+        if (rowButton != null) rowButton.onClick.RemoveListener(SelectRow);
     }
 
     public void Configure(InputRebindingService rebindingService, InputRebindingCommand command,
-        InputBindingRow binding, bool showPrimary, Action onChanged)
+        InputBindingRow binding, bool showPrimary, Action onChanged, Action<ControlsBindingRow> onSelected = null,
+        bool showGroupedJoystick = false)
     {
         WireListeners();
         service = rebindingService;
         actionName = command.ActionName;
         bindingIndex = binding.BindingIndex;
         changed = onChanged;
+        rowSelected = onSelected;
+        groupedJoystick = showGroupedJoystick;
 
         if (commandLabel != null)
         {
-            commandLabel.text = command.Label + (binding.IsAvailable ? " — " + binding.BindingName : string.Empty);
+            commandLabel.text = command.Label + (binding.IsAvailable && !string.IsNullOrEmpty(binding.BindingName)
+                ? " — " + binding.BindingName : string.Empty);
         }
 
         if (primaryBindingLabel != null)
@@ -63,10 +71,13 @@ public sealed class ControlsBindingRow : MonoBehaviour
         bool available = service != null && bindingIndex >= 0;
         if (bindingLabel != null)
         {
-            bindingLabel.text = available ? service.GetDisplayString(actionName, bindingIndex) : "Unavailable";
+            bindingLabel.text = available
+                ? groupedJoystick ? service.GetJoystickBindingDisplay(actionName) : service.GetDisplayString(actionName, bindingIndex)
+                : "Unavailable";
         }
 
         if (rebindButton != null) rebindButton.interactable = available;
+        if (rowButton != null) rowButton.interactable = available;
         if (clearButton != null) clearButton.interactable = available;
         if (resetButton != null) resetButton.interactable = available;
     }
@@ -79,6 +90,7 @@ public sealed class ControlsBindingRow : MonoBehaviour
             if (rebindButton != null) rebindButton.onClick.RemoveListener(Rebind);
             if (clearButton != null) clearButton.onClick.RemoveListener(Clear);
             if (resetButton != null) resetButton.onClick.RemoveListener(Reset);
+            if (rowButton != null) rowButton.onClick.RemoveListener(SelectRow);
             listenersWired = false;
         }
 
@@ -92,6 +104,18 @@ public sealed class ControlsBindingRow : MonoBehaviour
         WireListeners();
     }
 
+    public void SetRowButtonForTest(Button button)
+    {
+        if (rowButton != null) rowButton.onClick.RemoveListener(SelectRow);
+        rowButton = button;
+        if (rowButton != null) rowButton.onClick.AddListener(SelectRow);
+    }
+
+    public string ActionName => actionName;
+    public int BindingIndex => bindingIndex;
+    public bool IsGroupedJoystick => groupedJoystick;
+    public string GetCommandLabel() => commandLabel != null ? commandLabel.text : actionName;
+
     private void WireListeners()
     {
         if (listenersWired)
@@ -102,8 +126,11 @@ public sealed class ControlsBindingRow : MonoBehaviour
         if (rebindButton != null) rebindButton.onClick.AddListener(Rebind);
         if (clearButton != null) clearButton.onClick.AddListener(Clear);
         if (resetButton != null) resetButton.onClick.AddListener(Reset);
+        if (rowButton != null) rowButton.onClick.AddListener(SelectRow);
         listenersWired = true;
     }
+
+    private void SelectRow() => rowSelected?.Invoke(this);
 
     private void Rebind()
     {
@@ -118,13 +145,15 @@ public sealed class ControlsBindingRow : MonoBehaviour
         {
             SetError(string.Empty);
             changed?.Invoke();
-        });
+        }, replaceJoystickBindings: groupedJoystick);
     }
 
     private void Clear()
     {
         string error = null;
-        if (service == null || !service.TryClear(actionName, bindingIndex, out error))
+        if (service == null || !(groupedJoystick
+            ? service.TryClearJoystickBindings(actionName, out error)
+            : service.TryClear(actionName, bindingIndex, out error)))
         {
             SetError(error ?? "Input bindings are unavailable.");
             return;
@@ -137,7 +166,9 @@ public sealed class ControlsBindingRow : MonoBehaviour
     private void Reset()
     {
         string error = null;
-        if (service == null || !service.TryReset(actionName, bindingIndex, out error))
+        if (service == null || !(groupedJoystick
+            ? service.TryResetJoystickBindings(actionName, out error)
+            : service.TryReset(actionName, bindingIndex, out error)))
         {
             SetError(error ?? "Input bindings are unavailable.");
             return;

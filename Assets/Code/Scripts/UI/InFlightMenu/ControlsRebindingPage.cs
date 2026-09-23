@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Controls;
 using UnityEngine.UI;
 
 public sealed class ControlsRebindingPage : InFlightMenuPage
@@ -13,6 +14,16 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
     [SerializeField] private Button resetProfileButton;
     [SerializeField] private TMP_Text diagnosticLabel;
     [SerializeField] private TMP_Text hardwareSummaryLabel;
+    [SerializeField] private Button keyboardTabButton;
+    [SerializeField] private Button joystickTabButton;
+    [SerializeField] private GameObject bindingDialogRoot;
+    [SerializeField] private TMP_Text dialogTitleLabel;
+    [SerializeField] private TMP_Text dialogBindingLabel;
+    [SerializeField] private TMP_Text dialogStatusLabel;
+    [SerializeField] private Button dialogCancelButton;
+    [SerializeField] private Button dialogClearButton;
+    [SerializeField] private Button dialogRestoreButton;
+    [SerializeField] private TMP_Text categoryHeadingPrefab;
 
     private readonly List<ControlsBindingRow> rows = new List<ControlsBindingRow>();
     private InputRebindingService service;
@@ -21,8 +32,16 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
     private IBindingOverrideStore store = new PlayerPrefsBindingOverrideStore();
     private Button wiredResetProfileButton;
     private bool injectedServiceForTest;
+    private BindingDeviceTab selectedTab = BindingDeviceTab.KeyboardMouse;
+    private ControlsBindingRow selectedRow;
+    private int dialogClosedFrame = -1;
+    private bool closingDialog;
+    private int dialogOpenedFrame = -1;
+    private bool presentationWired;
+    private readonly List<TMP_Text> headings = new List<TMP_Text>();
 
     public InputRebindingService Service => service;
+    public bool IsBindingDialogOpen => bindingDialogRoot != null && bindingDialogRoot.activeSelf;
 
     private void OnEnable() => WireResetButton();
 
@@ -34,11 +53,16 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
         }
 
         ReleaseOwnedService();
+        UnwirePresentation();
     }
 
     public override void OnPageSelected()
     {
         WireResetButton();
+        WirePresentation();
+        CloseDialog();
+        selectedTab = BindingDeviceTab.KeyboardMouse;
+        UpdateTabButtons();
         ResolveService();
         RebuildRows();
         RefreshHardwareSummary();
@@ -47,6 +71,34 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
     public override void OnPageDeselected()
     {
         service?.CancelRebind();
+        CloseDialog();
+    }
+
+    public void SetPresentationForTest(Button keyboardTab, Button joystickTab, GameObject dialog,
+        TMP_Text title, TMP_Text binding, TMP_Text status, Button cancel, Button clear, Button restore)
+    {
+        UnwirePresentation();
+        keyboardTabButton = keyboardTab;
+        joystickTabButton = joystickTab;
+        bindingDialogRoot = dialog;
+        dialogTitleLabel = title;
+        dialogBindingLabel = binding;
+        dialogStatusLabel = status;
+        dialogCancelButton = cancel;
+        dialogClearButton = clear;
+        dialogRestoreButton = restore;
+        WirePresentation();
+    }
+
+    public bool TryHandleEscape()
+    {
+        if (IsBindingDialogOpen)
+        {
+            CloseDialog();
+            return true;
+        }
+
+        return dialogClosedFrame == Time.frameCount;
     }
 
     public void SetControlsForTest(InputActionAsset fallback, IBindingOverrideStore overrideStore,
@@ -141,13 +193,35 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
         }
 
         int used = 0;
+        int usedHeadings = 0;
+        string category = null;
         foreach (InputRebindingCommand command in InputRebindingCommands.All)
         {
             IReadOnlyList<InputBindingRow> bindings = service != null
-                ? service.GetBindingRows(command.ActionName)
-                : new[] { new InputBindingRow(command.ActionName, -1, string.Empty, "Unavailable", "Input bindings are unavailable.") };
+                ? service.GetBindingRows(command.ActionName, selectedTab)
+                : new InputBindingRow[0];
+            if (bindings.Count == 0) continue;
+            string nextCategory = GetCategory(command.ActionName);
+            if (nextCategory != category && categoryHeadingPrefab != null)
+            {
+                if (usedHeadings == headings.Count) headings.Add(Instantiate(categoryHeadingPrefab, bindingRowsRoot));
+                TMP_Text heading = headings[usedHeadings++];
+                heading.text = nextCategory.ToUpperInvariant();
+                heading.fontStyle |= FontStyles.Bold;
+                heading.gameObject.SetActive(true);
+                heading.transform.SetAsLastSibling();
+            }
+            category = nextCategory;
+            bool displayedDirectJoystick = false;
             for (int index = 0; index < bindings.Count; index++)
             {
+                InputBindingRow binding = bindings[index];
+                bool compositePart = binding.IsAvailable && service.Actions.FindAction(command.ActionName)
+                    .bindings[binding.BindingIndex].isPartOfComposite;
+                bool groupedJoystick = selectedTab == BindingDeviceTab.Joystick && !compositePart;
+                if (groupedJoystick && displayedDirectJoystick) continue;
+                if (groupedJoystick) displayedDirectJoystick = true;
+
                 if (used == rows.Count)
                 {
                     rows.Add(Instantiate(bindingRowPrefab, bindingRowsRoot));
@@ -155,9 +229,15 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
 
                 ControlsBindingRow row = rows[used++];
                 row.gameObject.SetActive(true);
-                row.Configure(service, command, bindings[index], index == 0, RefreshRows);
+                if (groupedJoystick)
+                    binding = new InputBindingRow(binding.ActionName, binding.BindingIndex, string.Empty,
+                        service.GetJoystickBindingDisplay(command.ActionName), binding.Error);
+                row.Configure(service, command, binding, selectedTab == BindingDeviceTab.KeyboardMouse && index == 0,
+                    RefreshRows, OpenDialog, groupedJoystick);
+                row.transform.SetAsLastSibling();
             }
         }
+        for (int index = usedHeadings; index < headings.Count; index++) headings[index].gameObject.SetActive(false);
 
         for (int index = used; index < rows.Count; index++)
         {
@@ -169,6 +249,133 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
             resetProfileButton.interactable = service != null;
         }
     }
+
+    private static string GetCategory(string actionName)
+    {
+        switch (actionName)
+        {
+            case "Pitch Input": case "Roll Input": case "Collective Lever": case "Throttle Lever":
+            case "Yaw Input": case "Trim": return "Flight controls";
+            case "Start Engine Global": case "Reset Helicopter": return "Aircraft";
+            default: return "View and menu";
+        }
+    }
+
+    private void SelectTab(BindingDeviceTab tab)
+    {
+        CloseDialog();
+        selectedTab = tab;
+        UpdateTabButtons();
+        RebuildRows();
+    }
+
+    private void UpdateTabButtons()
+    {
+        if (keyboardTabButton != null) keyboardTabButton.interactable = selectedTab != BindingDeviceTab.KeyboardMouse;
+        if (joystickTabButton != null) joystickTabButton.interactable = selectedTab != BindingDeviceTab.Joystick;
+    }
+
+    private void OpenDialog(ControlsBindingRow row)
+    {
+        if (service == null || row == null || bindingDialogRoot == null) return;
+        selectedRow = row;
+        if (dialogTitleLabel != null) dialogTitleLabel.text = row.GetCommandLabel();
+        RefreshDialogBinding();
+        if (dialogStatusLabel != null) dialogStatusLabel.text = "Press a control to assign it. Escape cancels.";
+        bindingDialogRoot.SetActive(true);
+        dialogOpenedFrame = Time.frameCount;
+        service.TryStartRebind(row.ActionName, row.BindingIndex,
+            error => { if (dialogStatusLabel != null) dialogStatusLabel.text = error; },
+            () => { RefreshRows(); CloseDialog(); },
+            () => CloseDialog(), AcceptRebindControl, row.IsGroupedJoystick);
+    }
+
+    private bool AcceptRebindControl(InputControl control)
+    {
+        if (control == null || Time.frameCount == dialogOpenedFrame) return false;
+        if (!InputRebindingService.IsDeviceAllowedForTab(control.device, selectedTab)) return false;
+        if (!(control.device is Mouse mouse)) return true;
+        Vector2 pointer = mouse.position.ReadValue();
+        return !PointerInsideButton(dialogCancelButton, pointer) &&
+            !PointerInsideButton(dialogClearButton, pointer) &&
+            !PointerInsideButton(dialogRestoreButton, pointer);
+    }
+
+    private static bool PointerInsideButton(Button button, Vector2 pointer)
+    {
+        RectTransform rect = button != null ? button.transform as RectTransform : null;
+        return rect != null && RectTransformUtility.RectangleContainsScreenPoint(rect, pointer);
+    }
+
+    private void RefreshDialogBinding()
+    {
+        if (dialogBindingLabel != null && selectedRow != null && service != null)
+            dialogBindingLabel.text = "Current: " + (selectedRow.IsGroupedJoystick
+                ? service.GetJoystickBindingDisplay(selectedRow.ActionName)
+                : service.GetDisplayString(selectedRow.ActionName, selectedRow.BindingIndex));
+    }
+
+    private void CloseDialog()
+    {
+        if (closingDialog) return;
+        closingDialog = true;
+        if (IsBindingDialogOpen) dialogClosedFrame = Time.frameCount;
+        if (bindingDialogRoot != null) bindingDialogRoot.SetActive(false);
+        selectedRow = null;
+        service?.CancelRebind();
+        closingDialog = false;
+    }
+
+    private void ClearSelected()
+    {
+        if (selectedRow == null || service == null) return;
+        bool cleared = selectedRow.IsGroupedJoystick
+            ? service.TryClearJoystickBindings(selectedRow.ActionName, out string error)
+            : service.TryClear(selectedRow.ActionName, selectedRow.BindingIndex, out error);
+        if (cleared)
+        {
+            RefreshRows(); CloseDialog();
+        }
+        else if (dialogStatusLabel != null) dialogStatusLabel.text = error;
+    }
+
+    private void RestoreSelected()
+    {
+        if (selectedRow == null || service == null) return;
+        bool restored = selectedRow.IsGroupedJoystick
+            ? service.TryResetJoystickBindings(selectedRow.ActionName, out string error)
+            : service.TryReset(selectedRow.ActionName, selectedRow.BindingIndex, out error);
+        if (restored)
+        {
+            RefreshRows(); CloseDialog();
+        }
+        else if (dialogStatusLabel != null) dialogStatusLabel.text = error;
+    }
+
+    private void WirePresentation()
+    {
+        if (presentationWired) return;
+        if (keyboardTabButton != null) keyboardTabButton.onClick.AddListener(ShowKeyboardTab);
+        if (joystickTabButton != null) joystickTabButton.onClick.AddListener(ShowJoystickTab);
+        if (dialogCancelButton != null) dialogCancelButton.onClick.AddListener(CloseDialog);
+        if (dialogClearButton != null) dialogClearButton.onClick.AddListener(ClearSelected);
+        if (dialogRestoreButton != null) dialogRestoreButton.onClick.AddListener(RestoreSelected);
+        presentationWired = true;
+    }
+
+    private void UnwirePresentation()
+    {
+        if (!presentationWired) return;
+        if (keyboardTabButton != null) keyboardTabButton.onClick.RemoveListener(ShowKeyboardTab);
+        if (joystickTabButton != null) joystickTabButton.onClick.RemoveListener(ShowJoystickTab);
+        if (dialogCancelButton != null) dialogCancelButton.onClick.RemoveListener(CloseDialog);
+        if (dialogClearButton != null) dialogClearButton.onClick.RemoveListener(ClearSelected);
+        if (dialogRestoreButton != null) dialogRestoreButton.onClick.RemoveListener(RestoreSelected);
+        presentationWired = false;
+    }
+
+    private void ShowKeyboardTab() => SelectTab(BindingDeviceTab.KeyboardMouse);
+    private void ShowJoystickTab() => SelectTab(BindingDeviceTab.Joystick);
 
     private void RefreshRows()
     {

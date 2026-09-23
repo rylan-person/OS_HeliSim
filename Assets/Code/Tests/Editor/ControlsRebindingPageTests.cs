@@ -15,6 +15,8 @@ public class ControlsRebindingPageTests
     private TMP_Text diagnostic;
     private TMP_Text hardware;
     private Button resetProfile;
+    private Button keyboardTab;
+    private Button joystickTab;
 
     [SetUp]
     public void SetUp()
@@ -38,9 +40,12 @@ public class ControlsRebindingPageTests
         diagnostic = NewText("Diagnostic", null);
         hardware = NewText("Hardware", null);
         resetProfile = NewButton("Reset Profile", null);
+        keyboardTab = NewButton("KeyboardTab", null);
+        joystickTab = NewButton("JoystickTab", null);
         ControlsBindingRow rowPrefab = CreateRowPrefab();
         page = NewObject("Controls Page").AddComponent<ControlsRebindingPage>();
         page.SetControlsForTest(defaultActions, store, rowPrefab, rowsRoot, resetProfile, diagnostic, hardware);
+        page.SetPresentationForTest(keyboardTab, joystickTab, null, null, null, null, null, null, null);
     }
 
     [TearDown]
@@ -73,8 +78,9 @@ public class ControlsRebindingPageTests
         page.OnPageSelected();
         Assert.That(page.Service.Actions, Is.Not.SameAs(defaultActions));
         Assert.That(diagnostic.text, Does.Contain("disconnected"));
+        joystickTab.onClick.Invoke();
 
-        ControlsBindingRow hardwareBinding = FindRow("Engine start — Primary 2");
+        ControlsBindingRow hardwareBinding = FindRow("Engine start");
         hardwareBinding.transform.Find("Clear").GetComponent<Button>().onClick.Invoke();
 
         Assert.That(page.Service.Actions.FindAction("Start Engine Global").bindings[1].effectivePath, Is.Empty);
@@ -86,10 +92,12 @@ public class ControlsRebindingPageTests
     public void ReopeningPage_DoesNotDuplicateListeners_AndProfileResetRestoresBindings()
     {
         page.OnPageSelected();
+        joystickTab.onClick.Invoke();
         page.OnPageDeselected();
         page.OnPageSelected();
+        joystickTab.onClick.Invoke();
 
-        ControlsBindingRow hardwareBinding = FindRow("Engine start — Primary 2");
+        ControlsBindingRow hardwareBinding = FindRow("Engine start");
         hardwareBinding.transform.Find("Clear").GetComponent<Button>().onClick.Invoke();
         Assert.That(store.SaveCount, Is.EqualTo(1));
 
@@ -111,6 +119,166 @@ public class ControlsRebindingPageTests
         Assert.That(page.Service.GetPrimaryBindingDisplay("Pitch Input"), Does.Contain("positive"));
     }
 
+    [Test]
+    public void Tabs_FilterRowsAndKeepBothSetsOfBindingsActive()
+    {
+        page.OnPageSelected();
+
+        Assert.That(FindActiveRow("Engine start — Primary 1"), Is.Not.Null);
+        Assert.That(FindActiveRow("Engine start"), Is.Null);
+        joystickTab.onClick.Invoke();
+        Assert.That(FindActiveRow("Engine start — Primary 1"), Is.Null);
+        Assert.That(FindActiveRow("Engine start"), Is.Not.Null);
+        Assert.That(page.Service.Actions.FindAction("Start Engine Global").bindings[0].effectivePath, Is.EqualTo("<Keyboard>/f1"));
+        Assert.That(page.Service.Actions.FindAction("Start Engine Global").bindings[1].effectivePath, Is.EqualTo("<Gamepad>/buttonSouth"));
+    }
+
+    [Test]
+    public void JoystickTab_ShowsOneRowForMultipleFactoryBindings()
+    {
+        InputAction engine = defaultActions.FindAction("Start Engine Global");
+        engine.AddBinding("<Joystick>/button1");
+        InputRebindingService injected = new InputRebindingService(defaultActions, store);
+        try
+        {
+            page.SetServiceForTest(injected);
+            page.OnPageSelected();
+            joystickTab.onClick.Invoke();
+
+            int visibleEngineRows = 0;
+            foreach (ControlsBindingRow row in rowsRoot.GetComponentsInChildren<ControlsBindingRow>(true))
+            {
+                if (row.gameObject.activeSelf &&
+                    row.transform.Find("Command").GetComponent<TMP_Text>().text.StartsWith("Engine start"))
+                {
+                    visibleEngineRows++;
+                }
+            }
+
+            Assert.That(visibleEngineRows, Is.EqualTo(1));
+            Assert.That(FindActiveRow("Engine start"), Is.Not.Null);
+            Assert.That(engine.bindings[1].effectivePath, Is.EqualTo("<Gamepad>/buttonSouth"));
+            Assert.That(engine.bindings[2].effectivePath, Is.EqualTo("<Joystick>/button1"));
+        }
+        finally
+        {
+            injected.Dispose();
+        }
+    }
+
+    [Test]
+    public void JoystickDirectionalComposite_KeepsBothDirectionsAssignable()
+    {
+        InputActionMap map = defaultActions.FindActionMap("Default");
+        InputAction yaw = map.AddAction("Yaw Input", InputActionType.Value);
+        yaw.AddCompositeBinding("1DAxis")
+            .With("negative", "<Joystick>/hat/left")
+            .With("positive", "<Joystick>/hat/right");
+        InputRebindingService injected = new InputRebindingService(defaultActions, store);
+        try
+        {
+            page.SetServiceForTest(injected);
+            page.OnPageSelected();
+            joystickTab.onClick.Invoke();
+
+            Assert.That(FindActiveRow("Pedals / yaw — negative"), Is.Not.Null);
+            Assert.That(FindActiveRow("Pedals / yaw — positive"), Is.Not.Null);
+            Assert.That(FindActiveRow("Pedals / yaw"), Is.Null);
+        }
+        finally
+        {
+            injected.Dispose();
+        }
+    }
+
+    [Test]
+    public void JoystickDialog_ClearAndRestoreAffectWholeSetting()
+    {
+        InputAction engine = defaultActions.FindAction("Start Engine Global");
+        engine.AddBinding("<Joystick>/button1");
+        GameObject dialog = NewObject("Dialog");
+        dialog.SetActive(false);
+        Button cancel = NewButton("Cancel", dialog.transform);
+        Button clear = NewButton("Clear", dialog.transform);
+        Button restore = NewButton("Restore", dialog.transform);
+        page.SetPresentationForTest(keyboardTab, joystickTab, dialog, null, null, null, cancel, clear, restore);
+        InputRebindingService injected = new InputRebindingService(defaultActions, store);
+        try
+        {
+            page.SetServiceForTest(injected);
+            page.OnPageSelected();
+            joystickTab.onClick.Invoke();
+            FindActiveRow("Engine start").GetComponent<Button>().onClick.Invoke();
+            clear.onClick.Invoke();
+
+            Assert.That(engine.bindings[0].effectivePath, Is.EqualTo("<Keyboard>/f1"));
+            Assert.That(engine.bindings[1].effectivePath, Is.Empty);
+            Assert.That(engine.bindings[2].effectivePath, Is.Empty);
+
+            FindActiveRow("Engine start").GetComponent<Button>().onClick.Invoke();
+            restore.onClick.Invoke();
+            Assert.That(engine.bindings[1].effectivePath, Is.EqualTo("<Gamepad>/buttonSouth"));
+            Assert.That(engine.bindings[2].effectivePath, Is.EqualTo("<Joystick>/button1"));
+        }
+        finally
+        {
+            injected.Dispose();
+        }
+    }
+
+    [Test]
+    public void Dialog_OpenAndCancel_LeavesBindingUntouched()
+    {
+        GameObject dialog = NewObject("Dialog");
+        dialog.SetActive(false);
+        TMP_Text title = NewText("Title", dialog.transform);
+        TMP_Text binding = NewText("Binding", dialog.transform);
+        TMP_Text status = NewText("Status", dialog.transform);
+        Button cancel = NewButton("Cancel", dialog.transform);
+        Button clear = NewButton("Clear", dialog.transform);
+        Button restore = NewButton("Restore", dialog.transform);
+        page.SetPresentationForTest(keyboardTab, joystickTab, dialog, title, binding, status, cancel, clear, restore);
+        page.OnPageSelected();
+
+        ControlsBindingRow row = FindActiveRow("Engine start — Primary 1");
+        row.GetComponent<Button>().onClick.Invoke();
+        Assert.That(dialog.activeSelf, Is.True);
+        Assert.That(title.text, Does.Contain("Engine start"));
+        Assert.That(page.IsBindingDialogOpen, Is.True);
+        Assert.That(page.TryHandleEscape(), Is.True);
+        Assert.That(dialog.activeSelf, Is.False);
+        Assert.That(page.Service.Actions.FindAction("Start Engine Global").bindings[0].effectivePath, Is.EqualTo("<Keyboard>/f1"));
+    }
+
+    [Test]
+    public void Dialog_ClearAndRestore_ChangesOnlySelectedBinding()
+    {
+        GameObject dialog = NewObject("Dialog");
+        dialog.SetActive(false);
+        Button cancel = NewButton("Cancel", dialog.transform);
+        Button clear = NewButton("Clear", dialog.transform);
+        Button restore = NewButton("Restore", dialog.transform);
+        page.SetPresentationForTest(keyboardTab, joystickTab, dialog, null, null, null, cancel, clear, restore);
+        page.OnPageSelected();
+        joystickTab.onClick.Invoke();
+        FindActiveRow("Engine start").GetComponent<Button>().onClick.Invoke();
+
+        clear.onClick.Invoke();
+        Assert.That(dialog.activeSelf, Is.False);
+        Assert.That(page.Service.Actions.FindAction("Start Engine Global").bindings[1].effectivePath, Is.Empty);
+        Assert.That(page.Service.Actions.FindAction("Start Engine Global").bindings[0].effectivePath, Is.EqualTo("<Keyboard>/f1"));
+
+        FindActiveRow("Engine start").GetComponent<Button>().onClick.Invoke();
+        restore.onClick.Invoke();
+        Assert.That(page.Service.Actions.FindAction("Start Engine Global").bindings[1].effectivePath, Is.EqualTo("<Gamepad>/buttonSouth"));
+    }
+
+    private ControlsBindingRow FindActiveRow(string label)
+    {
+        ControlsBindingRow row = FindRow(label);
+        return row != null && row.gameObject.activeSelf ? row : null;
+    }
+
     private ControlsBindingRow FindRow(string label)
     {
         foreach (ControlsBindingRow row in rowsRoot.GetComponentsInChildren<ControlsBindingRow>(true))
@@ -127,6 +295,7 @@ public class ControlsRebindingPageTests
         GameObject root = NewObject("Binding Row Prefab");
         root.SetActive(false);
         ControlsBindingRow row = root.AddComponent<ControlsBindingRow>();
+        Button rowButton = root.AddComponent<Button>();
         TMP_Text command = NewText("Command", root.transform);
         TMP_Text binding = NewText("Binding", root.transform);
         TMP_Text primary = NewText("Primary", root.transform);
@@ -135,6 +304,7 @@ public class ControlsRebindingPageTests
         Button clear = NewButton("Clear", root.transform);
         Button reset = NewButton("Reset", root.transform);
         row.SetControlsForTest(command, binding, primary, error, rebind, clear, reset);
+        row.SetRowButtonForTest(rowButton);
         return row;
     }
 
