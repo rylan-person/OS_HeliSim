@@ -247,11 +247,21 @@ public class MainMenu : MonoBehaviour
         Debug.Log(helicopterLinkInitialized);
         if (!helicopterLinkInitialized) return;
 
-        Debug.Log(HelicopterComponents.Instance.recenter);  
-        if (HelicopterComponents.Instance.recenter != null)
+        Recenter recenter = HelicopterComponents.Instance != null ? HelicopterComponents.Instance.recenter : null;
+        Debug.Log(recenter);
+        if (recenter != null)
         {
-            HelicopterComponents.Instance.recenter.RecenterHeadset();
+            recenter.RecenterHeadset();
         }
+    }
+
+    // Input actions use the same presentation and simulation owner as the menu controls.
+    public void ToggleAutoTrimFromInput()
+    {
+        AutoTrim autoTrim = HelicopterComponents.Instance != null ? HelicopterComponents.Instance.autoTrim : null;
+        if (autoTrim == null) return;
+        if (autoTrim._autoTrim) autoTrim.AutoTrimOff();
+        else autoTrim.AutoTrimOn();
     }
 
     public void startEngine()
@@ -387,6 +397,13 @@ public class MainMenu : MonoBehaviour
             OfflineMap.SetActive(false);
             OnlineMap.SetActive(true);
         }
+    }
+
+    public void ToggleOfflineMapFromInput()
+    {
+        if (OfflineMapToggle == null) return;
+        OfflineMapToggle.SetIsOnWithoutNotify(!OfflineMapToggle.isOn);
+        OfflineMapToggleCheck(OfflineMapToggle.isOn);
     }
 
     #endregion

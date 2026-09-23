@@ -44,6 +44,8 @@ public sealed class PauseMenuController : MonoBehaviour
     private readonly List<bool> suspendedInteractableStates = new List<bool>();
     private GameObject selectionBeforeConfirmation;
 
+    public bool IsOpen => isOpen;
+
     private void Awake()
     {
         BuildPageLookup();

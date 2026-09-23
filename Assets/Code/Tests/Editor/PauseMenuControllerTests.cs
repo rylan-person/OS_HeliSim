@@ -264,8 +264,10 @@ public class PauseMenuControllerTests
         PauseMenuController result = controllerRoot.AddComponent<PauseMenuController>();
         SetPrivateField(result, "overlayRoot", overlayRoot);
         SetPrivateField(result, "confirmationRoot", confirmationRoot);
+        SetPrivateField(result, "eventSystem", eventSystem != null && eventSystem.gameObject.activeInHierarchy ? eventSystem : null);
         SetPrivateField(result, "pages", CreateRegistrations(pages));
         controllerRoot.SetActive(true);
+        typeof(PauseMenuController).GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(result, null);
         return result;
     }
 
@@ -316,6 +318,8 @@ public class PauseMenuControllerTests
         viewport.AddComponent<Image>();
         GameObject content = CreateUiGameObject("Content");
         content.transform.SetParent(viewport.transform);
+        viewport.GetComponent<RectTransform>().sizeDelta = new Vector2(100f, 100f);
+        content.GetComponent<RectTransform>().sizeDelta = new Vector2(100f, 200f);
         scrollRect.viewport = viewport.GetComponent<RectTransform>();
         scrollRect.content = content.GetComponent<RectTransform>();
         return scrollRect;
