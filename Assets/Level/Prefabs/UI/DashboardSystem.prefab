@@ -427,6 +427,8 @@ MonoBehaviour:
     prefab: {fileID: 2919148042450663549, guid: 725db9bca981d7a4b89824f4604abade, type: 3}
   - panelType: 7
     prefab: {fileID: 4281574003637922543, guid: 6f06ccd315b78d2408476930e32f2503, type: 3}
+  - panelType: 8
+    prefab: {fileID: 105494071093395182, guid: 9cfcf2305ce44fe6a3ac0a2fe42a2109, type: 3}
 --- !u!1 &7846600857510734082
 GameObject:
   m_ObjectHideFlags: 0

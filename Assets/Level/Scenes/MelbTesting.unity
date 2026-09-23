@@ -636,6 +636,7 @@ Transform:
   m_Children:
   - {fileID: 892891553}
   - {fileID: 712497013}
+  - {fileID: 905110002}
   m_Father: {fileID: 331145491}
   m_LocalEulerAnglesHint: {x: 0, y: -8, z: 0}
 --- !u!1 &506764383
@@ -1524,9 +1525,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 8595651317394856688, guid: ebcc972863d950b49b47b622d414447e, type: 3}
       insertIndex: -1
       addedObject: {fileID: 712497012}
-    - targetCorrespondingSourceObject: {fileID: 8595651317394856688, guid: ebcc972863d950b49b47b622d414447e, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 712497016}
   m_SourcePrefab: {fileID: 100100000, guid: ebcc972863d950b49b47b622d414447e, type: 3}
 --- !u!20 &712497010 stripped
 Camera:
@@ -1579,22 +1577,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8592899179305427952, guid: ebcc972863d950b49b47b622d414447e, type: 3}
   m_PrefabInstance: {fileID: 712497009}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &712497016
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 712497011}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e6c052aeb8183c542b05d003917246ca, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
-  helicopterAnchor: {fileID: 712497012}
-  map: {fileID: 1558390189}
-  zoom: 15
-  mapUpdateInterval: 0.5
 --- !u!1 &892891552
 GameObject:
   m_ObjectHideFlags: 0
@@ -3038,6 +3020,77 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 27f3f60f96b80514c879849f98a6b216, type: 3}
+--- !u!1 &905110001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 905110002}
+  - component: {fileID: 905110003}
+  - component: {fileID: 905110004}
+  m_Layer: 0
+  m_Name: HelicopterStreetMapTracker
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &905110002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 905110001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 363936844}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &905110003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 905110001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 74f14e1eb550b9a4fb6c0a2f0456845b, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: CesiumForUnity::CesiumForUnity.CesiumGlobeAnchor
+  _adjustOrientationForGlobeWhenMoving: 0
+  _detectTransformChanges: 1
+  _localToGlobeFixedMatrix:
+    c0: {x: 1, y: 0, z: 0, w: 0}
+    c1: {x: 0, y: 1, z: 0, w: 0}
+    c2: {x: 0, y: 0, z: 1, w: 0}
+    c3: {x: 0, y: 0, z: 0, w: 1}
+  _localToGlobeFixedMatrixIsValid: 0
+--- !u!114 &905110004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 905110001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6c052aeb8183c542b05d003917246ca, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::HelicopterMapTracker
+  helicopterAnchor: {fileID: 905110003}
+  map: {fileID: 1558390189}
+  mapPrefab: {fileID: 0}
+  helicopterTransform: {fileID: 0}
+  zoom: 15
+  mapUpdateInterval: 0.5
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

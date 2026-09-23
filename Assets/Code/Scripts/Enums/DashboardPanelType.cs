@@ -7,5 +7,6 @@ public enum DashboardPanelType
     TopDownCamera,
     Telemetry,
     Timing,
-    Empty
+    Empty,
+    StreetMap
 }
