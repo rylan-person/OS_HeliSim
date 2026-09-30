@@ -1070,7 +1070,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 2024c6f97ff0ca0439c431178adaddfb, type: 2}
-  - {fileID: 2100000, guid: 2d202dc95177f8045948f756eb4450dc, type: 2}
+  - {fileID: 2100000, guid: 8462e45d61348dd4dbc80178f0637bd4, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1535,7 +1535,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 2024c6f97ff0ca0439c431178adaddfb, type: 2}
-  - {fileID: 2100000, guid: 2d202dc95177f8045948f756eb4450dc, type: 2}
+  - {fileID: 2100000, guid: 8462e45d61348dd4dbc80178f0637bd4, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -2143,7 +2143,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 2024c6f97ff0ca0439c431178adaddfb, type: 2}
-  - {fileID: 2100000, guid: 2d202dc95177f8045948f756eb4450dc, type: 2}
+  - {fileID: 2100000, guid: 8462e45d61348dd4dbc80178f0637bd4, type: 2}
   - {fileID: 2100000, guid: 54d4458cd04a6a9469349634ba50a2c9, type: 2}
   - {fileID: 2100000, guid: fe33676953c4477468a31d16afecdf71, type: 2}
   m_StaticBatchInfo:
@@ -19813,7 +19813,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 2d202dc95177f8045948f756eb4450dc, type: 2}
+  - {fileID: 2100000, guid: 8462e45d61348dd4dbc80178f0637bd4, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -19866,8 +19866,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6152852414883597318}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -52.761, y: 0.38899994, z: 987.093}
+  m_LocalRotation: {x: 0.000000031603797, y: -0.000003213786, z: 0.000000040303956, w: 1}
+  m_LocalPosition: {x: -52.761005, y: -5.340297, z: 987.09784}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -20187,7 +20187,7 @@ MeshRenderer:
   m_Materials:
   - {fileID: 2100000, guid: 2024c6f97ff0ca0439c431178adaddfb, type: 2}
   - {fileID: 2100000, guid: 54d4458cd04a6a9469349634ba50a2c9, type: 2}
-  - {fileID: 2100000, guid: 2d202dc95177f8045948f756eb4450dc, type: 2}
+  - {fileID: 2100000, guid: 8462e45d61348dd4dbc80178f0637bd4, type: 2}
   - {fileID: 2100000, guid: fe33676953c4477468a31d16afecdf71, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
@@ -23065,7 +23065,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 62899f850307741f2a39c98a8b639597, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.PlayerInput
-  m_Actions: {fileID: -944628639613478452, guid: 754e73d9f655f824c8c6f4774d6f6b39, type: 3}
+  m_Actions: {fileID: 0}
   m_NotificationBehavior: 1
   m_UIInputModule: {fileID: 0}
   m_DeviceLostEvent:
@@ -23093,7 +23093,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d1cb090d789f457baec5542b4d03eec4, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInputBindingOverrides
 --- !u!114 &8331503162210247526
 MonoBehaviour:
