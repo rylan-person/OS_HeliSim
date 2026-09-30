@@ -7,6 +7,123 @@ using UnityEngine.InputSystem.Users;
 
 public class InputRebindingServiceTests
 {
+    [TestCase("Assets/Level/Prefabs/Helicopters/R66_Default.prefab")]
+    public void FlightPrefab_HasUsableFlightActions(string prefabPath)
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+        PlayerInput player = prefab.GetComponent<PlayerInput>();
+        InputActionAsset shipped = AssetDatabase.LoadAssetAtPath<InputActionAsset>(
+            "Assets/Code/InputActions/DefaultHeliAction.inputactions");
+
+        Assert.That(player.actions, Is.SameAs(shipped), prefabPath);
+        Assert.That(player.actions.FindActionMap(player.defaultActionMap, false), Is.Not.Null);
+        Assert.That(player.notificationBehavior, Is.EqualTo(PlayerNotifications.BroadcastMessages));
+        Assert.That(prefab.GetComponent<PlayerInputBindingOverrides>(), Is.Not.Null);
+    }
+
+    [Test]
+    public void MouseButtonAssignment_PersistsAndDrivesCompositeDirection()
+    {
+        Mouse mouse = InputSystem.AddDevice<Mouse>();
+        try
+        {
+            actions.devices = new InputDevice[] { mouse };
+            Assert.That(service.TryApplyBindingPath("Pitch Input", 3, "<Mouse>/leftButton", out string error), Is.True, error);
+            service.Load();
+            InputAction pitch = actions.FindAction("Pitch Input");
+            Assert.That(pitch.bindings[3].effectivePath, Is.EqualTo("<Mouse>/leftButton"));
+            Assert.That(service.GetBindingRows("Pitch Input", BindingDeviceTab.KeyboardMouse).Count, Is.EqualTo(2));
+            actions.Enable();
+            InputSystem.QueueStateEvent(mouse, new UnityEngine.InputSystem.LowLevel.MouseState().WithButton(UnityEngine.InputSystem.LowLevel.MouseButton.Left));
+            InputSystem.Update();
+            Assert.That(pitch.ReadValue<float>(), Is.EqualTo(1f));
+            InputSystem.QueueStateEvent(mouse, new UnityEngine.InputSystem.LowLevel.MouseState());
+            InputSystem.Update();
+            Assert.That(pitch.ReadValue<float>(), Is.Zero);
+        }
+        finally
+        {
+            actions.Disable();
+            InputSystem.RemoveDevice(mouse);
+        }
+    }
+
+    [TestCase("Pitch Input", Key.W, -1f)]
+    [TestCase("Pitch Input", Key.S, 1f)]
+    [TestCase("Roll Input", Key.A, -1f)]
+    [TestCase("Roll Input", Key.D, 1f)]
+    [TestCase("Yaw Input", Key.Q, -1f)]
+    [TestCase("Yaw Input", Key.E, 1f)]
+    [TestCase("Collective Lever", Key.PageUp, -1f)]
+    [TestCase("Collective Lever", Key.PageDown, 1f)]
+    [TestCase("Throttle Lever", Key.Digit1, -1f)]
+    [TestCase("Throttle Lever", Key.Digit2, 1f)]
+    public void ShippedFlightAxis_RespondsToBothKeyboardDirections(string actionName, Key key, float expected)
+    {
+        InputActionAsset shipped = Object.Instantiate(AssetDatabase.LoadAssetAtPath<InputActionAsset>(
+            "Assets/Code/InputActions/DefaultHeliAction.inputactions"));
+        Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+        try
+        {
+            shipped.devices = new InputDevice[] { keyboard };
+            shipped.Enable();
+            InputSystem.QueueStateEvent(keyboard, new UnityEngine.InputSystem.LowLevel.KeyboardState(key));
+            InputSystem.Update();
+            Assert.That(shipped.FindAction(actionName).ReadValue<float>(), Is.EqualTo(expected));
+            InputSystem.QueueStateEvent(keyboard, new UnityEngine.InputSystem.LowLevel.KeyboardState());
+            InputSystem.Update();
+            Assert.That(shipped.FindAction(actionName).ReadValue<float>(), Is.Zero);
+        }
+        finally
+        {
+            shipped.Disable();
+            Object.DestroyImmediate(shipped);
+            InputSystem.RemoveDevice(keyboard);
+        }
+    }
+
+    [Test]
+    public void MouseButtonAssignment_CanReplaceDesktopCommandAndSurviveLoad()
+    {
+        Assert.That(service.TryApplyBindingPath("Start Engine Global", 0, "<Mouse>/rightButton", out string error), Is.True, error);
+        service.Load();
+        Assert.That(actions.FindAction("Start Engine Global").bindings[0].effectivePath, Is.EqualTo("<Mouse>/rightButton"));
+        Assert.That(service.TryClear("Start Engine Global", 0, out _), Is.False);
+        Assert.That(service.TryApplyBindingPath("Pause Menu", 0, "<Mouse>/middleButton", out _), Is.False);
+    }
+
+    [Test]
+    public void InteractiveKeyboardRebind_ChangesLiveAxisAndRestoresEnabledState()
+    {
+        Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+        try
+        {
+            actions.devices = new InputDevice[] { keyboard };
+            actions.Enable();
+            bool changed = false;
+            string error = null;
+            Assert.That(service.TryStartRebind("Pitch Input", 3, message => error = message,
+                () => changed = true, acceptControl: control => control.device == keyboard), Is.True);
+            InputSystem.QueueStateEvent(keyboard, new UnityEngine.InputSystem.LowLevel.KeyboardState(Key.UpArrow));
+            InputSystem.Update();
+            Assert.That(error, Is.Null);
+            Assert.That(changed, Is.True);
+            InputAction pitch = actions.FindAction("Pitch Input");
+            Assert.That(pitch.enabled, Is.True);
+            Assert.That(pitch.bindings[3].effectivePath, Is.EqualTo("<Keyboard>/upArrow"));
+            InputSystem.QueueStateEvent(keyboard, new UnityEngine.InputSystem.LowLevel.KeyboardState());
+            InputSystem.Update();
+            InputSystem.QueueStateEvent(keyboard, new UnityEngine.InputSystem.LowLevel.KeyboardState(Key.UpArrow));
+            InputSystem.Update();
+            Assert.That(pitch.ReadValue<float>(), Is.EqualTo(1f));
+        }
+        finally
+        {
+            actions.Disable();
+            InputSystem.RemoveDevice(keyboard);
+        }
+    }
+
     [Test]
     public void ShippedActionAsset_ContainsEverySupportedMenuCommandWithKeyboardFallback()
     {
@@ -30,10 +147,17 @@ public class InputRebindingServiceTests
     private InputActionAsset actions;
     private MemoryStore store;
     private InputRebindingService service;
+    private InputSettings originalInputSettings;
+    private InputSettings testInputSettings;
 
     [SetUp]
     public void SetUp()
     {
+        // EditMode normally processes only editor input, which does not trigger gameplay actions.
+        originalInputSettings = InputSystem.settings;
+        testInputSettings = Object.Instantiate(originalInputSettings);
+        testInputSettings.SetInternalFeatureFlag("RUN_PLAYER_UPDATES_IN_EDIT_MODE", true);
+        InputSystem.settings = testInputSettings;
         actions = ScriptableObject.CreateInstance<InputActionAsset>();
         InputActionMap map = new InputActionMap("Default");
 
@@ -64,6 +188,8 @@ public class InputRebindingServiceTests
     {
         service.Dispose();
         Object.DestroyImmediate(actions);
+        InputSystem.settings = originalInputSettings;
+        Object.DestroyImmediate(testInputSettings);
     }
 
     [Test]

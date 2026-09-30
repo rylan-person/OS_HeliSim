@@ -254,7 +254,7 @@ public sealed class InputRebindingService : IDisposable
                 List<string> parts = new List<string>();
                 for (int part = index + 1; part < action.bindings.Count && action.bindings[part].isPartOfComposite; part++)
                 {
-                    if (IsKeyboardPath(action.bindings[part].effectivePath))
+                    if (IsDesktopPath(action.bindings[part].effectivePath))
                     {
                         parts.Add(action.bindings[part].name + ": " + GetDisplayString(actionName, part));
                     }
@@ -268,7 +268,7 @@ public sealed class InputRebindingService : IDisposable
 
             foreach (InputBindingRow row in rows)
             {
-                if (row.IsAvailable && IsKeyboardPath(action.bindings[row.BindingIndex].effectivePath))
+                if (row.IsAvailable && IsDesktopPath(action.bindings[row.BindingIndex].effectivePath))
                 {
                     return row.Display;
                 }
@@ -291,7 +291,7 @@ public sealed class InputRebindingService : IDisposable
         try
         {
             actions.LoadBindingOverridesFromJson(json);
-            RestoreKeyboardFallbacks();
+            RestoreDesktopFallbacks();
         }
         catch (Exception exception)
         {
@@ -395,9 +395,9 @@ public sealed class InputRebindingService : IDisposable
             return false;
         }
 
-        if (WouldRemoveLastKeyboardBinding(action, bindingIndex, string.Empty))
+        if (WouldRemoveLastDesktopBinding(action, bindingIndex, string.Empty))
         {
-            error = "Keep a keyboard binding for this control.";
+            error = "Keep a keyboard or mouse binding for this control.";
             return false;
         }
 
@@ -615,9 +615,9 @@ public sealed class InputRebindingService : IDisposable
             return false;
         }
 
-        if (WouldRemoveLastKeyboardBinding(action, bindingIndex, path))
+        if (WouldRemoveLastDesktopBinding(action, bindingIndex, path))
         {
-            error = "Keep a keyboard binding for this control.";
+            error = "Keep a keyboard or mouse binding for this control.";
             return false;
         }
 
@@ -644,10 +644,10 @@ public sealed class InputRebindingService : IDisposable
             : InputSystem.IsFirstLayoutBasedOnSecond(layout, "Axis") && !InputSystem.IsFirstLayoutBasedOnSecond(layout, "Button");
     }
 
-    private static bool WouldRemoveLastKeyboardBinding(InputAction action, int bindingIndex, string replacement)
+    private static bool WouldRemoveLastDesktopBinding(InputAction action, int bindingIndex, string replacement)
     {
         InputBinding target = action.bindings[bindingIndex];
-        if (target.isPartOfComposite && IsKeyboardPath(target.path) && !IsKeyboardPath(replacement))
+        if (target.isPartOfComposite && IsDesktopPath(target.path) && !IsDesktopPath(replacement))
         {
             return true;
         }
@@ -657,14 +657,14 @@ public sealed class InputRebindingService : IDisposable
             return true;
         }
 
-        if (!IsKeyboardPath(target.path) || !IsKeyboardPath(target.effectivePath) || IsKeyboardPath(replacement))
+        if (!IsDesktopPath(target.path) || !IsDesktopPath(target.effectivePath) || IsDesktopPath(replacement))
         {
             return false;
         }
 
         for (int index = 0; index < action.bindings.Count; index++)
         {
-            if (index != bindingIndex && IsKeyboardPath(action.bindings[index].effectivePath))
+            if (index != bindingIndex && IsDesktopPath(action.bindings[index].effectivePath))
             {
                 return false;
             }
@@ -673,7 +673,7 @@ public sealed class InputRebindingService : IDisposable
         return true;
     }
 
-    private void RestoreKeyboardFallbacks()
+    private void RestoreDesktopFallbacks()
     {
         foreach (InputActionMap map in actions.actionMaps)
         {
@@ -682,7 +682,7 @@ public sealed class InputRebindingService : IDisposable
                 for (int index = 0; index < action.bindings.Count; index++)
                 {
                     InputBinding binding = action.bindings[index];
-                    if (binding.isPartOfComposite && IsKeyboardPath(binding.path) && !IsKeyboardPath(binding.effectivePath))
+                    if (binding.isPartOfComposite && IsDesktopPath(binding.path) && !IsDesktopPath(binding.effectivePath))
                     {
                         action.RemoveBindingOverride(index);
                     }
@@ -692,20 +692,20 @@ public sealed class InputRebindingService : IDisposable
                     }
                 }
 
-                bool hasKeyboard = false;
+                bool hasDesktop = false;
                 for (int index = 0; index < action.bindings.Count; index++)
                 {
-                    hasKeyboard |= IsKeyboardPath(action.bindings[index].effectivePath);
+                    hasDesktop |= IsDesktopPath(action.bindings[index].effectivePath);
                 }
 
-                if (hasKeyboard)
+                if (hasDesktop)
                 {
                     continue;
                 }
 
                 for (int index = 0; index < action.bindings.Count; index++)
                 {
-                    if (IsEscapePath(action.bindings[index].path) || IsKeyboardPath(action.bindings[index].path))
+                    if (IsDesktopPath(action.bindings[index].path))
                     {
                         action.RemoveBindingOverride(index);
                     }
@@ -714,9 +714,11 @@ public sealed class InputRebindingService : IDisposable
         }
     }
 
-    private static bool IsKeyboardPath(string path)
+    private static bool IsDesktopPath(string path)
     {
-        return !string.IsNullOrEmpty(path) && path.StartsWith("<Keyboard>/", StringComparison.OrdinalIgnoreCase);
+        return !string.IsNullOrEmpty(path) &&
+            (path.StartsWith("<Keyboard>/", StringComparison.OrdinalIgnoreCase) ||
+             path.StartsWith("<Mouse>/", StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool IsEscapePath(string path)
