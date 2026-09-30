@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
@@ -152,3 +153,4 @@ public class DashboardManagerTests
         public override string PanelName => "Test";
     }
 }
+#endif

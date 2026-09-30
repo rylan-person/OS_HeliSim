@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System.Reflection;
 using CesiumForUnity;
 using NUnit.Framework;
@@ -37,3 +38,4 @@ public class HelicopterMapTrackerTests
         }
     }
 }
+#endif
