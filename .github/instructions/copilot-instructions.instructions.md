@@ -1,37 +1,23 @@
+---
+applyTo: "**"
+---
+
 # HeliSim Unity project instructions
 
-## Project
-- Unity 6 URP helicopter simulation, supporting desktop, VR/OpenXR, multiplayer spectators, camera dashboards, and telemetry.
-- Primary language: C#.
-- Prefer small, focused, reversible changes. Explain the intended approach before editing multiple systems.
+Follow [AGENTS.md](../../AGENTS.md) for project boundaries, hardware safeguards, model
+selection and delivery. Use [the shared workflow](../../docs/AGENT_WORKFLOW.md) for
+substantial work and [TESTING.md](../../docs/TESTING.md) before checks/Editor operations.
+These are the canonical policies; avoid duplicating conflicting tool-specific rules.
 
-## Unity safety
-- Do not modify `.meta` files, `Library/`, `Temp/`, `Logs/`, `obj/`, generated solution files, or package lock files unless explicitly requested.
-- Do not edit Unity scenes, prefabs, ScriptableObject assets, Input Action assets, ProjectSettings, or URP assets unless the task explicitly requires it.
-- Never rename/move Unity assets without preserving their `.meta` file.
-- Avoid adding packages or changing package versions unless explicitly requested.
-
-## Code conventions
-- Use clear C# names and keep MonoBehaviours focused.
-- Use `[SerializeField] private` rather than public fields for Inspector configuration.
-- Validate required Inspector references in `Awake` or `OnValidate` and produce useful errors.
-- Avoid per-frame allocations, LINQ, repeated `GetComponent`, and expensive searches in `Update`, FixedUpdate, or networking hot paths.
-- Prefer `TryGetComponent`, caching references, and explicit null handling.
-- Use XML docs only for public APIs or non-obvious behaviour.
-
-## Networking
-- Netcode for GameObjects is used.
-- Keep authority explicit: distinguish owner, server, and local player.
-- Do not make physics/network-transform changes without explaining authority, prediction/interpolation implications, and host/client impact.
-- Treat spectator playback, buffered transforms, and camera-only clients as separate from player-controlled helicopters.
-
-## VR and rendering
-- HeliSim uses OpenXR/Meta Quest and URP.
-- Preserve VR rendering behaviour; do not add duplicate active cameras or render textures without considering GPU cost.
-- Prefer profiling evidence before performance changes.
-- Do not alter URP renderer features, XR settings, or quality settings without explicit confirmation.
-
-## Verification
-- After code changes, report affected files, likely Unity Inspector wiring, and how to test in Play Mode.
-- When possible, add or update focused edit-mode tests for pure logic.
-- Do not claim Unity compilation or runtime verification unless it was actually run.
+- Keep MonoBehaviours focused and follow nearby C# style. Prefer `[SerializeField] private`
+  for new Inspector configuration; preserve existing serialized compatibility.
+- Validate required references with useful errors; optional hardware must fail gracefully.
+- Avoid per-frame allocations, LINQ, repeated component lookups and expensive searches in
+  Update, FixedUpdate and networking hot paths. Cache references where appropriate.
+- Explain authority, host/client behavior and interpolation implications for networked
+  physics changes. Keep spectator/camera-only state separate from helicopter authority.
+- Preserve seated OpenXR and desktop rendering. Use profiling evidence for performance claims.
+- Required scene/prefab/settings changes are part of authorized scope. Preserve GUIDs and
+  pair assets with their Editor-generated metas; do not silently upgrade packages or Editor.
+- Report actual compilation/testing separately from proposed manual checks. Reviews do not
+  replace runtime or hardware acceptance; documentation changes need document checks only.
