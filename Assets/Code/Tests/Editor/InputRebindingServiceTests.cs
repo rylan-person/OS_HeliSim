@@ -450,23 +450,17 @@ public class InputRebindingServiceTests
     [Test]
     public void DeviceTabs_RejectControlsFromTheOtherTab()
     {
-        Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
-        Mouse mouse = InputSystem.AddDevice<Mouse>();
-        Gamepad gamepad = InputSystem.AddDevice<Gamepad>();
-        try
-        {
-            Assert.That(InputRebindingService.IsDeviceAllowedForTab(keyboard, BindingDeviceTab.KeyboardMouse), Is.True);
-            Assert.That(InputRebindingService.IsDeviceAllowedForTab(mouse, BindingDeviceTab.KeyboardMouse), Is.True);
-            Assert.That(InputRebindingService.IsDeviceAllowedForTab(gamepad, BindingDeviceTab.KeyboardMouse), Is.False);
-            Assert.That(InputRebindingService.IsDeviceAllowedForTab(gamepad, BindingDeviceTab.Joystick), Is.True);
-            Assert.That(InputRebindingService.IsDeviceAllowedForTab(keyboard, BindingDeviceTab.Joystick), Is.False);
-        }
-        finally
-        {
-            InputSystem.RemoveDevice(keyboard);
-            InputSystem.RemoveDevice(mouse);
-            InputSystem.RemoveDevice(gamepad);
-        }
+        // Classification depends on device type, not registration or control layout setup.
+        // OpenXR registers a conflicting DPad device layout in the Editor even when its
+        // feature is disabled; constructing a full Gamepad layout would test that package.
+        Keyboard keyboard = new Keyboard();
+        Mouse mouse = new Mouse();
+        Gamepad gamepad = new Gamepad();
+        Assert.That(InputRebindingService.IsDeviceAllowedForTab(keyboard, BindingDeviceTab.KeyboardMouse), Is.True);
+        Assert.That(InputRebindingService.IsDeviceAllowedForTab(mouse, BindingDeviceTab.KeyboardMouse), Is.True);
+        Assert.That(InputRebindingService.IsDeviceAllowedForTab(gamepad, BindingDeviceTab.KeyboardMouse), Is.False);
+        Assert.That(InputRebindingService.IsDeviceAllowedForTab(gamepad, BindingDeviceTab.Joystick), Is.True);
+        Assert.That(InputRebindingService.IsDeviceAllowedForTab(keyboard, BindingDeviceTab.Joystick), Is.False);
     }
 
     [Test]

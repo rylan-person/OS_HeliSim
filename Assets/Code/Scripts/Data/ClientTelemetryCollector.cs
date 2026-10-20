@@ -143,7 +143,7 @@ public class ClientTelemetryCollector : NetworkBehaviour
 
     public static void SetActiveCollector(ClientTelemetryCollector collector)
     {
-        if (ActiveCollector == collector)
+        if (ReferenceEquals(ActiveCollector, collector))
         {
             return;
         }
@@ -174,6 +174,17 @@ public class ClientTelemetryCollector : NetworkBehaviour
         {
             SetActiveCollector(collector);
         }
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (ReferenceEquals(ActiveCollector, this)) SetActiveCollector(null);
+    }
+
+    public override void OnDestroy()
+    {
+        if (ReferenceEquals(ActiveCollector, this)) SetActiveCollector(null);
+        base.OnDestroy();
     }
 
     private void AddSample(float now)

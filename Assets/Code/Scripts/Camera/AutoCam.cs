@@ -13,6 +13,7 @@ public class AutoCam : MonoBehaviour
     [Range(0f, 1f)] public float velocitySmoothing = 0.1f;  // 0.1 = 10% new, 90% old
 
     private Vector3 lastTargetPosition = Vector3.zero;
+    private Transform currentSource;
     [SerializeField] private Vector3 projectedPosition = Vector3.zero;
     public float maxDistance = 500f; // Maximum distance from the target to reposition the camera
     public float repositionRadius = 160f; // Radius around the target to search for a new position
@@ -46,15 +47,30 @@ public class AutoCam : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (target == null || targetRb == null)
+        if (target == null && GameObjectTarget.TryGet("CameraTarget", out var cameraTargetGO))
+            target = cameraTargetGO.transform;
+
+        Transform source = null;
+        if (target != null)
         {
-            if (GameObjectTarget.TryGet("CameraTarget", out var cameraTargetGO))
-            {
-                target = cameraTargetGO.transform;
-                if (target.parent == null) return;
-                targetRb = target.parent.GetComponent<Rigidbody>();
-                vCam.LookAt = target;
-            }
+            var follower = target.GetComponent<CameraTargetFollower>();
+            source = follower != null ? follower.SelectedTarget : target.parent;
+        }
+        var nextRb = source != null ? source.GetComponent<Rigidbody>() : null;
+        if (targetRb != nextRb || currentSource != source)
+        {
+            currentSource = source;
+            targetRb = nextRb;
+            lastTargetPosition = target != null ? target.position : Vector3.zero;
+            smoothedVelocity = Vector3.zero;
+            averageVelocity = Vector3.zero;
+            projectedPosition = lastTargetPosition;
+        }
+        if (vCam != null) vCam.LookAt = source != null ? target : null;
+        if (target == null || targetRb == null) return;
+        if (Time.deltaTime <= 0.00001f)
+        {
+            lastTargetPosition = target.position;
             return;
         }
 
@@ -111,7 +127,7 @@ public class AutoCam : MonoBehaviour
 
                 RaycastHit visibilityHit;
                 if (!Physics.Raycast(randomPosition, directionToTarget.normalized, out visibilityHit, distanceToTarget + visibilityRaycastPadding) ||
-                    visibilityHit.transform == target.parent)
+                    visibilityHit.transform == currentSource || visibilityHit.transform.IsChildOf(currentSource))
                 {
                     foundPosition = true;
                     transform.position = randomPosition;

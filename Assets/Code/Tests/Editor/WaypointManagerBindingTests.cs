@@ -114,20 +114,28 @@ public class WaypointManagerBindingTests
 
     private void InvokeFinishLap()
     {
-        typeof(WaypointManager).GetMethod("finishLap", BindingFlags.Instance | BindingFlags.NonPublic)
-            .Invoke(manager, null);
+        MethodInfo finishLap = typeof(WaypointManager).GetMethod(
+            "finishLap", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(finishLap, Is.Not.Null, "Expected WaypointManager.finishLap.");
+        finishLap.Invoke(manager, null);
     }
 
     private T GetField<T>(string name)
     {
-        return (T)typeof(WaypointManager).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)
-            .GetValue(manager);
+        return (T)FindField(name).GetValue(manager);
     }
 
     private void SetField(string name, object value)
     {
-        typeof(WaypointManager).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)
-            .SetValue(manager, value);
+        FindField(name).SetValue(manager, value);
+    }
+
+    private static FieldInfo FindField(string name)
+    {
+        FieldInfo field = typeof(WaypointManager).GetField(
+            name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        Assert.That(field, Is.Not.Null, $"Expected WaypointManager field '{name}'.");
+        return field;
     }
 }
 #endif

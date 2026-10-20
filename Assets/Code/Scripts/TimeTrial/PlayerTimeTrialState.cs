@@ -243,12 +243,13 @@ public class PlayerTimeTrialState : NetworkBehaviour
         }
     }
 
-    private void OnDestroy()
+    public override void OnDestroy()
     {
         if (ReferenceEquals(ActiveState, this))
         {
             SetActiveState(null);
         }
+        base.OnDestroy();
     }
 
     private void Update()

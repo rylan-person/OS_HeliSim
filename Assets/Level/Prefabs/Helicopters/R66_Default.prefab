@@ -21934,6 +21934,7 @@ GameObject:
   - component: {fileID: 845079167166118395}
   - component: {fileID: 4738646825836105495}
   - component: {fileID: 5249487377119311630}
+  - component: {fileID: 2279398939475300642}
   m_Layer: 6
   m_Name: R66_Default
   m_TagString: Helicopter
@@ -23244,6 +23245,7 @@ MonoBehaviour:
   - {fileID: 1633244482264339597}
   - {fileID: 3147549410938122388}
   - {fileID: 8331503162210247526}
+  - {fileID: 8595651317394856689}
   localOnlyObjects:
   - {fileID: 8595276479274746948}
   - {fileID: 6011876865194184162}
@@ -23291,6 +23293,19 @@ MonoBehaviour:
   retentionSeconds: 20
   samplesPerSecond: 60
   autoAssignForLocalPlayer: 1
+--- !u!114 &2279398939475300642
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8595651317394856688}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aae809ac0b78d1848b2af08302b09d06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NetworkHelicopterRegistry
+  ShowTopMostFoldoutHeaderGroup: 1
 --- !u!1 &8595653226669136980
 GameObject:
   m_ObjectHideFlags: 0

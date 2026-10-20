@@ -174,7 +174,7 @@ public class ControlsRebindingPageTests
         yaw.AddCompositeBinding("1DAxis")
             .With("negative", "<Joystick>/hat/left")
             .With("positive", "<Joystick>/hat/right");
-        InputRebindingService injected = new InputRebindingService(defaultActions, store);
+        InputRebindingService injected = new InputRebindingService(defaultActions, store, new MemoryYawStore());
         try
         {
             page.SetServiceForTest(injected);
@@ -188,6 +188,55 @@ public class ControlsRebindingPageTests
         finally
         {
             injected.Dispose();
+        }
+    }
+
+    [Test]
+    public void LegacyYawComposite_AxisModeKeepsOriginalDirectionRows()
+    {
+        InputAction yaw = defaultActions.FindActionMap("Default").AddAction("Yaw Input", InputActionType.Value);
+        yaw.AddCompositeBinding("1DAxis")
+            .With("negative", "<Joystick>/hat/left")
+            .With("positive", "<Joystick>/hat/right");
+        using (InputRebindingService injected = new InputRebindingService(defaultActions, store, new MemoryYawStore()))
+        {
+            injected.SetYawBindingMode(YawBindingMode.Axis);
+            page.SetServiceForTest(injected);
+            page.OnPageSelected();
+            joystickTab.onClick.Invoke();
+
+            Assert.That(FindActiveRow("Pedals / yaw — negative"), Is.Not.Null);
+            Assert.That(FindActiveRow("Pedals / yaw — positive"), Is.Not.Null);
+            Assert.That(yaw.bindingMask, Is.Null);
+        }
+    }
+
+    [TestCase(YawBindingMode.Buttons)]
+    [TestCase(YawBindingMode.Axis)]
+    public void GroupedYawBindings_ShowOnlySelectedModeAndKeepKeyboardRows(YawBindingMode mode)
+    {
+        InputAction yaw = defaultActions.FindActionMap("Default").AddAction("Yaw Input", InputActionType.Value);
+        yaw.AddCompositeBinding("1DAxis")
+            .With("negative", "<Joystick>/hat/left", groups: "YawButtons")
+            .With("positive", "<Joystick>/hat/right", groups: "YawButtons");
+        yaw.AddBinding("<Joystick>/stick/x", groups: "YawAxis");
+        yaw.AddCompositeBinding("1DAxis")
+            .With("negative", "<Keyboard>/q", groups: "YawButtons;YawAxis")
+            .With("positive", "<Keyboard>/e", groups: "YawButtons;YawAxis");
+        using (InputRebindingService injected = new InputRebindingService(defaultActions, store, new MemoryYawStore()))
+        {
+            injected.SetYawBindingMode(mode);
+            page.SetServiceForTest(injected);
+            page.OnPageSelected();
+
+            Assert.That(FindActiveRow("Pedals / yaw — negative"), Is.Not.Null);
+            Assert.That(FindActiveRow("Pedals / yaw — positive"), Is.Not.Null);
+            joystickTab.onClick.Invoke();
+            Assert.That(FindActiveRow("Pedals / yaw — Left") != null, Is.EqualTo(mode == YawBindingMode.Buttons));
+            Assert.That(FindActiveRow("Pedals / yaw — Right") != null, Is.EqualTo(mode == YawBindingMode.Buttons));
+            Assert.That(FindActiveRow("Pedals / yaw") != null, Is.EqualTo(mode == YawBindingMode.Axis));
+            Assert.That(injected.GetBindingRows("Yaw Input", BindingDeviceTab.Joystick).Count,
+                Is.EqualTo(mode == YawBindingMode.Buttons ? 2 : 1));
         }
     }
 
@@ -327,6 +376,14 @@ public class ControlsRebindingPageTests
         GameObject result = NewObject(name);
         if (parent != null) result.transform.SetParent(parent);
         return result.AddComponent<Button>();
+    }
+
+    private sealed class MemoryYawStore : IYawBindingModeStore
+    {
+        private YawBindingMode mode;
+        public YawBindingMode Load() => mode;
+        public void Save(YawBindingMode value) => mode = value;
+        public void Clear() => mode = YawBindingMode.Buttons;
     }
 
     private sealed class MemoryStore : IBindingOverrideStore

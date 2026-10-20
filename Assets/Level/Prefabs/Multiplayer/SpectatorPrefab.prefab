@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1142531428866028122}
   - component: {fileID: 7114473399335250692}
+  - component: {fileID: 5624905287602754268}
   m_Layer: 0
   m_Name: SpectatorPrefab
   m_TagString: Untagged
@@ -57,3 +58,15 @@ MonoBehaviour:
   AutoObjectParentSync: 1
   SyncOwnerTransformWhenParented: 1
   AllowOwnerToParent: 0
+--- !u!114 &5624905287602754268
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 275677151493477642}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9e6786b3ca0544d4e9e39998fd9cfd97, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ClientRoleMarker

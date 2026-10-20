@@ -39,30 +39,38 @@ public sealed class SettingsToggleVisualTests
         SetField(visual, "offBackground", offBackground);
         SetField(visual, "onBackground", onBackground);
 
-        toggle.isOn = false;
-        root.SetActive(true);
-        Color selectedOffBackground = offBackground.color;
-        Color unselectedOnBackground = onBackground.color;
-        Color selectedOffText = offLabel.color;
-        Color unselectedOnText = onLabel.color;
+        InvokeLifecycle(visual, "Awake");
+        try
+        {
+            InvokeLifecycle(visual, "OnEnable");
+            toggle.isOn = false;
+            Color selectedOffBackground = offBackground.color;
+            Color unselectedOnBackground = onBackground.color;
+            Color selectedOffText = offLabel.color;
+            Color unselectedOnText = onLabel.color;
 
-        Assert.That(selectedOffBackground, Is.Not.EqualTo(unselectedOnBackground));
-        Assert.That(selectedOffText, Is.Not.EqualTo(unselectedOnText));
+            Assert.That(selectedOffBackground, Is.Not.EqualTo(unselectedOnBackground));
+            Assert.That(selectedOffText, Is.Not.EqualTo(unselectedOnText));
 
-        toggle.isOn = true;
+            toggle.isOn = true;
 
-        Assert.That(onBackground.color, Is.EqualTo(selectedOffBackground));
-        Assert.That(offBackground.color, Is.EqualTo(unselectedOnBackground));
-        Assert.That(onLabel.color, Is.EqualTo(selectedOffText));
-        Assert.That(offLabel.color, Is.EqualTo(unselectedOnText));
+            Assert.That(onBackground.color, Is.EqualTo(selectedOffBackground));
+            Assert.That(offBackground.color, Is.EqualTo(unselectedOnBackground));
+            Assert.That(onLabel.color, Is.EqualTo(selectedOffText));
+            Assert.That(offLabel.color, Is.EqualTo(unselectedOnText));
 
-        toggle.SetIsOnWithoutNotify(false);
-        InvokeLateUpdate(visual);
+            toggle.SetIsOnWithoutNotify(false);
+            InvokeLateUpdate(visual);
 
-        Assert.That(offBackground.color, Is.EqualTo(selectedOffBackground));
-        Assert.That(onBackground.color, Is.EqualTo(unselectedOnBackground));
-        Assert.That(offLabel.color, Is.EqualTo(selectedOffText));
-        Assert.That(onLabel.color, Is.EqualTo(unselectedOnText));
+            Assert.That(offBackground.color, Is.EqualTo(selectedOffBackground));
+            Assert.That(onBackground.color, Is.EqualTo(unselectedOnBackground));
+            Assert.That(offLabel.color, Is.EqualTo(selectedOffText));
+            Assert.That(onLabel.color, Is.EqualTo(unselectedOnText));
+        }
+        finally
+        {
+            InvokeLifecycle(visual, "OnDisable");
+        }
     }
 
     private GameObject CreateGameObject(string name)
@@ -87,9 +95,14 @@ public sealed class SettingsToggleVisualTests
 
     private static void InvokeLateUpdate(SettingsToggleVisual visual)
     {
-        MethodInfo lateUpdate = typeof(SettingsToggleVisual).GetMethod(
-            "LateUpdate", BindingFlags.Instance | BindingFlags.NonPublic);
-        Assert.That(lateUpdate, Is.Not.Null, "Expected the visual to detect silent Toggle changes during LateUpdate.");
-        lateUpdate.Invoke(visual, null);
+        InvokeLifecycle(visual, "LateUpdate");
+    }
+
+    private static void InvokeLifecycle(SettingsToggleVisual visual, string methodName)
+    {
+        MethodInfo method = typeof(SettingsToggleVisual).GetMethod(
+            methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null, $"Expected SettingsToggleVisual.{methodName} lifecycle method.");
+        method.Invoke(visual, null);
     }
 }

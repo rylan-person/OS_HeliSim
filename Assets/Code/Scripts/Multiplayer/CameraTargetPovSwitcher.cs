@@ -7,125 +7,81 @@ public class CameraTargetPovSwitcher : MonoBehaviour
     [SerializeField] private KeyCode switchKey = KeyCode.Tab;
     [SerializeField] private string cameraTargetKey = "CameraTarget";
     [SerializeField] private bool debugLogsEnabled = false;
+    private readonly List<NetworkHelicopterRegistry> candidates = new List<NetworkHelicopterRegistry>();
+    private CameraTargetFollower follower;
+    private NetworkObject lastLocalPlayer;
+    private bool registryChanged = true;
 
-    private void Start()
+    private void OnEnable()
     {
-        if (TryGetCameraTarget(out var cameraTarget) && cameraTarget.transform.parent != null)
-        {
-            ClientTelemetryCollector.SetActiveCollectorFromTransform(cameraTarget.transform.parent);
-            PlayerTimeTrialState.SetActiveStateFromTransform(cameraTarget.transform.parent);
-        }
+        registryChanged = true;
+        lastLocalPlayer = null;
+        NetworkHelicopterRegistry.Changed += OnRegistryChanged;
+    }
+
+    private void OnDisable()
+    {
+        NetworkHelicopterRegistry.Changed -= OnRegistryChanged;
+        if (follower != null) follower.SetTarget(null);
     }
 
     private void Update()
     {
-        if (!Input.GetKeyDown(switchKey))
-        {
-            return;
-        }
-
-        SwitchToNextPlayer();
+        RefreshSelection(); // PlayerObject may arrive after connection and spawn notifications.
+        if (Input.GetKeyDown(switchKey)) SwitchToNextPlayer();
     }
 
-    private void SwitchToNextPlayer()
+    private void OnRegistryChanged()
     {
-        // check if player type is spectator and if so, do allow switching
-        if (CustomConnectionManager.Instance != null && CustomConnectionManager.Instance.IsSpectatorClient(NetworkManager.Singleton.LocalClientId))
+        registryChanged = true;
+        RefreshSelection();
+    }
+
+    private bool ResolveFollower()
+    {
+        if (follower != null) return true;
+        if (!GameObjectTarget.TryGet(cameraTargetKey, out var target)) return false;
+        follower = target.GetComponent<CameraTargetFollower>();
+        return follower != null;
+    }
+
+    private void RefreshSelection()
+    {
+        if (!ResolveFollower()) return;
+        var manager = NetworkManager.Singleton;
+        var localPlayer = manager != null && manager.IsClient ? manager.LocalClient?.PlayerObject : null;
+        if (localPlayer == null || !localPlayer.IsSpawned)
         {
-            LogDebug("Current client is a spectator. POV switching is allowed.");
-        }
-        else
-        {
-            LogDebug("Current client is not a spectator. POV switching is not allowed.");
+            if (!ReferenceEquals(follower.SelectedTarget, null)) follower.SetTarget(null);
             return;
         }
-
-        if (!TryGetCameraTarget(out var cameraTarget))
+        if (localPlayer.GetComponent<NetworkHelicopterRegistry>() != null)
         {
-            LogDebug($"No GameObjectTarget entry found for '{cameraTargetKey}'.");
+            if (follower.SelectedTarget != localPlayer.transform) follower.SetTarget(localPlayer.transform);
             return;
         }
+        if (CustomConnectionManager.Instance == null || !CustomConnectionManager.Instance.IsSpectatorClient(manager.LocalClientId)) return;
+        if (!registryChanged && lastLocalPlayer == localPlayer) return;
+        registryChanged = false;
+        lastLocalPlayer = localPlayer;
+        NetworkHelicopterRegistry.GetHelicopters(manager, candidates);
+        if (follower.SelectedTarget != null && candidates.Exists(h => h.transform == follower.SelectedTarget)) return;
+        follower.SetTarget(candidates.Count > 0 ? candidates[0].transform : null);
+    }
 
-        var candidates = GetPlayerObjectTransforms();
+    public void SwitchToNextPlayer()
+    {
+        var manager = NetworkManager.Singleton;
+        if (manager == null || !manager.IsClient || CustomConnectionManager.Instance == null ||
+            !CustomConnectionManager.Instance.IsSpectatorClient(manager.LocalClientId) || !ResolveFollower()) return;
+        NetworkHelicopterRegistry.GetHelicopters(manager, candidates);
         if (candidates.Count == 0)
         {
-            LogDebug("No network player objects available to switch POV.");
+            follower.SetTarget(null);
             return;
         }
-
-        var currentParent = cameraTarget.transform.parent;
-        int currentIndex = candidates.IndexOf(currentParent);
-        int nextIndex = (currentIndex + 1) % candidates.Count;
-        Transform nextParent = candidates[nextIndex];
-
-        cameraTarget.transform.SetParent(nextParent);
-        cameraTarget.transform.localPosition = Vector3.zero;
-        cameraTarget.transform.localRotation = Quaternion.identity;
-        ClientTelemetryCollector.SetActiveCollectorFromTransform(nextParent);
-        PlayerTimeTrialState.SetActiveStateFromTransform(nextParent);
-
-        LogDebug($"CameraTarget switched to '{nextParent.name}'.");
-    }
-
-    private bool TryGetCameraTarget(out GameObject target)
-    {
-        return GameObjectTarget.TryGet(cameraTargetKey, out target);
-    }
-
-    private List<Transform> GetPlayerObjectTransforms()
-    {
-        var result = new List<Transform>();
-        var networkManager = NetworkManager.Singleton;
-
-        if (networkManager == null || !networkManager.IsClient)
-        {
-            return result;
-        }
-
-        if (networkManager.ConnectedClients == null || networkManager.ConnectedClients.Count == 0)
-        {
-            return result;
-        }
-
-        var clientIds = new List<ulong>(networkManager.ConnectedClients.Keys);
-        clientIds.Sort();
-
-        foreach (var clientId in clientIds)
-        {
-            if (!networkManager.ConnectedClients.TryGetValue(clientId, out var client))
-            {
-                continue;
-            }
-
-            if (CustomConnectionManager.Instance != null && CustomConnectionManager.Instance.IsSpectatorClient(clientId))
-            {
-                continue;
-            }
-
-            var playerObject = client.PlayerObject;
-            if (playerObject == null)
-            {
-                continue;
-            }
-
-            if (!playerObject.CompareTag("Helicopter"))
-            {
-                continue;
-            }
-
-            result.Add(playerObject.transform);
-        }
-
-        return result;
-    }
-
-    private void LogDebug(string message)
-    {
-        if (!debugLogsEnabled)
-        {
-            return;
-        }
-
-        Debug.Log($"[CameraTargetPovSwitcher] {message}");
+        int current = candidates.FindIndex(h => h.transform == follower.SelectedTarget);
+        follower.SetTarget(candidates[(current + 1) % candidates.Count].transform);
+        if (debugLogsEnabled) Debug.Log($"[CameraTargetPovSwitcher] Watching {follower.SelectedTarget.name}");
     }
 }

@@ -13,7 +13,8 @@ public class fpv_camLock : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        Transform nextParent = cameraTarget != null ? cameraTarget.transform.parent : null;
+        var follower = cameraTarget != null ? cameraTarget.GetComponent<CameraTargetFollower>() : null;
+        Transform nextParent = follower != null ? follower.SelectedTarget : cameraTarget != null ? cameraTarget.transform.parent : null;
         bool parentChanged = nextParent != currentParent;
         bool fpvNoLongerSibling = fpv_view != null && fpv_view.transform.parent != nextParent;
 
@@ -47,9 +48,9 @@ public class fpv_camLock : MonoBehaviour
             }
 
             validTarget = fpv_view != null;
-            if (validTarget && cinemachineCamera != null)
+            if (cinemachineCamera != null)
             {
-                cinemachineCamera.Follow = fpv_view.transform;
+                cinemachineCamera.Follow = validTarget ? fpv_view.transform : null;
             }
         }
     }

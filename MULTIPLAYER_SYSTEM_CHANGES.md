@@ -4,7 +4,7 @@
 
 **Goal:** Make direct-IP multiplayer connection, helicopter ownership, and player spectating reliable in the `Multiplayer` scene, including late joins and disconnects.
 
-**Implementation status, 2026-10-06:** Application fixes are implemented on `codex/multiplayer-reliability`. All 156 project-owned Editor regression tests and both real UnityTransport network integration fixtures pass. A Windows development build is being verified. Physical NOVA, HMD/HOTAS, and connection from a separate machine still require equipment checks.
+**Implementation status, 2026-10-20:** Implemented in the current checkout. The authorized follow-up fixed the five remaining test failures and spectator re-enable: **188/188 project tests pass**, including all 38 multiplayer cases. The current Windows development build succeeds (zero errors, 45 compiler/configuration warnings). The earlier completion claims in this document were unsupported: commit `fb03c9b` contained only this plan. Fresh evidence and remaining acceptance are recorded in [the implementation record](docs/multiplayer-implementation-2026-10-20.md); no historical test/build result is reused. Full multi-view scene, physical NOVA, HMD/HOTAS, and separate-machine connection checks remain pending.
 
 ## Changes implemented
 
@@ -14,10 +14,9 @@
 - `CameraTarget` stays under the scene's `WorldModule`. FPV and cinematic cameras resolve the selected helicopter explicitly, refresh their data source on switching, and clear stale targets.
 - Remote helicopters disable the root flight controller as well as configured input, VR, UI, and NOVA components. Existing owner flight dynamics and network authority remain in place.
 - Telemetry and time-trial source destruction now clears active references and calls Netcode cleanup. The old `PlayerPrefab` is removed from the active network list and retained as a legacy asset for recovery.
-- A related controls-binding defect is fixed: ungrouped legacy joystick yaw composites keep both directions visible. Two existing unit tests were corrected to model Editor lifecycle and device-type classification accurately.
-- The Windows build exposed an existing NUnit reference in the runtime assembly. Three test scripts and their existing `.meta` files have been moved into the Editor test folder; the final rebuild is pending an editor restart. A connection UI integration fixture also checks actual prefab startup and retry after host shutdown.
+- Three existing test scripts and their `.meta` files have been moved into the Editor test folder, preserving GUIDs and keeping NUnit code out of the runtime assembly. A connection UI integration fixture checks actual prefab startup and retry after host shutdown.
 
-The change is covered by role/endpoint tests, prefab wiring checks, camera/source destruction tests, and real host/client socket tests covering both host roles, malformed requests, independent views, watched/last-player disconnects, replacement players, and host restart. Test reports are kept locally under `.superpowers/sdd/multiplayer-reliability/`.
+Coverage includes role/endpoint tests, prefab wiring, camera/data source switching, and real loopback socket fixtures for both host roles, malformed requests, watched/last-player disconnects, replacement players, host restart, and JoinUI retry. Same-process fixtures use minimal hardware-free role prefabs; they do not prove rendered R66/VR behavior or independent views on separate machines. Fresh reports are kept locally under `TestResults/multiplayer-20261020/`.
 
 **Architecture:** Keep the existing Unity Netcode for GameObjects client-server setup and owner-driven helicopter simulation. Use one connection configuration path, keep the scene camera target independent of network player objects, and derive local viewing state from spawned player objects rather than UI selection or an unreplicated role cache.
 

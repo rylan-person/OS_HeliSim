@@ -212,12 +212,12 @@ public sealed class InputRebindingService : IDisposable
 
             bindingOrdinal++;
             if (deviceTab.HasValue && GetOriginalDeviceTab(binding.path) != deviceTab.Value) continue;
-            if (deviceTab == BindingDeviceTab.Joystick && actionName == YawActionName &&
+            if (deviceTab == BindingDeviceTab.Joystick && actionName == YawActionName && HasYawModeBindings(action) &&
                 !BindingHasGroup(binding, YawMode == YawBindingMode.Axis ? YawAxisGroup : YawButtonsGroup)) continue;
 
             string name = binding.isPartOfComposite ? binding.name : "Primary " + bindingOrdinal;
             if (actionName == YawActionName && deviceTab == BindingDeviceTab.Joystick &&
-                YawMode == YawBindingMode.Buttons && binding.isPartOfComposite)
+                YawMode == YawBindingMode.Buttons && binding.isPartOfComposite && BindingHasGroup(binding, YawButtonsGroup))
                 name = binding.name == "negative" ? "Left" : binding.name == "positive" ? "Right" : name;
             rows.Add(new InputBindingRow(actionName, index, name, GetDisplayString(actionName, index), null));
         }

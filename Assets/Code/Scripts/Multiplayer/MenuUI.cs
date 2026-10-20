@@ -1,8 +1,4 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using Unity.Netcode;
-using Unity.Netcode.Transports.UTP;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -18,82 +14,96 @@ public enum NetworkPrefabsList
 
 public class MenuUI : MonoBehaviour
 {
-    [SerializeField]
-    Button m_StartHostButton;
-    [SerializeField]
-    Button m_StartClientButton;
-    [SerializeField]
-    NetworkPrefabsList networkPrefabsList;
-
-    [Header("Connection Settings")]
-    [Tooltip("Address the client connects to. Override in the inspector, or via SetServerAddress, for anything other than local testing.")]
+    [SerializeField] private Button m_StartHostButton;
+    [SerializeField] private Button m_StartClientButton;
+    // Retain old serialized fields for prefab compatibility. Startup is owned by RoleSelectionUI.
+    [SerializeField] private NetworkPrefabsList networkPrefabsList;
     [SerializeField] private string serverAddress = "127.0.0.1";
     [SerializeField] private ushort serverPort = 7777;
-
+    [SerializeField] private RoleSelectionUI roleSelectionUI;
     public List<GameObject> networkPrefabs = new List<GameObject>();
 
-    void Awake()
+    private void Awake()
     {
         if (!FindAnyObjectByType<EventSystem>())
         {
             var inputType = typeof(StandaloneInputModule);
 #if ENABLE_INPUT_SYSTEM && NEW_INPUT_SYSTEM_INSTALLED
-            inputType = typeof(InputSystemUIInputModule);                
+            inputType = typeof(InputSystemUIInputModule);
 #endif
             var eventSystem = new GameObject("EventSystem", typeof(EventSystem), inputType);
             eventSystem.transform.SetParent(transform);
         }
     }
 
-    // Start is called before the first frame update
-    void Start()
+    private void Start()
     {
-        m_StartHostButton.onClick.AddListener(StartHost);
-        m_StartClientButton.onClick.AddListener(StartClient);
+        ResolveRoleUI();
+        if (m_StartHostButton != null && !HasSharedStartupListener(m_StartHostButton, "StartAsHost"))
+        {
+            m_StartHostButton.onClick.AddListener(StartHost);
+        }
+        if (m_StartClientButton != null && !HasSharedStartupListener(m_StartClientButton, "StartAsClient"))
+        {
+            m_StartClientButton.onClick.AddListener(StartClient);
+        }
     }
 
-    void OnDestroy()
+    private bool HasSharedStartupListener(Button button, string methodName)
     {
-        if (m_StartHostButton != null) m_StartHostButton.onClick.RemoveListener(StartHost);
-        if (m_StartClientButton != null) m_StartClientButton.onClick.RemoveListener(StartClient);
+        for (int i = 0; i < button.onClick.GetPersistentEventCount(); i++)
+        {
+            if (button.onClick.GetPersistentTarget(i) is RoleSelectionUI && button.onClick.GetPersistentMethodName(i) == methodName &&
+                button.onClick.GetPersistentListenerState(i) != UnityEngine.Events.UnityEventCallState.Off)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
-    /// <summary>Allows other UI (e.g. a server-address input field) to override the default before connecting.</summary>
+    private RoleSelectionUI ResolveRoleUI()
+    {
+        if (roleSelectionUI == null)
+        {
+            roleSelectionUI = GetComponent<RoleSelectionUI>();
+        }
+        if (roleSelectionUI == null)
+        {
+            roleSelectionUI = GetComponentInParent<RoleSelectionUI>();
+        }
+        if (roleSelectionUI == null)
+        {
+            roleSelectionUI = FindAnyObjectByType<RoleSelectionUI>(FindObjectsInactive.Include);
+        }
+        return roleSelectionUI;
+    }
+
     public void SetServerAddress(string address)
     {
         serverAddress = address;
+        ResolveRoleUI()?.SetServerAddress(address);
     }
 
-    void StartClient()
+    private void StartClient()
     {
-        Debug.Log("StartClient called. Attempting to connect to server...");
-        var transport = (UnityTransport)NetworkManager.Singleton.NetworkConfig.NetworkTransport;
-        transport.ConnectionData.Address = serverAddress;
-        transport.ConnectionData.Port = serverPort;
-        NetworkManager.Singleton.StartClient();
-        DeactivateButtons();
+        ResolveRoleUI()?.StartAsClient();
     }
 
-    void StartHost()
+    private void StartHost()
     {
-        var transport = (UnityTransport)NetworkManager.Singleton.NetworkConfig.NetworkTransport;
-        transport.ConnectionData.Port = serverPort;
+        ResolveRoleUI()?.StartAsHost();
+    }
 
-        int prefabIndex = (int)networkPrefabsList;
-        if (networkPrefabs == null || prefabIndex < 0 || prefabIndex >= networkPrefabs.Count)
+    private void OnDestroy()
+    {
+        if (m_StartHostButton != null)
         {
-            Debug.LogError($"{nameof(MenuUI)}: networkPrefabsList index {prefabIndex} is out of range of networkPrefabs (count {networkPrefabs?.Count ?? 0}).");
-            return;
+            m_StartHostButton.onClick.RemoveListener(StartHost);
         }
-
-        NetworkManager.Singleton.NetworkConfig.PlayerPrefab = networkPrefabs[prefabIndex];
-        NetworkManager.Singleton.StartHost();
-        DeactivateButtons();
-    }
-
-    void DeactivateButtons()
-    {
-        m_StartHostButton.interactable = false;
-        m_StartClientButton.interactable = false;
+        if (m_StartClientButton != null)
+        {
+            m_StartClientButton.onClick.RemoveListener(StartClient);
+        }
     }
 }

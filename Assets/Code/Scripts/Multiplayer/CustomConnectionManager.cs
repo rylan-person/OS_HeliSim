@@ -1,6 +1,7 @@
+using System;
+using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
-using System.Collections.Generic;
 
 public class CustomConnectionManager : MonoBehaviour
 {
@@ -12,304 +13,358 @@ public class CustomConnectionManager : MonoBehaviour
     [Header("Spawn Points")]
     [SerializeField] private Transform[] playerSpawnPoints;
     [SerializeField] private Transform[] spectatorSpawnPoints;
-    private int nextPlayerSpawnIndex = 0;
-    private int nextSpectatorSpawnIndex = 0;
+    private int nextPlayerSpawnIndex;
+    private int nextSpectatorSpawnIndex;
 
-    [SerializeField] GameObject world;
+    [SerializeField] private GameObject world;
     [SerializeField] private bool debugLogsEnabled = true;
+    public ClientRole hostRole = ClientRole.Player;
 
-    public ClientRole hostRole = ClientRole.Player; // set in inspector/UI before StartHost()
     private readonly Dictionary<ulong, ClientRole> pendingClientRoles = new Dictionary<ulong, ClientRole>();
     private readonly Dictionary<ulong, ClientRole> connectedClientRoles = new Dictionary<ulong, ClientRole>();
+    private NetworkManager subscribedManager;
 
-    private void LogDebug(string message)
+    private void Awake()
     {
-        if (!debugLogsEnabled) return;
-        Debug.Log($"[CustomConnectionManager] {message}");
-    }
-
-    void Awake()
-    {
-        LogDebug("Awake called.");
         if (Instance != null && Instance != this)
         {
-            LogDebug("Duplicate instance detected. Destroying this GameObject.");
             Destroy(gameObject);
             return;
         }
-
         Instance = this;
-        DontDestroyOnLoad(gameObject);
-        LogDebug("Singleton instance initialized and marked DontDestroyOnLoad.");
-    }   
-
-    private void Start()
-    {
-        var nm = NetworkManager.Singleton;
-        if (nm == null)
+        if (Application.isPlaying)
         {
-            LogDebug("NetworkManager.Singleton is null in Start. Skipping setup.");
-            return;
+            DontDestroyOnLoad(gameObject);
         }
-
-        nm.NetworkConfig.ConnectionApproval = true;
-        nm.ConnectionApprovalCallback = ApprovalCheck;
-
-        nm.OnServerStarted += OnServerStarted;
-        nm.OnClientConnectedCallback += OnClientConnected;
-        nm.OnClientDisconnectCallback += OnClientDisconnected;
-        LogDebug("Connection approval enabled, callback assigned, and OnServerStarted subscribed.");
+        EnsureCallbacks();
     }
+
+    private void OnEnable() => EnsureCallbacks();
+    private void Start() => EnsureCallbacks();
+
+    private void Update()
+    {
+        if (subscribedManager != NetworkManager.Singleton)
+        {
+            EnsureCallbacks();
+        }
+    }
+
+    private void OnDisable() => DetachCallbacks();
 
     private void OnDestroy()
     {
-        LogDebug("OnDestroy called.");
+        DetachCallbacks();
         if (Instance == this)
         {
             Instance = null;
-            LogDebug("Singleton instance cleared.");
         }
+    }
 
-        if (NetworkManager.Singleton != null)
+    private bool EnsureCallbacks()
+    {
+        if (Instance != null && Instance != this)
         {
-            NetworkManager.Singleton.OnServerStarted -= OnServerStarted;
-            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
-            NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
-            LogDebug("Unsubscribed from OnServerStarted.");
+            return false;
         }
-        else
+        var manager = NetworkManager.Singleton;
+        if (subscribedManager == manager && manager != null)
         {
-            LogDebug("NetworkManager.Singleton was null during OnDestroy; no event unsubscription needed.");
+            return true;
         }
+        DetachCallbacks();
+        if (manager == null)
+        {
+            return false;
+        }
+        if (manager.ConnectionApprovalCallback != null && manager.ConnectionApprovalCallback != ApprovalCheck)
+        {
+            return false;
+        }
+        subscribedManager = manager;
+        manager.NetworkConfig.ConnectionApproval = true;
+        manager.ConnectionApprovalCallback = ApprovalCheck;
+        manager.OnServerStarted += OnServerStarted;
+        manager.OnClientConnectedCallback += OnClientConnected;
+        manager.OnClientDisconnectCallback += OnClientDisconnected;
+        manager.OnServerStopped += OnSessionStopped;
+        manager.OnClientStopped += OnSessionStopped;
+        return true;
+    }
+
+    private void DetachCallbacks()
+    {
+        if (subscribedManager != null)
+        {
+            subscribedManager.OnServerStarted -= OnServerStarted;
+            subscribedManager.OnClientConnectedCallback -= OnClientConnected;
+            subscribedManager.OnClientDisconnectCallback -= OnClientDisconnected;
+            subscribedManager.OnServerStopped -= OnSessionStopped;
+            subscribedManager.OnClientStopped -= OnSessionStopped;
+            if (subscribedManager.ConnectionApprovalCallback == ApprovalCheck)
+            {
+                subscribedManager.ConnectionApprovalCallback = null;
+            }
+        }
+        subscribedManager = null;
+        ClearSessionRoles();
+    }
+
+    private void OnSessionStopped(bool wasHost) => ClearSessionRoles();
+
+    private void ClearSessionRoles()
+    {
+        pendingClientRoles.Clear();
+        connectedClientRoles.Clear();
+        nextPlayerSpawnIndex = 0;
+        nextSpectatorSpawnIndex = 0;
+    }
+
+    // Missing payloads are the explicit compatibility path for legacy Player clients.
+    public static bool TryParseRole(byte[] payload, out ClientRole role)
+    {
+        role = ClientRole.Player;
+        if (payload == null || payload.Length == 0)
+        {
+            return true;
+        }
+        if (payload.Length != 1 || payload[0] > (byte)ClientRole.Spectator)
+        {
+            return false;
+        }
+        role = (ClientRole)payload[0];
+        return true;
+    }
+
+    public static bool TryGetSpawnedRole(NetworkObject playerObject, out ClientRole role)
+    {
+        role = ClientRole.Player;
+        if (playerObject == null)
+        {
+            return false;
+        }
+        bool helicopter = playerObject.GetComponent<NetworkHelicopterRegistry>() != null;
+        bool spectator = playerObject.GetComponent<ClientRoleMarker>() != null;
+        if (helicopter == spectator)
+        {
+            return false;
+        }
+        role = spectator ? ClientRole.Spectator : ClientRole.Player;
+        return true;
+    }
+
+    public bool TryValidateSpawnConfiguration(ClientRole role, out string reason)
+    {
+        reason = null;
+        if (role != ClientRole.Player && role != ClientRole.Spectator)
+        {
+            reason = "Unsupported client role.";
+            return false;
+        }
+        var prefab = role == ClientRole.Player ? playerPrefab : spectatorPrefab;
+        if (prefab == null || !prefab.TryGetComponent<NetworkObject>(out var networkObject))
+        {
+            reason = $"The {role} prefab is missing or has no root NetworkObject.";
+            return false;
+        }
+        if (!TryGetSpawnedRole(networkObject, out var prefabRole) || prefabRole != role)
+        {
+            reason = $"The {role} prefab does not have the matching helicopter or spectator role component.";
+            return false;
+        }
+        if (!EnsureCallbacks())
+        {
+            reason = "NetworkManager or connection approval handler is unavailable.";
+            return false;
+        }
+        var prefabs = subscribedManager.NetworkConfig.Prefabs;
+        uint hash = networkObject.PrefabIdHash;
+        if (hash == 0)
+        {
+            reason = $"The {role} prefab has no valid network prefab identity.";
+            return false;
+        }
+        // Before startup NGO's processed list may still be empty. Inspect both
+        // configured lists and runtime registrations without initializing NGO here.
+        var entries = new HashSet<NetworkPrefab>(prefabs.Prefabs);
+        foreach (var list in prefabs.NetworkPrefabsLists)
+        {
+            if (list == null) continue;
+            foreach (var entry in list.PrefabList) entries.Add(entry);
+        }
+        bool matchingIdentity = false;
+        foreach (var entry in entries)
+        {
+            if (entry == null) continue;
+            // This spawner instantiates the configured prefab directly. Overrides
+            // need their own explicit spawning contract and are not supported here.
+            if (entry.Override == NetworkPrefabOverride.None && entry.Prefab == prefab &&
+                entry.SourcePrefabGlobalObjectIdHash == hash)
+            {
+                matchingIdentity = true;
+            }
+            else if (entry.Prefab != null && entry.Prefab.TryGetComponent<NetworkObject>(out var other) && other.PrefabIdHash == hash)
+            {
+                reason = $"The {role} prefab network identity conflicts with another registration.";
+                return false;
+            }
+        }
+        if (!matchingIdentity)
+        {
+            reason = $"The {role} prefab is not registered with its matching network identity.";
+            return false;
+        }
+        return true;
+    }
+
+    private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
+    {
+        response.Approved = false;
+        response.CreatePlayerObject = false;
+        response.Pending = false;
+        pendingClientRoles.Remove(request.ClientNetworkId);
+        if (!TryParseRole(request.Payload, out var role))
+        {
+            response.Reason = "Unsupported role payload. Send exactly one Player (0) or Spectator (1) byte.";
+            return;
+        }
+        var manager = NetworkManager.Singleton;
+        if (manager != null && manager.IsHost && request.ClientNetworkId == manager.LocalClientId)
+        {
+            role = hostRole;
+        }
+        if (!TryValidateSpawnConfiguration(role, out var reason))
+        {
+            response.Reason = reason;
+            return;
+        }
+        pendingClientRoles[request.ClientNetworkId] = role;
+        response.Approved = true;
     }
 
     private void OnServerStarted()
     {
-        LogDebug("Server started. Checking host client role and player object state.");
-        // Only relevant for Host (server + local client)
-        if (!NetworkManager.Singleton.IsHost)
+        var manager = subscribedManager;
+        if (manager != null && manager.IsHost)
         {
-            LogDebug("Not running as host. Skipping host local spawn path.");
-            return;
+            connectedClientRoles[manager.LocalClientId] = hostRole;
+            pendingClientRoles.Remove(manager.LocalClientId);
+            EnsurePlayerObject(manager.LocalClientId, hostRole);
         }
-
-        ulong hostClientId = NetworkManager.Singleton.LocalClientId;
-        LogDebug($"Host local client id: {hostClientId}. Host role: {hostRole}.");
-
-        // If NGO already created a player object somehow, don't double-spawn
-        if (NetworkManager.Singleton.ConnectedClients.TryGetValue(hostClientId, out var client)
-            && client.PlayerObject != null)
-        {
-            LogDebug("Host already has a player object. Skipping duplicate spawn.");
-            return;
-        }
-
-        LogDebug("No existing host player object found. Spawning now.");
-        SpawnForClient(hostClientId, hostRole);
     }
 
     private void OnClientConnected(ulong clientId)
     {
-        LogDebug($"Client connected callback fired for client {clientId}. IsServer={NetworkManager.Singleton.IsServer}, IsClient={NetworkManager.Singleton.IsClient}, LocalClientId={NetworkManager.Singleton.LocalClientId}.");
-        var nm = NetworkManager.Singleton;
-        if (nm == null) return;
-
-        LogDebug($"OnClientConnected callback fired for client {clientId}. IsServer={nm.IsServer}, IsClient={nm.IsClient}, LocalClientId={nm.LocalClientId}.");
-
-        if (nm.IsClient && clientId == nm.LocalClientId)
+        var manager = subscribedManager;
+        if (manager == null) return;
+        if (manager.IsClient && clientId == manager.LocalClientId && world != null)
         {
-            if (world != null)
-            {
-                world.SetActive(true);
-                LogDebug("Local client connected. World object set active on this client.");
-            }
-            else
-            {
-                LogDebug("Local client connected, but world reference is null.");
-            }
+            world.SetActive(true);
         }
-
-        if (!nm.IsServer)
-            return;
-
-        if (nm.ConnectedClients.TryGetValue(clientId, out var connectedClient)
-            && connectedClient.PlayerObject != null)
-        {
-            LogDebug($"Client {clientId} already has a player object. Skipping server spawn.");
-            pendingClientRoles.Remove(clientId);
-            return;
-        }
-
-        ClientRole role = ClientRole.Player;
-        if (nm.IsHost && clientId == nm.LocalClientId)
+        if (!manager.IsServer) return;
+        ClientRole role;
+        if (manager.IsHost && clientId == manager.LocalClientId)
         {
             role = hostRole;
-            LogDebug($"Using host role for local host client {clientId}: {role}.");
         }
-        else if (pendingClientRoles.TryGetValue(clientId, out var pendingRole))
+        else if (!pendingClientRoles.TryGetValue(clientId, out role) && !connectedClientRoles.TryGetValue(clientId, out role))
         {
-            role = pendingRole;
-            LogDebug($"Using pending role for client {clientId}: {role}.");
+            FailSpawn(clientId, "No approved role was recorded for this connection.");
+            return;
         }
-        else
-        {
-            LogDebug($"No pending role found for client {clientId}. Defaulting to Player.");
-        }
-
         pendingClientRoles.Remove(clientId);
         connectedClientRoles[clientId] = role;
-        SpawnForClient(clientId, role);
+        EnsurePlayerObject(clientId, role);
     }
 
     private void OnClientDisconnected(ulong clientId)
     {
         pendingClientRoles.Remove(clientId);
         connectedClientRoles.Remove(clientId);
-        LogDebug($"Client disconnected: {clientId}. Removed cached role data.");
     }
 
     public bool IsSpectatorClient(ulong clientId)
     {
-        if (connectedClientRoles.TryGetValue(clientId, out var role))
+        var manager = subscribedManager != null ? subscribedManager : NetworkManager.Singleton;
+        if (manager == null) return false;
+        NetworkObject playerObject = null;
+        if (manager.IsClient && clientId == manager.LocalClientId)
         {
-            return role == ClientRole.Spectator;
+            playerObject = manager.LocalClient?.PlayerObject;
         }
-
-        var nm = NetworkManager.Singleton;
-        if (nm != null && nm.IsClient && clientId == nm.LocalClientId)
+        else if (manager.IsServer && manager.ConnectedClients.TryGetValue(clientId, out var client))
         {
-            if (RoleSelectionUI.SelectedRole == ClientRole.Spectator)
+            playerObject = client.PlayerObject;
+        }
+        return TryGetSpawnedRole(playerObject, out var role) && role == ClientRole.Spectator;
+    }
+
+    private void EnsurePlayerObject(ulong clientId, ClientRole role)
+    {
+        var manager = subscribedManager;
+        if (manager == null || !manager.IsServer || manager.ShutdownInProgress) return;
+        if (manager.ConnectedClients.TryGetValue(clientId, out var client) && client.PlayerObject != null)
+        {
+            if (!TryGetSpawnedRole(client.PlayerObject, out var existingRole) || existingRole != role)
             {
-                return true;
+                FailSpawn(clientId, "Existing player object does not match the approved role.");
             }
-
-            var localPlayerObject = nm.LocalClient?.PlayerObject;
-            if (localPlayerObject != null)
+            return;
+        }
+        if (!TryValidateSpawnConfiguration(role, out var reason))
+        {
+            FailSpawn(clientId, reason);
+            return;
+        }
+        GameObject instance = null;
+        try
+        {
+            if (world != null) world.SetActive(true);
+            var prefab = role == ClientRole.Spectator ? spectatorPrefab : playerPrefab;
+            var spawnPoint = role == ClientRole.Spectator
+                ? GetNextSpawnPoint(spectatorSpawnPoints, ref nextSpectatorSpawnIndex)
+                : GetNextSpawnPoint(playerSpawnPoints, ref nextPlayerSpawnIndex);
+            instance = Instantiate(prefab, spawnPoint != null ? spawnPoint.position : prefab.transform.position,
+                spawnPoint != null ? spawnPoint.rotation : prefab.transform.rotation);
+            var playerObject = instance.GetComponent<NetworkObject>();
+            playerObject.SpawnAsPlayerObject(clientId, destroyWithScene: true);
+            if (!playerObject.IsSpawned || playerObject.OwnerClientId != clientId ||
+                !manager.ConnectedClients.TryGetValue(clientId, out var connectedClient) || connectedClient.PlayerObject != playerObject)
             {
-                return !localPlayerObject.CompareTag("Helicopter");
+                throw new InvalidOperationException("Netcode did not assign the spawned player object to this client.");
             }
         }
-
-        return false;
+        catch (Exception exception)
+        {
+            if (instance != null)
+            {
+                var spawnedObject = instance.GetComponent<NetworkObject>();
+                if (spawnedObject != null && spawnedObject.IsSpawned) spawnedObject.Despawn();
+                else Destroy(instance);
+            }
+            FailSpawn(clientId, $"Could not spawn the approved {role} object: {exception.Message}");
+        }
     }
 
-    private void ApprovalCheck(
-        NetworkManager.ConnectionApprovalRequest request,
-        NetworkManager.ConnectionApprovalResponse response)
+    private void FailSpawn(ulong clientId, string reason)
     {
-        LogDebug($"ApprovalCheck received for client {request.ClientNetworkId}. Payload length: {(request.Payload == null ? 0 : request.Payload.Length)}.");
-
-        // Always approve
-        response.Approved = true;
-        response.CreatePlayerObject = false;
-        LogDebug("Client approved with CreatePlayerObject=false (manual spawning path).");
-
-        // ✅ Host-local client special case:
-        // Don't spawn here, OnServerStarted will handle it.
-        if (NetworkManager.Singleton.IsHost &&
-            request.ClientNetworkId == NetworkManager.Singleton.LocalClientId)
-        {
-            pendingClientRoles[request.ClientNetworkId] = hostRole;
-            LogDebug("ApprovalCheck host-local special case hit. Deferring spawn to OnServerStarted.");
-            return;
-        }
-
-        // Remote clients: read payload
-        ClientRole role = ClientRole.Player;
-        if (request.Payload != null && request.Payload.Length > 0)
-        {
-            role = (ClientRole)request.Payload[0];
-            LogDebug($"Parsed remote client role from payload: {role}.");
-        }
-        else
-        {
-            LogDebug("No payload role provided. Defaulting role to Player.");
-        }
-
-        pendingClientRoles[request.ClientNetworkId] = role;
-        LogDebug($"Stored pending role for client {request.ClientNetworkId}: {role}.");
-    }
-
-    private void SpawnForClient(ulong clientId, ClientRole role)
-    {
-        LogDebug($"SpawnForClient called. ClientId={clientId}, Role={role}.");
-
-        if (world != null)
-        {
-            world.SetActive(true);
-            LogDebug("World object set active.");
-        }
-        else
-        {
-            LogDebug("World reference is null. Skipping world activation.");
-        }
-
-        var prefab = (role == ClientRole.Spectator) ? spectatorPrefab : playerPrefab;
-        LogDebug($"Selected prefab: {(prefab == null ? "null" : prefab.name)}.");
-
-        if (prefab == null)
-        {
-            LogDebug("Selected prefab is null. Aborting spawn.");
-            return;
-        }
-
-        var spawnPoint = GetSpawnPoint(role);
-        var spawnPosition = spawnPoint != null ? spawnPoint.position : prefab.transform.position;
-        var spawnRotation = spawnPoint != null ? spawnPoint.rotation : prefab.transform.rotation;
-
-        if (spawnPoint != null)
-        {
-            LogDebug($"Using spawn point '{spawnPoint.name}' for role {role}.");
-        }
-        else
-        {
-            LogDebug($"No spawn point configured for role {role}. Using prefab transform as fallback.");
-        }
-
-        var go = Instantiate(prefab, spawnPosition, spawnRotation);
-        var no = go.GetComponent<NetworkObject>();
-
-        if (no == null)
-        {
-            LogDebug($"Spawned prefab '{go.name}' is missing NetworkObject. Destroying instance and aborting spawn.");
-            Destroy(go);
-            return;
-        }
-
-        no.SpawnAsPlayerObject(clientId, destroyWithScene: true);
-        LogDebug($"Spawned network player object '{go.name}' for client {clientId}.");
-    }
-
-    private Transform GetSpawnPoint(ClientRole role)
-    {
-        if (role == ClientRole.Spectator)
-        {
-            return GetNextSpawnPoint(spectatorSpawnPoints, ref nextSpectatorSpawnIndex);
-        }
-
-        return GetNextSpawnPoint(playerSpawnPoints, ref nextPlayerSpawnIndex);
+        OnClientDisconnected(clientId);
+        Debug.LogWarning($"[CustomConnectionManager] Client {clientId}: {reason}");
+        var manager = subscribedManager;
+        if (manager == null || !manager.IsServer || manager.ShutdownInProgress) return;
+        if (manager.IsHost && clientId == manager.LocalClientId) manager.Shutdown();
+        else manager.DisconnectClient(clientId, reason);
     }
 
     private Transform GetNextSpawnPoint(Transform[] spawnPoints, ref int nextIndex)
     {
-        if (spawnPoints == null || spawnPoints.Length == 0)
-        {
-            return null;
-        }
-
-        int attempts = spawnPoints.Length;
-        for (int i = 0; i < attempts; i++)
+        if (spawnPoints == null || spawnPoints.Length == 0) return null;
+        for (int i = 0; i < spawnPoints.Length; i++)
         {
             int index = nextIndex % spawnPoints.Length;
-            nextIndex++;
-
-            var spawnPoint = spawnPoints[index];
-            if (spawnPoint != null)
-            {
-                return spawnPoint;
-            }
+            nextIndex = (index + 1) % spawnPoints.Length;
+            if (spawnPoints[index] != null) return spawnPoints[index];
         }
-
         return null;
     }
 }

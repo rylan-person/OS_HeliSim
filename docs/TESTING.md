@@ -39,11 +39,20 @@ Inspect the fixture before execution: it is work in progress at this policy's ad
    Record expected fixtures/cases. Unknown, empty, duplicate or wrong-mode selection
    is a selection failure, not a pass. Preserve all assertions and full-suite meaning.
 
-The existing `MultiplayerVerificationRunner` is a convenience helper, not ProjectI's
-evidence harness. Its `RunPlayMode` actually selects the integration fixture in
-EditMode, and `RunEditMode` selects a reflection-based subset. Inspect/discover that
-selection before use; do not call its result a full-project suite or assume it provides
-execution ownership, immutable manifests or source identity validation.
+`MultiplayerVerificationRunner.Discover(path)` writes discovered EditMode case names.
+`Run(outputXmlPath, fixtureNames)` runs the explicit EditMode fixture selection and
+saves NUnit XML. It checks clean saved authoring scenes and snapshots their setup
+before the Test Runner creates its transient scenes. Use this entry point for
+`MultiplayerIntegrationTests`, whose setup needs that snapshot. For example:
+
+```csharp
+MultiplayerVerificationRunner.Run("TestResults/<unique-run>/multiplayer.xml",
+    new[] { "MultiplayerIntegrationTests" });
+```
+
+This is a convenience helper, not an execution-ownership or source-identity harness.
+Inspect/discover the selection before use; do not call a focused result a full-project
+suite or assume the helper provides immutable manifests or source identity validation.
 
 ## Headless alternative
 
