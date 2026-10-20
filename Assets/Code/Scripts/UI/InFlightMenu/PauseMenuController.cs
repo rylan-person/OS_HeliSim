@@ -18,6 +18,7 @@ public sealed class PauseMenuController : MonoBehaviour
         None,
         Close,
         SelectPage,
+        Action,
     }
 
     [SerializeField] private List<PauseMenuPageRegistration> pages = new List<PauseMenuPageRegistration>();
@@ -36,6 +37,7 @@ public sealed class PauseMenuController : MonoBehaviour
     private InFlightMenuPage activePage;
     private PendingOperation pendingOperation;
     private string pendingPageId;
+    private System.Action pendingAction;
     private CursorLockMode cursorLockState;
     private bool cursorVisible;
     private bool isOpen;
@@ -193,6 +195,7 @@ public sealed class PauseMenuController : MonoBehaviour
 
         PendingOperation operation = pendingOperation;
         string pageId = pendingPageId;
+        System.Action action = pendingAction;
         ClearPendingOperation();
         selectionBeforeConfirmation = null;
 
@@ -203,6 +206,26 @@ public sealed class PauseMenuController : MonoBehaviour
         else if (operation == PendingOperation.SelectPage)
         {
             SelectPageNow(pageId);
+        }
+        else if (operation == PendingOperation.Action)
+        {
+            activePage?.OnPageDeselected();
+            action?.Invoke();
+        }
+    }
+
+    public void RequestAction(System.Action action)
+    {
+        if (action == null || pendingOperation != PendingOperation.None) return;
+        if (isOpen && activePage != null && activePage.IsDirty)
+        {
+            pendingAction = action;
+            RequestDeferredOperation(PendingOperation.Action, null);
+        }
+        else
+        {
+            activePage?.OnPageDeselected();
+            action();
         }
     }
 
@@ -295,6 +318,7 @@ public sealed class PauseMenuController : MonoBehaviour
 
     private void ClearPendingOperation()
     {
+        pendingAction = null;
         pendingOperation = PendingOperation.None;
         pendingPageId = null;
         if (confirmationRoot != null)

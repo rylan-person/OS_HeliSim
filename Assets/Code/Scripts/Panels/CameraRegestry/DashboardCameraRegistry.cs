@@ -12,11 +12,11 @@ public static class DashboardCameraRegistry
         if (source == null)
             return;
 
-        if (cameras.ContainsKey(source.cameraType))
+        if (cameras.TryGetValue(source.cameraType, out DashboardCameraSource previous) && previous != null && previous != source)
         {
             Debug.LogWarning(
                 $"Replacing registered dashboard camera of type {source.cameraType}. " +
-                $"Old: {cameras[source.cameraType].name}, New: {source.name}"
+                $"Old: {previous.name}, New: {source.name}"
             );
         }
 
@@ -40,6 +40,7 @@ public static class DashboardCameraRegistry
     public static DashboardCameraSource Get(PanelCameraType type)
     {
         cameras.TryGetValue(type, out DashboardCameraSource source);
+        if (source == null) cameras.Remove(type);
         return source;
     }
 
@@ -51,7 +52,8 @@ public static class DashboardCameraRegistry
 
     public static bool TryGet(PanelCameraType type, out DashboardCameraSource source)
     {
-        return cameras.TryGetValue(type, out source);
+        source = Get(type);
+        return source != null;
     }
 
     public static void RegisterPanel(CameraDashboardPanel panel)

@@ -21,6 +21,20 @@ public class RoleSelectionUI : MonoBehaviour
     private bool connecting;
     private string failureMessage;
     private string fallbackAddress = "127.0.0.1";
+    private string hostListenAddress = "0.0.0.0";
+    public bool IsConnecting => connecting;
+    public string StatusMessage { get; private set; } = string.Empty;
+
+    // The front end configures the same startup path used by the scene's legacy UI.
+    public bool ConfigureEndpoint(string address, ushort port, bool localHostOnly)
+    {
+        if (IsStartBlocked() || port == 0 || !TryNormalizeAddress(address, out string normalized))
+            return false;
+        serverPort = port;
+        hostListenAddress = localHostOnly ? "127.0.0.1" : "0.0.0.0";
+        SetServerAddress(normalized);
+        return true;
+    }
 
     public void OnClickPlayer()
     {
@@ -103,7 +117,7 @@ public class RoleSelectionUI : MonoBehaviour
         }
         SetConnecting(true);
         UnityTransport transport = (UnityTransport)manager.NetworkConfig.NetworkTransport;
-        SetStatus(host ? $"Starting host on 0.0.0.0:{serverPort}..." : $"Connecting to {transport.ConnectionData.Address}:{serverPort}...");
+        SetStatus(host ? $"Starting host on {hostListenAddress}:{serverPort}..." : $"Connecting to {transport.ConnectionData.Address}:{serverPort}...");
         try
         {
             bool started = host ? manager.StartHost() : manager.StartClient();
@@ -154,7 +168,7 @@ public class RoleSelectionUI : MonoBehaviour
                 ipInputField.SetTextWithoutNotify(address);
             }
         }
-        transport.SetConnectionData(address, serverPort, host ? "0.0.0.0" : null);
+        transport.SetConnectionData(address, serverPort, host ? hostListenAddress : null);
         manager.NetworkConfig.ConnectionData = new[] { (byte)SelectedRole };
         return true;
     }
@@ -276,6 +290,7 @@ public class RoleSelectionUI : MonoBehaviour
 
     private void SetStatus(string message)
     {
+        StatusMessage = message ?? string.Empty;
         if (connectionStatusText != null)
         {
             connectionStatusText.text = message;

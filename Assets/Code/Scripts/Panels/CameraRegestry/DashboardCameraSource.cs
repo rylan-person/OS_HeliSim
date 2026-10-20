@@ -19,6 +19,11 @@ public class DashboardCameraSource : MonoBehaviour
         DashboardCameraRegistry.Register(this);
     }
 
+    private void OnDestroy()
+    {
+        DashboardCameraRegistry.Unregister(this);
+    }
+
     // private void OnEnable()
     // {
     //     DashboardCameraRegistry.Register(this);

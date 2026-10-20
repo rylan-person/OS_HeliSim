@@ -107,6 +107,35 @@ public class PauseMenuControllerTests
     }
 
     [Test]
+    public void SessionExitAction_WaitsForDirtySettingsAndCancelsWithoutExiting()
+    {
+        controller.Open();
+        controller.SelectPage("dirty");
+        dirtyPage.SetDirty(true);
+        int exits = 0;
+        controller.RequestAction(() => exits++);
+        Assert.That(confirmationRoot.activeSelf, Is.True);
+        Assert.That(exits, Is.Zero);
+        controller.ResolvePendingClose(DirtyPageChoice.Cancel);
+        Assert.That(exits, Is.Zero);
+        Assert.That(dirtyPage.IsDirty, Is.True);
+    }
+
+    [Test]
+    public void SessionExitAction_DiscardsDraftThenRunsExactlyOnce()
+    {
+        controller.Open();
+        controller.SelectPage("dirty");
+        dirtyPage.SetDirty(true);
+        int exits = 0;
+        controller.RequestAction(() => exits++);
+        controller.ResolvePendingClose(DirtyPageChoice.Discard);
+        controller.ResolvePendingClose(DirtyPageChoice.Discard);
+        Assert.That(dirtyPage.DiscardCalls, Is.EqualTo(1));
+        Assert.That(exits, Is.EqualTo(1));
+    }
+
+    [Test]
     public void SelectPage_ActivatesExactlyTheRequestedPageRoot()
     {
         controller.Open();

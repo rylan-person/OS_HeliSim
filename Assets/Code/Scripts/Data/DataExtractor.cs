@@ -101,22 +101,43 @@ public class DataExtractor : MonoBehaviour
         // on pressing the '.' key, save the data
         if (Input.GetKeyDown(KeyCode.Period) && isRecording)
         {
-            SaveData();
-            isRecording = false;
-            heliDataList.Clear();
-            Debug.Log("Data saved and recording stopped.");
+            TryStopRecording(out _);
         } 
     }
 
     public void SaveData()
     {
+        TrySaveData(out _);
+    }
+
+    public bool TryStopRecording(out string error)
+    {
+        error = null;
+        if (!isRecording) return true;
+        if (!TrySaveData(out error)) return false;
+        isRecording = false;
+        heliDataList.Clear();
+        return true;
+    }
+
+    private void OnDisable()
+    {
+        if (isRecording) TryStopRecording(out _);
+    }
+
+    private bool TrySaveData(out string error)
+    {
+        error = null;
         // have the file include the date and time
         string directory = Path.Combine(Application.persistentDataPath, "Data");
-        Directory.CreateDirectory(directory);
-        string path = Path.Combine(directory, System.DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss") + ".csv");
+        string stem = System.DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss");
+        string path = Path.Combine(directory, stem + ".csv");
 
         try
         {
+            Directory.CreateDirectory(directory);
+            int suffix = 1;
+            while (File.Exists(path)) path = Path.Combine(directory, stem + "_" + suffix++ + ".csv");
             using (StreamWriter writer = new StreamWriter(path, false))
             {
                 writer.WriteLine("time,xJoy_input,yJoy_input,pedal_input,collective_input,pos_x,pos_y,pos_z,rot_x,rot_y,rot_z,pitch_rate,roll_rate,yaw_rate,turn_rate,vel_x,vel_y,vel_z");
@@ -133,10 +154,13 @@ public class DataExtractor : MonoBehaviour
                     );
                 }
             }
+            return true;
         }
         catch (System.Exception ex)
         {
+            error = ex.Message;
             Debug.LogError($"DataExtractor: failed to save recording to '{path}': {ex}");
+            return false;
         }
     }
 

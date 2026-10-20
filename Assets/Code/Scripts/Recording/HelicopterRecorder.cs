@@ -8,6 +8,7 @@ public class HelicopterRecorder : MonoBehaviour
     public string fileName = "HelicopterJourney.txt";
     private List<TransformData> journeyData = new List<TransformData>();
     private bool isRecording = false;
+    public bool IsRecording => isRecording;
     private float startTime;
 
     void Update()
@@ -44,9 +45,17 @@ public class HelicopterRecorder : MonoBehaviour
 
     public void StopRecording()
     {
-        isRecording = false;
+        if (!isRecording) return;
         SaveJourneyToFile();
+        isRecording = false;
         Debug.Log("Recording stopped");
+    }
+
+    private void OnDisable()
+    {
+        if (!isRecording) return;
+        try { StopRecording(); }
+        catch (System.Exception exception) { Debug.LogWarning("Could not finish helicopter journey recording: " + exception.Message, this); }
     }
 
     private void SaveJourneyToFile()

@@ -28,9 +28,15 @@ namespace HeliSim.InFlightMenu
 
         private void Awake()
         {
+            if (model != null) return;
             CanvasScaler scaler = menuCanvasScaler != null ? menuCanvasScaler : GetComponentInParent<CanvasScaler>();
             model = new DisplaySettingsModel(new UnityDisplaySettings(scaler), new PlayerPrefsDisplaySettingsStore());
             model.RestoreSaved();
+        }
+
+        public void RestorePreferencesAtStartup()
+        {
+            if (model == null) Awake();
         }
 
         private void OnEnable()

@@ -161,6 +161,18 @@ public class MainMenu : MonoBehaviour
 
     #region Helicopter Controls
 
+    public bool TrySetAssistancePreset(int index)
+    {
+        if (index < 0 || index >= AssistValuesList.Count || AssistPresets == null ||
+            AssistPresetName == null || HelicopterComponents.Instance == null ||
+            HelicopterComponents.Instance.autoTrim == null || HelicopterComponents.Instance.rotaryComputer == null ||
+            HelicopterComponents.Instance.rotaryController == null)
+            return false;
+        AssistPresets.SetValueWithoutNotify(index);
+        AssistPresetUpdate(index);
+        return true;
+    }
+
     public void AssistPresetUpdate(Single sin)
     {
         AssistPresetName.text = AssistValuesList[(int)AssistPresets.value].name;
