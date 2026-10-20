@@ -98,7 +98,9 @@ namespace Mapbox.CheapRulerCs.UnitTest
 
 		private List<line> loadFixtures()
 		{
-			TextAsset fixturesAsset = Resources.Load<TextAsset>("ChearRulerCs_fixtures");
+			TextAsset fixturesAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<TextAsset>(
+				"Assets/Mapbox/Core/cheap-ruler-cs/Tests/Editor/Fixtures/ChearRulerCs_fixtures.json");
+			Assert.IsNotNull(fixturesAsset, "The original CheapRuler test fixture must be imported.");
 			var json = JArray.Parse(fixturesAsset.text);
 			List<line> fixtures = new List<line>();
 

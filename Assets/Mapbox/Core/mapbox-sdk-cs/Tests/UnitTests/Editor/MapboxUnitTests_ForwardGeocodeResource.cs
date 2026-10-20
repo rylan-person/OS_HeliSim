@@ -85,7 +85,7 @@ namespace Mapbox.MapboxSdkCs.UnitTest
 #if UNITY_IOS
 			Assert.AreEqual("https://api.mapbox.com/geocoding/v5/mapbox.places/Minneapolis++MN.json?autocomplete=false&bbox=10.00000%2C15.00000%2C20.00000%2C25.00000".ToLower(), _forwardGeocodeResource.GetUrl().ToLower());
 #else
-			Assert.AreEqual("https://api.mapbox.com/geocoding/v5/mapbox.places/Minneapolis++MN.json?autocomplete=false&bbox=10.00000%2C15.00000%2C20.00000%2C25.00000", _forwardGeocodeResource.GetUrl());
+			Assert.AreEqual("https://api.mapbox.com/geocoding/v5/mapbox.places/Minneapolis%2C%20MN.json?autocomplete=false&bbox=10.00000%2C15.00000%2C20.00000%2C25.00000", _forwardGeocodeResource.GetUrl());
 #endif
 
 

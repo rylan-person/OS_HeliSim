@@ -112,7 +112,9 @@ namespace Mapbox.ProbeExtractorCs.UnitTest
 
 		private List<TracePoint> loadTraceFixture(string fixtureName)
 		{
-			TextAsset fixtureAsset = Resources.Load<TextAsset>(fixtureName);
+			TextAsset fixtureAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<TextAsset>(
+				"Assets/Mapbox/Core/probe-extractor-cs/Tests/Editor/Fixtures/" + fixtureName + ".csv");
+			Assert.IsNotNull(fixtureAsset, "The original probe trace fixture must be imported: " + fixtureName);
 			List<TracePoint> trace = new List<TracePoint>();
 			using (StringReader sr = new StringReader(fixtureAsset.text))
 			{
@@ -153,7 +155,9 @@ namespace Mapbox.ProbeExtractorCs.UnitTest
 
 		private List<Probe> loadProbeFixture(string fixtureName)
 		{
-			TextAsset fixtureAsset = Resources.Load<TextAsset>(fixtureName);
+			TextAsset fixtureAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<TextAsset>(
+				"Assets/Mapbox/Core/probe-extractor-cs/Tests/Editor/Fixtures/" + fixtureName + ".csv");
+			Assert.IsNotNull(fixtureAsset, "The original probe fixture must be imported: " + fixtureName);
 			List<Probe> probes = new List<Probe>();
 			using (StringReader sr = new StringReader(fixtureAsset.text))
 			{

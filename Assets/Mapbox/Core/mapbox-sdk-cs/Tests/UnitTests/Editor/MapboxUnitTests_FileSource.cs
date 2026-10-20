@@ -1,250 +1,188 @@
-﻿//-----------------------------------------------------------------------
-// <copyright file="FileSourceTest.cs" company="Mapbox">
-//     Copyright (c) 2016 Mapbox. All rights reserved.
-// </copyright>
 //-----------------------------------------------------------------------
-
-// TODO: figure out how run tests outside of Unity with .NET framework, something like '#if !UNITY'
+// Copyright (c) 2016 Mapbox. All rights reserved.
+//-----------------------------------------------------------------------
 #if UNITY_5_6_OR_NEWER
-
 namespace Mapbox.MapboxSdkCs.UnitTest
 {
+    using System;
+    using System.Collections;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Text;
+    using Mapbox.Platform;
+    using NUnit.Framework;
+    using UnityEngine.TestTools;
 
+    [TestFixture]
+    internal class FileSourceTest
+    {
+        private const int RequestTimeoutSeconds = 5;
+        private const int WaitTimeoutSeconds = 10;
+        private readonly List<IAsyncRequest> requests = new List<IAsyncRequest>();
+        private FileSource fileSource;
+        private MapboxLoopbackServer server;
 
-	using Mapbox.Platform;
-	using NUnit.Framework;
-#if UNITY_5_6_OR_NEWER
-	using UnityEngine.TestTools;
-	using System.Collections;
-#endif
+        [SetUp]
+        public void SetUp()
+        {
+            requests.Clear();
+            server = new MapboxLoopbackServer();
+            fileSource = new FileSource(() => "test-sku", "test-access-token");
+        }
 
+        [UnityTearDown]
+        public IEnumerator TearDown()
+        {
+            foreach (IAsyncRequest request in requests)
+            {
+                if (!request.IsCompleted)
+                {
+                    request.Cancel();
+                }
+            }
 
+            // Stop the listener, release delayed responses and join its worker even
+            // when an assertion or the bounded request wait failed.
+            server.Dispose();
+            Stopwatch timer = Stopwatch.StartNew();
+            while (requests.Exists(request => !request.IsCompleted) && timer.Elapsed.TotalSeconds < WaitTimeoutSeconds)
+            {
+                yield return null;
+            }
 
-	[TestFixture]
-	internal class FileSourceTest
-	{
+            Assert.IsFalse(requests.Exists(request => !request.IsCompleted), "Canceled transport did not finish during cleanup.");
+            Assert.IsNull(server.Error, "Loopback server failed: " + server.Error);
+        }
 
-		private const string _url = "https://api.mapbox.com/geocoding/v5/mapbox.places/helsinki.json";
-		private FileSource _fs;
-		private int _timeout = 10;
+        [UnityTest]
+        public IEnumerator Request()
+        {
+            Response response = null;
+            Send("success?existing=retained", result => response = result);
+            yield return WaitForRequests();
 
+            Assert.IsNotNull(response, "Transport did not invoke its callback.");
+            Assert.IsFalse(response.HasError, response.ExceptionsAsString);
+            Assert.AreEqual(200, response.StatusCode);
+            Assert.AreEqual("mapbox-loopback-body", Encoding.UTF8.GetString(response.Data));
+            AssertRequestQuery("existing=retained", "access_token=test-access-token", "sku=test-sku");
+        }
 
-		[SetUp]
-		public void SetUp()
-		{
-#if UNITY_5_6_OR_NEWER
-			_fs = new FileSource(Unity.MapboxAccess.Instance.Configuration.GetMapsSkuToken, Unity.MapboxAccess.Instance.Configuration.AccessToken);
-			_timeout = Unity.MapboxAccess.Instance.Configuration.DefaultTimeout;
-#else
-			// when run outside of Unity FileSource gets the access token from environment variable 'MAPBOX_ACCESS_TOKEN'
-			_fs = new FileSource();
-#endif
-		}
+        [UnityTest]
+        public IEnumerator MultipleRequests()
+        {
+            List<Response> responses = new List<Response>();
+            Send("success", responses.Add);
+            Send("success", responses.Add);
+            Send("success", responses.Add);
+            yield return WaitForRequests();
 
+            Assert.AreEqual(3, responses.Count, "Each concurrent request must invoke exactly one callback.");
+            CollectionAssert.AreEquivalent(requests, responses.ConvertAll(response => response.Request),
+                "Every concurrent request must have its own response.");
+            foreach (Response response in responses)
+            {
+                Assert.IsFalse(response.HasError, response.ExceptionsAsString);
+                Assert.AreEqual(200, response.StatusCode);
+                Assert.AreEqual("mapbox-loopback-body", Encoding.UTF8.GetString(response.Data));
+            }
+            AssertRequestQuery("access_token=test-access-token", "sku=test-sku");
+        }
 
+        [UnityTest]
+        public IEnumerator RequestCancel()
+        {
+            Response response = null;
+            int callbackCount = 0;
+            IAsyncRequest request = Send("delayed", result =>
+            {
+                response = result;
+                callbackCount++;
+            });
 
-#if !UNITY_5_6_OR_NEWER
-		[Test]
-		public void AccessTokenSet()
-		{
-			Assert.IsNotNull(
-				Environment.GetEnvironmentVariable("MAPBOX_ACCESS_TOKEN"),
-				"MAPBOX_ACCESS_TOKEN not set in the environment."
-			);
-		}
-#endif
+            Stopwatch timer = Stopwatch.StartNew();
+            while (server.RequestsReceived == 0 && timer.Elapsed.TotalSeconds < RequestTimeoutSeconds)
+            {
+                yield return null;
+            }
 
+            Assert.AreEqual(1, server.RequestsReceived, "Cancellation must exercise an in-flight request.");
+            Assert.IsNull(response, "The delayed endpoint must not finish before cancellation.");
+            request.Cancel();
+            yield return WaitForRequests();
 
+            Assert.AreEqual(1, callbackCount);
+            Assert.IsNotNull(response);
+            Assert.IsTrue(response.HasError);
+            Assert.IsNotEmpty(response.Exceptions);
+            StringAssert.Contains("abort", response.ExceptionsAsString.ToLowerInvariant());
+            Assert.AreEqual(0, response.StatusCode);
+        }
 
-#if UNITY_5_6_OR_NEWER
-		[UnityTest]
-		public IEnumerator Request()
-#else
-		[Test]
-		public void Request()
-#endif
-		{
-			byte[] data = null;
-			_fs.Request(
-				_url,
-				(Response res) =>
-				{
-					data = res.Data;
-				}
-				, _timeout
-			);
+        [UnityTest]
+        public IEnumerator RequestTransportError()
+        {
+            Response response = null;
+            // Closing a real TCP connection without an HTTP response exercises the
+            // transport failure path without depending on DNS, proxies or wording.
+            Send("disconnect", result => response = result);
+            yield return WaitForRequests();
 
-#if UNITY_5_6_OR_NEWER
-			IEnumerator enumerator = _fs.WaitForAllRequests();
-			while (enumerator.MoveNext()) { yield return null; }
-#else
-			_fs.WaitForAllRequests();
-#endif
-			Assert.IsNotNull(data, "No data received from the servers.");
-		}
+            Assert.IsNotNull(response);
+            Assert.IsTrue(response.HasError);
+            Assert.IsNotEmpty(response.Exceptions);
+            Assert.AreEqual(0, response.StatusCode, "A transport failure has no HTTP status.");
+        }
 
+        [UnityTest]
+        public IEnumerator RequestForbidden()
+        {
+            Response response = null;
+            // The previous mapbox.com/forbidden URL was an uncontrolled website
+            // route returning 404, so it could not establish the HTTP 403 contract.
+            Send("forbidden", result => response = result);
+            yield return WaitForRequests();
 
+            Assert.IsNotNull(response);
+            Assert.IsTrue(response.HasError);
+            Assert.AreEqual(403, response.StatusCode);
+        }
 
-#if UNITY_5_6_OR_NEWER
-		[UnityTest]
-		public IEnumerator MultipleRequests()
-#else
-		[Test]
-		public void Request() 
-#endif
-		{
-			int count = 0;
+        [UnityTest]
+        public IEnumerator WaitWithNoRequests()
+        {
+            IEnumerator wait = fileSource.WaitForAllRequests();
+            Assert.IsFalse(wait.MoveNext(), "An empty request set must finish immediately.");
+            yield break;
+        }
 
-			_fs.Request(_url, (Response res) => ++count, _timeout);
-			_fs.Request(_url, (Response res) => ++count, _timeout);
-			_fs.Request(_url, (Response res) => ++count, _timeout);
+        private void AssertRequestQuery(params string[] expected)
+        {
+            Assert.IsNotNull(server.RequestTarget, "The HTTP peer must receive the request target.");
+            var target = new Uri(new Uri(server.Url), server.RequestTarget);
+            CollectionAssert.AreEquivalent(expected, target.Query.TrimStart('?').Split('&'),
+                "FileSource must preserve existing query values and append the synthetic credentials exactly once.");
+        }
 
-#if UNITY_5_6_OR_NEWER
-			IEnumerator enumerator = _fs.WaitForAllRequests();
-			while (enumerator.MoveNext()) { yield return null; }
-#else
-			_fs.WaitForAllRequests();
-#endif
+        private IAsyncRequest Send(string path, Action<Response> callback)
+        {
+            IAsyncRequest request = fileSource.Request(server.Url + path, callback, RequestTimeoutSeconds);
+            requests.Add(request);
+            return request;
+        }
 
-			Assert.AreEqual(count, 3, "Should have received 3 replies.");
-		}
-
-
-
-#if UNITY_5_6_OR_NEWER
-		[UnityTest]
-#if UNITY_ANDROID || UNITY_IOS
-		[Ignore("test ignored: Request.Cancel() does not work on some devices")]
-#endif
-		public IEnumerator RequestCancel()
-#else
-		[Test]
-		public void RequestCancel() 
-#endif
-		{
-			var request = _fs.Request(
-				//use "heavy" tile with 182KB that request doesn't finish before it is cancelled
-				"https://a.tiles.mapbox.com/v4/mapbox.mapbox-terrain-v2,mapbox.mapbox-streets-v7/10/545/361.vector.pbf",
-				(Response res) =>
-				{
-					// HACK!! THIS IS BAAAD, investigate more!
-					// on *some* Android devices (eg Samsung S8 not on Pixel 2) and *some* iPhones
-					// HasError is false as the request finishes successfully before 'Cancel()' kicks in
-					// couldn't find the reason or a proper fix.
-					// maybe some OS internal caching?
-#if UNITY_ANDROID || UNITY_IOS
-					UnityEngine.Debug.LogWarning("test 'RequestCancel' not run");
-					return;
-#endif
-
-					Assert.IsTrue(res.HasError);
-
-#if UNITY_5_6_OR_NEWER
-					Assert.IsNotNull(res.Exceptions[0]);
-					Assert.AreEqual("Request aborted", res.Exceptions[0].Message);
-#else
-					WebException wex = res.Exceptions[0] as WebException;
-					Assert.IsNotNull(wex);
-					Assert.AreEqual(wex.Status, WebExceptionStatus.RequestCanceled);
-#endif
-				},
-				_timeout
-			);
-
-			request.Cancel();
-
-#if UNITY_5_6_OR_NEWER
-			IEnumerator enumerator = _fs.WaitForAllRequests();
-			while (enumerator.MoveNext()) { yield return null; }
-#else
-			_fs.WaitForAllRequests();
-#endif
-		}
-
-
-
-#if UNITY_5_6_OR_NEWER
-		[UnityTest]
-		public IEnumerator RequestDnsError()
-#else
-		[Test]
-		public void RequestDnsError() 
-#endif
-		{
-			_fs.Request(
-				"https://dnserror.shouldnotwork",
-				(Response res) =>
-				{
-					Assert.IsTrue(res.HasError);
-					// Attention: when using Fiddler to throttle requests message is "Failed to receive data"
-					Assert.IsTrue(
-						res.Exceptions[0].Message.Contains("destination host")
-						, string.Format("Exception message [{0}] does not contain 'destination host'", res.Exceptions[0].Message)
-					);
-				},
-				_timeout
-			);
-
-#if UNITY_5_6_OR_NEWER
-			IEnumerator enumerator = _fs.WaitForAllRequests();
-			while (enumerator.MoveNext()) { yield return null; }
-#else
-			_fs.WaitForAllRequests();
-#endif
-		}
-
-
-
-#if UNITY_5_6_OR_NEWER
-		[UnityTest]
-		public IEnumerator RequestForbidden()
-#else
-		[Test]
-		public void RequestForbidden() 
-#endif
-		{
-			// Mapbox servers will return a forbidden when attempting
-			// to access a page outside the API space with a token
-			// on the query. Let's hope the behaviour stay like this.
-			_fs.Request(
-				"https://mapbox.com/forbidden",
-				(Response res) =>
-				{
-					Assert.IsTrue(res.HasError);
-					Assert.AreEqual(403, res.StatusCode);
-				},
-				_timeout
-			);
-
-#if UNITY_5_6_OR_NEWER
-			IEnumerator enumerator = _fs.WaitForAllRequests();
-			while (enumerator.MoveNext()) { yield return null; }
-#else
-			_fs.WaitForAllRequests();
-#endif
-		}
-
-
-
-#if UNITY_5_6_OR_NEWER
-		[UnityTest]
-		public IEnumerator WaitWithNoRequests()
-#else
-		[Test]
-		public void WaitWithNoRequests() 
-#endif
-		{
-			// This should simply not block.
-#if UNITY_5_6_OR_NEWER
-			IEnumerator enumerator = _fs.WaitForAllRequests();
-			while (enumerator.MoveNext()) { yield return null; }
-#else
-			_fs.WaitForAllRequests();
-#endif
-		}
-
-
-	}
+        private IEnumerator WaitForRequests()
+        {
+            IEnumerator wait = fileSource.WaitForAllRequests();
+            Stopwatch timer = Stopwatch.StartNew();
+            // Match the existing EditMode fixture's frame stepping: WaitForSeconds
+            // returned by FileSource is a PlayMode yield instruction.
+            while (wait.MoveNext())
+            {
+                Assert.Less(timer.Elapsed.TotalSeconds, WaitTimeoutSeconds, "FileSource.WaitForAllRequests did not finish.");
+                yield return null;
+            }
+        }
+    }
 }
-
 #endif
