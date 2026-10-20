@@ -154,7 +154,7 @@ public static class MenuSceneBuilder
                 var pref = data.FindProperty("prefSettings"); if (pref != null) pref.objectReferenceValue = prefs;
                 var scale = data.FindProperty("menuCanvasScaler"); if (scale != null) scale.objectReferenceValue = scaler;
                 data.ApplyModifiedPropertiesWithoutUndo();
-                pages.Add(new MainMenuPageEntry { id = pair[0], root = page.gameObject, settingsPage = presenter, navigationButton = categories[pair[0]], initialSelectable = presenter.InitialSelectable });
+                pages.Add(new MainMenuPageEntry { id = pair[0], root = page.gameObject, settingsPage = presenter, navigationButton = categories[pair[0]] });
                 var back = FlowButton(page, "BackToSettings", "Back to Settings");
                 UnityEventTools.AddStringPersistentListener(back.onClick, router.SelectPageFromButton, "settings");
             }
@@ -169,6 +169,7 @@ public static class MenuSceneBuilder
             Set(screen, "router", router); Set(screen, "address", address); Set(screen, "port", port); Set(screen, "role", role); Set(screen, "assistance", assistance);
             Set(screen, "recordFlight", record); Set(screen, "recordPreference", recordPreference); Set(screen, "flightSummary", flightSummary); Set(screen, "hardwareSummary", hardwareSummary); Set(screen, "recordingSummary", recordingSummary); Set(screen, "status", status);
             Set(screen, "quickStart", quick); Set(screen, "startSolo", solo); Set(screen, "startHost", host); Set(screen, "startJoin", join); Set(screen, "recordingsFolder", folder); Set(screen, "quit", quit); Set(screen, "quitConfirmation", quitDialog); Set(screen, "confirmQuit", yes); Set(screen, "cancelQuit", no);
+            foreach (var dropdown in root.GetComponentsInChildren<TMP_Dropdown>(true)) ConfigureDropdown(dropdown);
             foreach (var child in root.GetComponentsInChildren<Transform>(true)) child.gameObject.layer = LayerMask.NameToLayer("UI");
             PrefabUtility.SaveAsPrefabAsset(root.gameObject, PrefabPath);
             Object.DestroyImmediate(root.gameObject);
@@ -187,6 +188,71 @@ public static class MenuSceneBuilder
         {
             EditorSceneManager.CloseScene(scene, true);
             EditorSceneManager.RestoreSceneManagerSetup(setup);
+        }
+    }
+
+    [MenuItem("HeliSim/Repair Menu Dropdowns and Entry Focus")]
+    public static void RepairUsabilityAssets()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isCompiling || BuildPipeline.isBuildingPlayer)
+            throw new InvalidOperationException("The Editor must be idle to repair menu assets.");
+        foreach (string path in new[] { "Assets/Level/Prefabs/UI/Menu.prefab", PrefabPath })
+        {
+            GameObject root = PrefabUtility.LoadPrefabContents(path);
+            try
+            {
+                foreach (var dropdown in root.GetComponentsInChildren<TMP_Dropdown>(true)) ConfigureDropdown(dropdown);
+                var router = root.GetComponent<MainMenuPageRouter>();
+                if (router != null)
+                {
+                    var serialized = new SerializedObject(router);
+                    var entries = serialized.FindProperty("pages");
+                    for (int index = 0; index < entries.arraySize; index++)
+                    {
+                        var entry = entries.GetArrayElementAtIndex(index);
+                        if (entry.FindPropertyRelative("settingsPage").objectReferenceValue != null)
+                            entry.FindPropertyRelative("initialSelectable").objectReferenceValue = null;
+                    }
+                    serialized.ApplyModifiedPropertiesWithoutUndo();
+                }
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+            }
+            finally { PrefabUtility.UnloadPrefabContents(root); }
+        }
+    }
+
+    private static void ConfigureDropdown(TMP_Dropdown dropdown)
+    {
+        var background = dropdown.GetComponent<UnityEngine.UI.Image>();
+        if (background == null || dropdown.template == null)
+            throw new InvalidOperationException("Menu dropdown requires a field Image and option template: " + dropdown.name);
+        background.enabled = true;
+        background.raycastTarget = true;
+        background.color = Panel;
+        background.sprite = null;
+        background.type = UnityEngine.UI.Image.Type.Simple;
+        dropdown.targetGraphic = background;
+        if (dropdown.captionText != null)
+        {
+            Stretch(dropdown.captionText.rectTransform);
+            dropdown.captionText.rectTransform.offsetMin = new Vector2(18, 4);
+            dropdown.captionText.rectTransform.offsetMax = new Vector2(-46, -4);
+            dropdown.captionText.alignment = TextAlignmentOptions.MidlineLeft;
+        }
+        var template = dropdown.template;
+        template.anchorMin = Vector2.zero;
+        template.anchorMax = Vector2.right;
+        template.pivot = new Vector2(0.5f, 1f);
+        template.sizeDelta = new Vector2(0, 240);
+        template.anchoredPosition = Vector2.zero;
+        var viewport = template.Find("Viewport");
+        if (viewport != null && viewport.TryGetComponent<UnityEngine.UI.Image>(out var viewportImage))
+        {
+            viewportImage.enabled = true;
+            viewportImage.color = Panel;
+            viewportImage.sprite = null;
+            viewportImage.type = UnityEngine.UI.Image.Type.Simple;
+            if (viewport.TryGetComponent<Mask>(out var mask)) mask.showMaskGraphic = true;
         }
     }
 

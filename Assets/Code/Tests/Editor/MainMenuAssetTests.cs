@@ -4,11 +4,54 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using TMPro;
 
 public sealed class MainMenuAssetTests
 {
     private const string PrefabPath = "Assets/Level/Prefabs/UI/MainMenu.prefab";
     private const string ScenePath = "Assets/Level/Scenes/MainMenu.unity";
+
+    [TestCase(PrefabPath)]
+    [TestCase("Assets/Level/Prefabs/UI/Menu.prefab")]
+    public void Dropdowns_HaveAFullFieldHitTarget(string path)
+    {
+        var menu = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        var dropdowns = menu.GetComponentsInChildren<TMP_Dropdown>(true);
+        Assert.That(dropdowns, Is.Not.Empty);
+        foreach (var dropdown in dropdowns)
+        {
+            var graphic = dropdown.GetComponent<Graphic>();
+            Assert.That(graphic, Is.Not.Null, dropdown.name);
+            Assert.That(graphic.enabled, Is.True, dropdown.name + " background must receive clicks across the field.");
+            Assert.That(graphic.raycastTarget, Is.True, dropdown.name);
+            Assert.That(dropdown.targetGraphic, Is.SameAs(graphic), dropdown.name);
+            Assert.That(dropdown.GetComponent<UnityEngine.UI.Image>().sprite, Is.Null,
+                dropdown.name + " uses a solid field background rather than an inherited transparent sprite.");
+        }
+    }
+
+    [TestCase(PrefabPath)]
+    [TestCase("Assets/Level/Prefabs/UI/Menu.prefab")]
+    public void Dropdowns_OpenAFieldWidthListUnderTheField(string path)
+    {
+        var menu = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        foreach (var dropdown in menu.GetComponentsInChildren<TMP_Dropdown>(true))
+        {
+            var template = dropdown.template;
+            Assert.That(template, Is.Not.Null, dropdown.name);
+            Assert.That(template.anchorMin, Is.EqualTo(Vector2.zero), dropdown.name);
+            Assert.That(template.anchorMax, Is.EqualTo(Vector2.right), dropdown.name);
+            Assert.That(template.pivot, Is.EqualTo(new Vector2(0.5f, 1f)), dropdown.name);
+            Assert.That(template.anchoredPosition, Is.EqualTo(Vector2.zero), dropdown.name);
+            Assert.That(template.sizeDelta.x, Is.Zero, dropdown.name);
+            Assert.That(template.sizeDelta.y, Is.GreaterThanOrEqualTo(150f), dropdown.name);
+            var background = template.Find("Viewport").GetComponent<UnityEngine.UI.Image>();
+            Assert.That(background.enabled, Is.True, dropdown.name + " options must obscure the controls underneath.");
+            Assert.That(background.color.a, Is.EqualTo(1f), dropdown.name);
+            Assert.That(background.sprite, Is.Null, dropdown.name + " options require a solid background.");
+            Assert.That(background.GetComponent<Mask>().showMaskGraphic, Is.True, dropdown.name);
+        }
+    }
 
     [Test]
     public void StartupScene_IsFirstEnabledScene_AndPreservesGameplay()

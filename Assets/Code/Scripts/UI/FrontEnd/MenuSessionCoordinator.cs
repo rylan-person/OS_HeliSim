@@ -158,7 +158,12 @@ namespace HeliSim.FrontEnd
 
         private void CaptureLoadedScene(Scene scene, LoadSceneMode mode)
         {
-            foreach (GameObject root in scene.GetRootGameObjects()) sessionRoots.Add(root);
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                sessionRoots.Add(root);
+                foreach (RoleSelectionUI roleUi in root.GetComponentsInChildren<RoleSelectionUI>(true))
+                    roleUi.SetMenuOwnsPresentation(true);
+            }
             CaptureSessionRoots();
         }
 

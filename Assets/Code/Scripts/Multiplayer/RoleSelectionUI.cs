@@ -22,8 +22,27 @@ public class RoleSelectionUI : MonoBehaviour
     private string failureMessage;
     private string fallbackAddress = "127.0.0.1";
     private string hostListenAddress = "0.0.0.0";
+    private bool menuOwnsPresentation;
+    private bool panelVisible = true;
     public bool IsConnecting => connecting;
     public string StatusMessage { get; private set; } = string.Empty;
+
+    // Menu launches keep their loading/retry UI authoritative; direct scene entry
+    // retains the legacy connection panel and its normal retry behaviour.
+    public void SetMenuOwnsPresentation(bool owned)
+    {
+        menuOwnsPresentation = owned;
+        SetPanelVisible(panelVisible);
+    }
+
+    private void SetPanelVisible(bool visible)
+    {
+        panelVisible = visible;
+        if (roleSelectionPanel != null)
+        {
+            roleSelectionPanel.enabled = visible && !menuOwnsPresentation;
+        }
+    }
 
     // The front end configures the same startup path used by the scene's legacy UI.
     public bool ConfigureEndpoint(string address, ushort port, bool localHostOnly)
@@ -231,10 +250,7 @@ public class RoleSelectionUI : MonoBehaviour
         }
         connecting = false;
         SetStatus("Connected.");
-        if (roleSelectionPanel != null)
-        {
-            roleSelectionPanel.enabled = false;
-        }
+        SetPanelVisible(false);
     }
 
     private void OnClientDisconnected(ulong clientId)
@@ -281,10 +297,7 @@ public class RoleSelectionUI : MonoBehaviour
     private void RestoreConnectionControls(string message)
     {
         SetConnecting(false);
-        if (roleSelectionPanel != null)
-        {
-            roleSelectionPanel.enabled = true;
-        }
+        SetPanelVisible(true);
         SetStatus(message);
     }
 

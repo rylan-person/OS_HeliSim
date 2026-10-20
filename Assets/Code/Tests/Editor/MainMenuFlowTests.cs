@@ -12,6 +12,7 @@ using Unity.Netcode.Transports.UTP;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
@@ -90,6 +91,12 @@ public sealed class MainMenuFlowTests
             Assert.That(router.SelectPage(id), Is.True, id);
             yield return null;
             Assert.That(router.HasPendingOperation, Is.False, id);
+            if (id == "display" || id == "audio" || id == "controls" || id == "streaming")
+            {
+                var scroll = (UnityEngine.UI.ScrollRect)new SerializedObject(router).FindProperty("pageScrollRect").objectReferenceValue;
+                Assert.That(scroll, Is.Not.Null, id);
+                Assert.That(scroll.verticalNormalizedPosition, Is.EqualTo(1f).Within(0.001f), id + " must enter at the top.");
+            }
         }
         ScreenCapture.CaptureScreenshot("TestResults/main-menu-20261020/main-menu-multiplayer.png");
         yield return null;
@@ -105,6 +112,7 @@ public sealed class MainMenuFlowTests
         Assert.That(first.NetworkConfig.NetworkTransport, Is.TypeOf<UnityTransport>());
         Assert.That(((UnityTransport)first.NetworkConfig.NetworkTransport).ConnectionData.ServerListenAddress, Is.EqualTo("127.0.0.1"));
         Assert.That(first.LocalClient.PlayerObject.GetComponent<NetworkHelicopterRegistry>(), Is.Not.Null);
+        AssertMenuRolePresentation(ClientRole.Player);
         Assert.That(Object.FindObjectsByType<NovaController>(FindObjectsInactive.Include, FindObjectsSortMode.None), Is.Empty);
         MenuSessionCoordinator.RequestReturnToMenu();
         yield return Until(MenuIsReady, "return from local host");
@@ -113,9 +121,55 @@ public sealed class MainMenuFlowTests
         MenuSessionCoordinator.Launch(new MenuSessionOptions { Mode = MenuLaunchMode.Host, Role = ClientRole.Spectator, Port = AvailablePort() });
         yield return Until(() => !MenuSessionCoordinator.IsTransitioning && NetworkManager.Singleton != null && NetworkManager.Singleton.IsConnectedClient, "spectator host startup");
         Assert.That(NetworkManager.Singleton.LocalClient.PlayerObject.GetComponent<ClientRoleMarker>(), Is.Not.Null);
+        AssertMenuRolePresentation(ClientRole.Spectator);
         Assert.That(Object.FindObjectsByType<NetworkManager>(FindObjectsSortMode.None).Length, Is.EqualTo(1));
         MenuSessionCoordinator.RequestReturnToMenu();
         yield return Until(MenuIsReady, "return from spectator host");
+    }
+
+    [UnityTest]
+    public IEnumerator MenuJoin_HidesLegacyRolePromptBeforeConnectionStarts()
+    {
+        bool observedSceneLoad = false;
+        bool legacyPanelEnabled = true;
+        bool roleUiActive = false;
+        bool networkWasListening = true;
+        int legacyOrder = 0;
+        int transitionOrder = 0;
+        MenuSessionCoordinator.Launch(new MenuSessionOptions { Mode = MenuLaunchMode.Join, Role = ClientRole.Spectator, Port = AvailablePort() });
+        // Launch registers the coordinator first, so this observes its scene-load handoff
+        // before Start callbacks or the connection coroutine can run.
+        UnityAction<Scene, LoadSceneMode> observe = (scene, mode) =>
+        {
+            if (!scene.path.EndsWith("Multiplayer.unity")) return;
+            var ui = Object.FindFirstObjectByType<RoleSelectionUI>(FindObjectsInactive.Include);
+            var panel = ui.GetComponent<Canvas>();
+            observedSceneLoad = true;
+            legacyPanelEnabled = panel.enabled;
+            roleUiActive = ui.isActiveAndEnabled;
+            networkWasListening = NetworkManager.Singleton.IsListening;
+            legacyOrder = panel.sortingOrder;
+            transitionOrder = Object.FindFirstObjectByType<MenuTransitionView>().GetComponent<Canvas>().sortingOrder;
+        };
+        SceneManager.sceneLoaded += observe;
+        try
+        {
+            yield return Until(() => observedSceneLoad, "menu-owned scene-load presentation");
+            Assert.That(networkWasListening, Is.False, "Observe the initial handoff, before network startup.");
+            Assert.That(roleUiActive, Is.True, "Startup scripts must remain active.");
+            Assert.That(legacyPanelEnabled, Is.False, "Main-menu entry must suppress the legacy role prompt immediately.");
+            Assert.That(transitionOrder, Is.GreaterThan(legacyOrder), "Connecting/cancel feedback must render above gameplay overlays.");
+            yield return Until(() => Object.FindFirstObjectByType<RoleSelectionUI>().IsConnecting, "join connection attempt");
+            AssertMenuRolePresentation(ClientRole.Spectator);
+            var roleUi = Object.FindFirstObjectByType<RoleSelectionUI>();
+            typeof(RoleSelectionUI).GetMethod("OnTransportFailure", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(roleUi, null);
+            Assert.That(roleUi.IsConnecting, Is.False);
+            Assert.That(roleUi.StatusMessage, Does.Contain("Transport failed"));
+            AssertMenuRolePresentation(ClientRole.Spectator);
+            MenuSessionCoordinator.RequestReturnToMenu();
+            yield return Until(MenuIsReady, "return from pending join");
+        }
+        finally { SceneManager.sceneLoaded -= observe; }
     }
 
     [UnityTest]
@@ -127,6 +181,17 @@ public sealed class MainMenuFlowTests
         yield return Until(MenuIsReady, "cancelled join return");
         Assert.That(NetworkManager.Singleton, Is.Null);
         Assert.That(Object.FindFirstObjectByType<MainMenuPageRouter>().SelectPage("multiplayer"), Is.True);
+    }
+
+    private static void AssertMenuRolePresentation(ClientRole role)
+    {
+        var ui = Object.FindFirstObjectByType<RoleSelectionUI>(FindObjectsInactive.Include);
+        Assert.That(ui, Is.Not.Null);
+        Assert.That(ui.isActiveAndEnabled, Is.True);
+        Assert.That(ui.GetComponent<Canvas>().enabled, Is.False);
+        Assert.That(RoleSelectionUI.SelectedRole, Is.EqualTo(role));
+        Assert.That(CustomConnectionManager.Instance.hostRole, Is.EqualTo(role));
+        Assert.That(NetworkManager.Singleton.NetworkConfig.ConnectionData, Is.EqualTo(new byte[] { (byte)role }));
     }
 
     private static bool MenuIsReady() => !MenuSessionCoordinator.IsTransitioning &&

@@ -415,7 +415,16 @@ namespace HeliSim.FrontEnd
         {
             if (page == null) return null;
             if (page.initialSelectable != null) return page.initialSelectable;
-            if (page.settingsPage != null && page.settingsPage.InitialSelectable != null) return page.settingsPage.InitialSelectable;
+            if (page.settingsPage != null)
+            {
+                // Shared in-flight pages may focus a footer action. Main-menu entry
+                // starts at the first usable control after dynamic rows are built.
+                foreach (Selectable control in page.root.GetComponentsInChildren<Selectable>())
+                {
+                    if (control.IsActive() && control.IsInteractable()) return control;
+                }
+                if (page.settingsPage.InitialSelectable != null) return page.settingsPage.InitialSelectable;
+            }
             return page.navigationButton;
         }
 
