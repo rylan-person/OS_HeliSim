@@ -385,7 +385,7 @@ MonoBehaviour:
     - m_Text: Telementry
       m_Image: {fileID: 0}
       m_Color: {r: 1, g: 1, b: 1, a: 1}
-    - m_Text: Timing TODO
+    - m_Text: Timing
       m_Image: {fileID: 0}
       m_Color: {r: 1, g: 1, b: 1, a: 1}
     - m_Text: Empty
