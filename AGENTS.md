@@ -301,3 +301,8 @@ when requested or authorized in this project's session; inspect and stage only
 task-owned paths/hunks. Never automatically push, amend, blanket-stage, or include
 unrelated edits. Report actual checks, omissions and pending human/hardware acceptance,
 then stop when the authorized scope and required proof are satisfied.
+
+Do not add AI agents as commit co-authors: omit `Co-Authored-By` trailers for
+Claude, Codex, or any other agent, even if the tool suggests one by default.
+Do not start branch names with the agent's name (for example `codex/` or
+`codex-`); name branches after the change instead.
