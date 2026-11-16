@@ -37,7 +37,15 @@ independent perspectives before implementation and against the integrated result
 
 When delegating work to sub-agents:
 
-- Use `gpt-6.1-sol` with medium reasoning for complex tasks requiring substantial reasoning, including:
+Use the column for the agent you are running as:
+
+| Tier | Codex | Claude Code |
+| --- | --- | --- |
+| Complex | `gpt-6.1-sol`, medium reasoning | Opus 5.5 (`opus`), medium effort |
+| Simple | `gpt-6-luna`, medium reasoning | Sonnet 5.5 (`sonnet`), medium effort; Haiku 5.5 (`haiku`) only for read-only lookups |
+| Not for sub-agents unless explicitly instructed | `gpt-6-terra`, `gpt-6-astra` | Fable 5.2 (`fable`) |
+
+- Use the **complex** tier for tasks requiring substantial reasoning, including:
   - architecture and design;
   - difficult debugging;
   - multi-file implementation;
@@ -47,20 +55,19 @@ When delegating work to sub-agents:
   - Eight360 NOVA integration;
   - code review where correctness is important.
 
-- Use `gpt-6-luna` for simple, isolated, one-off tasks, including:
+- Use the **simple** tier for simple, isolated, one-off tasks, including:
   - locating relevant files or code;
   - straightforward investigation;
   - simple mechanical edits;
   - documentation changes;
   - small tasks whose output will be reviewed by the lead agent.
 
-- Set model and reasoning explicitly when delegating; use medium reasoning for
-  simple tasks too unless the task warrants another supported setting. Use clean
-  context with a bounded handoff. Keep the lead's user-selected model/settings.
-- When uncertain whether a task is simple or complex, use `gpt-6.1-sol` with medium reasoning.
+- Set model and reasoning/effort explicitly when delegating (Claude Code: the
+  sub-agent's `model` and `effort` options); use medium for simple tasks too
+  unless the task warrants another supported setting. Use clean context with a
+  bounded handoff. Keep the lead's user-selected model/settings.
+- When uncertain whether a task is simple or complex, use the complex tier.
 - If a selected model is unavailable, report the limitation before substituting.
-
-- Do not use `gpt-6-terra` or `gpt-6-astra` for sub-agents unless explicitly instructed otherwise.
 
 ## Project Information
 
