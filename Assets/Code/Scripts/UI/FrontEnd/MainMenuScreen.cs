@@ -12,13 +12,28 @@ namespace HeliSim.FrontEnd
         [SerializeField] private MainMenuPageRouter router;
         [SerializeField] private TMP_InputField address;
         [SerializeField] private TMP_InputField port;
-        [SerializeField] private TMP_Dropdown role;
+        [Tooltip("Pilot (off) or Spectator (on), shown as a segmented control.")]
+        [SerializeField] private Toggle spectatorRole;
         [SerializeField] private TMP_Dropdown assistance;
         [SerializeField] private Toggle recordFlight;
         [SerializeField] private Toggle recordPreference;
         [SerializeField] private TMP_Text flightSummary;
         [SerializeField] private TMP_Text hardwareSummary;
         [SerializeField] private TMP_Text recordingSummary;
+        [Header("Hardware cards (optional)")]
+        [SerializeField] private TMP_Text controlsStatus;
+        [SerializeField] private Graphic controlsDot;
+        [SerializeField] private TMP_Text headsetStatus;
+        [SerializeField] private TMP_Text headsetDetail;
+        [SerializeField] private Graphic headsetDot;
+        [Header("Header status chips (optional, read-only)")]
+        [SerializeField] private TMP_Text inputChip;
+        [SerializeField] private Graphic inputChipDot;
+        [SerializeField] private TMP_Text headsetChip;
+        [SerializeField] private Graphic headsetChipDot;
+        [Header("Quick start (optional)")]
+        [SerializeField] private TMP_Text quickStartSummary;
+        [SerializeField] private HeliSim.UI.Theme.MenuTheme theme;
         [SerializeField] private TMP_Text status;
         [SerializeField] private Button quickStart;
         [SerializeField] private Button startSolo;
@@ -34,6 +49,8 @@ namespace HeliSim.FrontEnd
         private MenuSessionOptions saved;
         private GameObject selectionBeforeQuit;
         private CanvasGroup background;
+        private bool headsetWasActive;
+        private bool hardwareDirty;
 
         private void Awake()
         {
@@ -46,7 +63,7 @@ namespace HeliSim.FrontEnd
             string lastAddress = PlayerPrefs.GetString("ServerIP", saved.Address);
             address.SetTextWithoutNotify(RoleSelectionUI.TryNormalizeAddress(lastAddress, out string normalized) ? normalized : saved.Address);
             port.SetTextWithoutNotify(saved.Port.ToString());
-            role.SetValueWithoutNotify(saved.Role == ClientRole.Spectator ? 1 : 0);
+            spectatorRole.SetIsOnWithoutNotify(saved.Role == ClientRole.Spectator);
             assistance.SetValueWithoutNotify(saved.AssistancePreset + 1);
             recordFlight.SetIsOnWithoutNotify(saved.RecordFlightData);
             recordPreference.SetIsOnWithoutNotify(saved.RecordFlightData);
@@ -74,8 +91,23 @@ namespace HeliSim.FrontEnd
             if (router != null) router.PageChanged -= OnPageChanged;
         }
 
+        private void OnEnable() => UnityEngine.InputSystem.InputSystem.onDeviceChange += OnDeviceChange;
+
+        private void OnDisable() => UnityEngine.InputSystem.InputSystem.onDeviceChange -= OnDeviceChange;
+
+        // Refresh once on the next frame rather than inside the Input System callback.
+        private void OnDeviceChange(UnityEngine.InputSystem.InputDevice device, UnityEngine.InputSystem.InputDeviceChange change) =>
+            hardwareDirty = true;
+
         private void Update()
         {
+            bool headsetActive = MenuHardwareStatus.HeadsetActive;
+            if (hardwareDirty || headsetActive != headsetWasActive)
+            {
+                hardwareDirty = false;
+                RefreshHardware();
+            }
+
             if (quitConfirmation != null && quitConfirmation.activeSelf &&
                 UnityEngine.InputSystem.Keyboard.current != null &&
                 UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame)
@@ -84,17 +116,30 @@ namespace HeliSim.FrontEnd
 
         private void OnPageChanged(string page)
         {
-            if (page == "hardware") hardwareSummary.text = MenuHardwareStatus.BuildSummary();
+            if (page == "hardware") RefreshHardware();
             if (page == "recordings") RefreshRecordingSummary();
         }
 
         private void RefreshSummary()
         {
-            flightSummary.text = "Assistance: " +
-                assistance.options[assistance.value].text + "\nCSV recording: " + (recordFlight.isOn ? "On" : "Off") +
-                "\nTime-trial gates and session controls are available in flight.";
-            hardwareSummary.text = MenuHardwareStatus.BuildSummary();
+            flightSummary.text = "Assistance <color=#E6EDF2>" + assistance.options[assistance.value].text +
+                "</color>  ·  CSV recording <color=#E6EDF2>" + (recordFlight.isOn ? "On" : "Off") + "</color>";
+            RefreshHardware();
             RefreshRecordingSummary();
+            RefreshQuickStart();
+        }
+
+        private static string Strong(string text) => "<color=#E6EDF2>" + text + "</color>";
+
+        /// <summary>Summarises the stored last valid setup that "Fly last setup" launches.</summary>
+        private void RefreshQuickStart()
+        {
+            if (quickStartSummary == null || saved == null) return;
+            int option = saved.AssistancePreset + 1;
+            string assist = option >= 0 && option < assistance.options.Count ? assistance.options[option].text : "Keep aircraft default";
+            // Non-breaking spaces keep each label with its value when the line wraps.
+            quickStartSummary.text = "Aircraft " + Strong("R66") + "     Location " + Strong("Multiplayer environment") +
+                "     Assistance " + Strong(assist.Replace(' ', ' ')) + "     CSV " + Strong(saved.RecordFlightData ? "On" : "Off");
         }
 
         private void RefreshRecordingSummary()
@@ -103,14 +148,37 @@ namespace HeliSim.FrontEnd
             try
             {
                 int count = Directory.Exists(folder) ? Directory.GetFiles(folder, "*.csv").Length : 0;
-                recordingSummary.text = count + " CSV recordings\n\n" + folder +
-                    "\n\nCSV flight data uses the existing recorder and units. Journey recordings remain available through the in-flight menu. Playback is configured in flight.";
+                recordingSummary.text = count == 1 ? "1 CSV recording" : count + " CSV recordings";
             }
             catch (Exception exception)
             {
                 recordingSummary.text = "Recordings folder is unavailable: " + exception.Message;
             }
         }
+
+        private void RefreshHardware()
+        {
+            var palette = HeliSim.UI.Theme.MenuTheme.PaletteOf(theme);
+            headsetWasActive = MenuHardwareStatus.HeadsetActive;
+            string inputLabel = MenuHardwareStatus.InputChipLabel(out MenuHardwareStatus.ChipState inputState);
+            if (inputChip != null) inputChip.text = inputLabel;
+            if (inputChipDot != null) inputChipDot.color = ChipColor(palette, inputState);
+            string headsetLabel = MenuHardwareStatus.HeadsetChipLabel(out MenuHardwareStatus.ChipState headsetState);
+            if (headsetChip != null) headsetChip.text = headsetLabel;
+            if (headsetChipDot != null) headsetChipDot.color = ChipColor(palette, headsetState);
+            bool cards = controlsStatus != null;
+            hardwareSummary.text = cards ? MenuHardwareStatus.InputDevicesDetail() : MenuHardwareStatus.BuildSummary();
+            if (!cards) return;
+            controlsStatus.text = MenuHardwareStatus.InputDevicesValue();
+            if (controlsDot != null) controlsDot.color = UnityEngine.InputSystem.InputSystem.devices.Count > 0 ? palette.ok : palette.text3;
+            if (headsetStatus != null) headsetStatus.text = MenuHardwareStatus.HeadsetValue();
+            if (headsetDetail != null) headsetDetail.text = MenuHardwareStatus.HeadsetDetail();
+            if (headsetDot != null) headsetDot.color = MenuHardwareStatus.HeadsetActive ? palette.ok : palette.text3;
+        }
+
+        private static Color ChipColor(HeliSim.UI.Theme.MenuPalette palette, MenuHardwareStatus.ChipState state) =>
+            state == MenuHardwareStatus.ChipState.Ok ? palette.ok :
+            state == MenuHardwareStatus.ChipState.Caution ? palette.caution : palette.text3;
 
         private void SetRecordingPreference(bool enabled)
         {
@@ -140,7 +208,7 @@ namespace HeliSim.FrontEnd
             var options = new MenuSessionOptions
             {
                 Mode = mode,
-                Role = role.value == 1 ? ClientRole.Spectator : ClientRole.Player,
+                Role = spectatorRole.isOn ? ClientRole.Spectator : ClientRole.Player,
                 Address = address.text,
                 Port = number,
                 AssistancePreset = assistance.value - 1,

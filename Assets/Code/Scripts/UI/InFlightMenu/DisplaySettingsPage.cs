@@ -130,7 +130,7 @@ namespace HeliSim.InFlightMenu
             if (frameRateCap != null) frameRateCap.SetTextWithoutNotify(value.FrameRateCap == -1 ? "Unlimited" : value.FrameRateCap.ToString());
             if (qualityPreset != null) qualityPreset.SetValueWithoutNotify(value.QualityLevel);
             if (uiScale != null) uiScale.SetValueWithoutNotify(value.UiScale);
-            if (uiScaleValue != null) uiScaleValue.text = "UI scale: " + Mathf.RoundToInt(value.UiScale * 100f) + "%";
+            if (uiScaleValue != null) uiScaleValue.text = Mathf.RoundToInt(value.UiScale * 100f) + "%";
         }
 
         private void Wire()
@@ -180,7 +180,7 @@ namespace HeliSim.InFlightMenu
             DisplaySettingsValue value = model.Draft;
             value.UiScale = scale;
             model.Stage(value);
-            if (uiScaleValue != null) uiScaleValue.text = "UI scale: " + Mathf.RoundToInt(scale * 100f) + "%";
+            if (uiScaleValue != null) uiScaleValue.text = Mathf.RoundToInt(scale * 100f) + "%";
         }
 
         private void ShowDiagnostic()

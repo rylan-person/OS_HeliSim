@@ -25,8 +25,10 @@ public sealed class MainMenuAssetTests
             Assert.That(graphic.enabled, Is.True, dropdown.name + " background must receive clicks across the field.");
             Assert.That(graphic.raycastTarget, Is.True, dropdown.name);
             Assert.That(dropdown.targetGraphic, Is.SameAs(graphic), dropdown.name);
-            Assert.That(dropdown.GetComponent<UnityEngine.UI.Image>().sprite, Is.Null,
-                dropdown.name + " uses a solid field background rather than an inherited transparent sprite.");
+            var field = dropdown.GetComponent<UnityEngine.UI.Image>();
+            Assert.That(field.sprite == null || field.sprite == MenuThemeAssets.LoadTheme().ControlSprite, Is.True,
+                dropdown.name + " uses a solid field background (the theme's rounded control) rather than an inherited transparent sprite.");
+            Assert.That(field.fillCenter, Is.True, dropdown.name + " fills the whole field so clicks land anywhere on it.");
         }
     }
 

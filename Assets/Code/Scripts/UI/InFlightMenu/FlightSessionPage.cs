@@ -144,11 +144,11 @@ public sealed class FlightSessionPage : InFlightMenuPage
         }
         if (subtitleScaleLabel != null)
         {
-            subtitleScaleLabel.text = $"Subtitle Scale: {subtitlePreferences.ScalePercent}%";
+            subtitleScaleLabel.text = $"{subtitlePreferences.ScalePercent}%";
         }
         if (subtitleAvailability != null)
         {
-            subtitleAvailability.text = available ? string.Empty : "Subtitles unavailable: no subtitle source is connected.";
+            subtitleAvailability.text = available ? string.Empty : "Unavailable: no subtitle source is connected.";
         }
         if (available)
         {
@@ -204,7 +204,7 @@ public sealed class FlightSessionPage : InFlightMenuPage
         source.ApplySubtitlePreferences(subtitlePreferences.Enabled, subtitlePreferences.ScalePercent / 100f);
         if (subtitleScaleLabel != null)
         {
-            subtitleScaleLabel.text = $"Subtitle Scale: {subtitlePreferences.ScalePercent}%";
+            subtitleScaleLabel.text = $"{subtitlePreferences.ScalePercent}%";
         }
     }
 }

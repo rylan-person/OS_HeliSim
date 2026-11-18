@@ -95,7 +95,9 @@ public sealed class MainMenuFlowTests
             {
                 var scroll = (UnityEngine.UI.ScrollRect)new SerializedObject(router).FindProperty("pageScrollRect").objectReferenceValue;
                 Assert.That(scroll, Is.Not.Null, id);
-                Assert.That(scroll.verticalNormalizedPosition, Is.EqualTo(1f).Within(0.001f), id + " must enter at the top.");
+                // A page that fits the viewport reports a normalized position of 0 even at the top, so check
+                // the content offset instead: 0 means the page's top edge is at the viewport's top edge.
+                Assert.That(scroll.content.anchoredPosition.y, Is.EqualTo(0f).Within(0.5f), id + " must enter at the top.");
             }
         }
         ScreenCapture.CaptureScreenshot("TestResults/main-menu-20261020/main-menu-multiplayer.png");

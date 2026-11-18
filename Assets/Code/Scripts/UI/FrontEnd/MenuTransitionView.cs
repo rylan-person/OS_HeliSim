@@ -1,4 +1,5 @@
 using System;
+using HeliSim.UI.Theme;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -24,18 +25,23 @@ namespace HeliSim.FrontEnd
             background.transform.SetParent(transform, false);
             var rect = background.GetComponent<RectTransform>();
             rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.sizeDelta = Vector2.zero;
-            background.GetComponent<Image>().color = new Color(0.025f, 0.043f, 0.063f, 1f);
+            MenuPalette palette = MenuPalette.Default;
+            background.GetComponent<Image>().color = palette.bg0;
             message = MakeText("Status", new Vector2(0, 35), new Vector2(1200, 160), 32);
             var buttonObject = new GameObject("ReturnToMenu", typeof(RectTransform), typeof(Image), typeof(Button));
             buttonObject.transform.SetParent(transform, false);
             var buttonRect = buttonObject.GetComponent<RectTransform>();
             buttonRect.anchorMin = buttonRect.anchorMax = new Vector2(0.5f, 0.5f);
             buttonRect.anchoredPosition = new Vector2(0, -120); buttonRect.sizeDelta = new Vector2(330, 66);
-            buttonObject.GetComponent<Image>().color = new Color(0.12f, 0.22f, 0.28f);
+            buttonObject.GetComponent<Image>().color = palette.bg3;
             var label = MakeText("ReturnLabel", Vector2.zero, new Vector2(330, 66), 24);
             label.transform.SetParent(buttonObject.transform, false);
             label.text = "Return to menu";
             cancelButton = buttonObject.GetComponent<Button>();
+            // Same state colours as the menus: hover/focus brighten instead of ColorTint darkening.
+            cancelButton.transition = Selectable.Transition.None;
+            buttonObject.AddComponent<MenuSelectableStyle>().Configure(null, MenuSelectableVariant.Default,
+                cancelButton, buttonObject.GetComponent<Image>(), new[] { label }, null);
             cancelButton.onClick.AddListener(() => cancel());
             // Each loaded scene owns its EventSystem. Reuse it, including across transitions.
             UnityEngine.EventSystems.EventSystem.current?.SetSelectedGameObject(buttonObject);
@@ -56,7 +62,7 @@ namespace HeliSim.FrontEnd
             rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f); rect.anchoredPosition = position; rect.sizeDelta = size;
             var text = item.GetComponent<TextMeshProUGUI>();
             text.font = TMP_Settings.defaultFontAsset;
-            text.fontSize = fontSize; text.color = Color.white; text.alignment = TextAlignmentOptions.Center; text.raycastTarget = false;
+            text.fontSize = fontSize; text.color = MenuPalette.Default.text1; text.alignment = TextAlignmentOptions.Center; text.raycastTarget = false;
             return text;
         }
 

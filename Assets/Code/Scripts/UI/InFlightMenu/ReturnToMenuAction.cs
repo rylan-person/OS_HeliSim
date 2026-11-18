@@ -11,7 +11,7 @@ public sealed class ReturnToMenuAction : MonoBehaviour
         }
         var canvas = GetComponentInParent<Canvas>();
         var controller = canvas != null ? canvas.GetComponentInChildren<PauseMenuController>(true) : null;
-        if (controller != null) controller.RequestAction(HeliSim.FrontEnd.MenuSessionCoordinator.RequestReturnToMenu);
+        if (controller != null) controller.RequestConfirmedAction(HeliSim.FrontEnd.MenuSessionCoordinator.RequestReturnToMenu);
         else HeliSim.FrontEnd.MenuSessionCoordinator.RequestReturnToMenu();
     }
 }

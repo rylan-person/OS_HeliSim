@@ -1,0 +1,1167 @@
+<title>HeliSim Menu Redesign</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one flight-deck shell (nav rail + content) used by both the main menu and the in-flight overlay.
+   Colour follows glass-cockpit convention: teal = selectable/active, amber = caution, red = warning only. */
+:root {
+  --bg-0: #070C11;   /* behind everything */
+  --bg-1: #0B131A;   /* rail, inputs */
+  --bg-2: #101A23;   /* content panel */
+  --bg-3: #16232E;   /* raised / hover-able */
+  --bg-4: #1D2D3A;   /* hover on raised */
+  --line: #1F2E3A;
+  --line-2: #2C3F4E;
+  --tx-1: #E6EDF2;
+  --tx-2: #9AABB8;
+  --tx-3: #637684;
+  --accent: #3CC8BA;
+  --accent-hi: #63D9CD;
+  --accent-ink: #03211E;
+  --accent-soft: rgba(60, 200, 186, 0.12);
+  --caution: #F0A93C;
+  --caution-soft: rgba(240, 169, 60, 0.12);
+  --warning: #EF5A5A;
+  --warning-soft: rgba(239, 90, 90, 0.12);
+  --ok: #52C98C;
+  --scrim: rgba(4, 8, 12, 0.66);
+  --sky-hi: #0E2236; --sky-lo: #4E7290; --ground-hi: #2B3A2E; --ground-lo: #121A14;
+
+  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+
+  --r-ctl: 6px; --r-panel: 10px;
+  --h-ctl: 2.5rem; --h-btn: 2.75rem;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg-0); color: var(--tx-1); font: 400 1rem/1.5 var(--f-body); -webkit-font-smoothing: antialiased; }
+* { box-sizing: border-box; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+::selection { background: var(--accent-soft); }
+
+/* ---------- preview chrome ---------- */
+.app { height: 100%; display: flex; flex-direction: column; }
+.chrome { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line); background: var(--bg-1); }
+.chrome-title { font: 600 0.8125rem/1 var(--f-display); letter-spacing: .14em; text-transform: uppercase; color: var(--tx-3); }
+.chrome-title b { color: var(--tx-1); font-weight: 600; }
+.chrome-hint { font-size: .75rem; color: var(--tx-3); }
+.chrome-hint kbd { font: 500 .6875rem var(--f-mono); padding: 1px 5px; border: 1px solid var(--line-2); border-radius: 4px; color: var(--tx-2); }
+.stage { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+
+/* ---------- shared controls ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; height: var(--h-btn); padding: 0 1.125rem;
+  border-radius: var(--r-ctl); border: 1px solid var(--line-2); background: var(--bg-3); color: var(--tx-1);
+  font: 600 .9375rem/1 var(--f-body); white-space: nowrap; transition: background-color .12s, border-color .12s, color .12s; }
+.btn:hover:not(:disabled) { background: var(--bg-4); border-color: #3A5163; }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn svg { width: 18px; height: 18px; flex: none; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover:not(:disabled) { background: var(--accent-hi); border-color: var(--accent-hi); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--tx-2); }
+.btn.ghost:hover:not(:disabled) { background: var(--bg-3); border-color: transparent; color: var(--tx-1); }
+.btn.danger { background: transparent; border-color: rgba(239, 90, 90, .45); color: var(--warning); }
+.btn.danger:hover:not(:disabled) { background: var(--warning-soft); border-color: var(--warning); }
+.btn.sm { height: 2.125rem; padding: 0 .75rem; font-size: .875rem; }
+.btn.lg { height: 3.25rem; padding: 0 1.5rem; font-size: 1rem; }
+
+.seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--bg-1); border: 1px solid var(--line-2); border-radius: var(--r-ctl); }
+.seg button { min-width: 3.5rem; height: 2rem; padding: 0 .875rem; border: 0; border-radius: 4px; background: transparent; color: var(--tx-3);
+  font: 600 .8125rem/1 var(--f-display); letter-spacing: .08em; text-transform: uppercase; transition: background-color .12s, color .12s; }
+.seg button:hover:not([aria-checked="true"]):not(:disabled) { background: var(--bg-3); color: var(--tx-1); }
+.seg button[aria-checked="true"] { background: var(--bg-4); color: var(--tx-1); }
+.seg button.on[aria-checked="true"] { background: var(--accent); color: var(--accent-ink); }
+.seg button:disabled { cursor: not-allowed; }
+.seg.is-disabled { opacity: .4; }
+
+.field, .select { height: var(--h-ctl); border-radius: var(--r-ctl); border: 1px solid var(--line-2); background: var(--bg-1); padding: 0 .75rem; color: var(--tx-1); min-width: 0; }
+.field:hover, .select:hover { border-color: #3A5163; }
+.field:focus-visible, .select:focus-visible { outline-offset: 0; border-color: var(--accent); }
+.field.mono { font: 500 .9375rem var(--f-mono); font-variant-numeric: tabular-nums; }
+.field.num { width: 6rem; text-align: right; }
+.field[aria-invalid="true"] { border-color: var(--caution); }
+.select { appearance: none; width: 100%; padding-right: 2.25rem; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%239AABB8' stroke-width='1.8'%3E%3Cpath d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right .875rem center; }
+.select option { background: var(--bg-2); color: var(--tx-1); }
+
+.range { -webkit-appearance: none; appearance: none; flex: 1; min-width: 0; height: 1.5rem; background: transparent; --p: 50%; cursor: pointer; }
+.range::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--accent) var(--p), var(--line-2) var(--p)); }
+.range::-moz-range-track { height: 4px; border-radius: 2px; background: var(--line-2); }
+.range::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--accent); }
+.range::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: var(--tx-1); border: 0; box-shadow: 0 0 0 4px rgba(60, 200, 186, 0); transition: box-shadow .12s; }
+.range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--tx-1); border: 0; }
+.range:hover::-webkit-slider-thumb { box-shadow: 0 0 0 5px var(--accent-soft); }
+.range:focus-visible { outline: none; }
+.range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--bg-2), 0 0 0 5px var(--accent); }
+.range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--bg-2), 0 0 0 5px var(--accent); }
+.range:disabled { opacity: .4; cursor: not-allowed; }
+.range-wrap { display: flex; align-items: center; gap: .875rem; width: 100%; }
+.readout { font: 500 .9375rem var(--f-mono); font-variant-numeric: tabular-nums; color: var(--tx-1); min-width: 3.5rem; text-align: right; }
+
+.kc { display: inline-flex; align-items: center; gap: .375rem; min-height: 2rem; padding: 0 .625rem; border-radius: 5px;
+  border: 1px solid var(--line-2); border-bottom-width: 2px; background: var(--bg-1); color: var(--tx-1);
+  font: 500 .8125rem/1 var(--f-mono); white-space: nowrap; transition: border-color .12s, background-color .12s; }
+button.kc:hover { border-color: var(--accent); background: var(--bg-3); }
+.kc .pt { color: var(--tx-3); font-size: .75rem; }
+.kc.unbound { border-style: dashed; border-bottom-width: 1px; color: var(--tx-3); font-family: var(--f-body); font-style: italic; }
+.kc.na { border-style: dashed; border-bottom-width: 1px; color: var(--tx-3); font-family: var(--f-body); cursor: default; }
+
+.chip { display: inline-flex; align-items: center; gap: .5rem; height: 1.75rem; padding: 0 .75rem; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--bg-1); color: var(--tx-2); font: 600 .75rem/1 var(--f-display); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--tx-3); flex: none; }
+.dot.ok { background: var(--ok); } .dot.caution { background: var(--caution); } .dot.accent { background: var(--accent); }
+
+.note { display: flex; gap: .75rem; padding: .875rem 1rem; border-radius: 8px; background: var(--bg-1); border: 1px solid var(--line); color: var(--tx-2); font-size: .875rem; line-height: 1.5; }
+.note svg { width: 18px; height: 18px; flex: none; margin-top: 1px; color: var(--tx-3); }
+.note.caution { background: var(--caution-soft); border-color: rgba(240, 169, 60, .3); color: #F3C98A; }
+.note.caution svg { color: var(--caution); }
+.msg { display: flex; align-items: center; gap: .4rem; font-size: .8125rem; color: var(--caution); margin-top: .375rem; }
+.msg:empty { display: none; }
+.msg svg { width: 14px; height: 14px; flex: none; }
+.msg.ok { color: var(--ok); }
+
+/* ---------- shell ---------- */
+.shell { position: absolute; inset: 0; display: grid; grid-template-columns: 17.5rem minmax(0, 1fr); }
+.rail { display: flex; flex-direction: column; gap: 1.5rem; padding: 1.75rem 1rem 1.25rem; background: rgba(11, 19, 26, .94); border-right: 1px solid var(--line); min-height: 0; overflow-y: auto; }
+.brand { padding: 0 .75rem; }
+.brand-mark { font: 700 2rem/1 var(--f-display); letter-spacing: .03em; }
+.brand-mark span { color: var(--accent); }
+.brand-sub { margin-top: .375rem; font: 600 .6875rem/1 var(--f-display); letter-spacing: .24em; color: var(--tx-3); text-transform: uppercase; }
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav-label { padding: 0 .75rem .5rem; font: 600 .6875rem/1 var(--f-display); letter-spacing: .16em; color: var(--tx-3); text-transform: uppercase; }
+.nav button { display: flex; align-items: center; gap: .75rem; height: 2.75rem; padding: 0 .75rem; border: 0; border-radius: var(--r-ctl);
+  background: transparent; color: var(--tx-2); font: 500 .9375rem/1 var(--f-body); text-align: left; transition: background-color .12s, color .12s; }
+.nav button svg { width: 18px; height: 18px; flex: none; color: var(--tx-3); transition: color .12s; }
+.nav button:hover { background: var(--bg-3); color: var(--tx-1); }
+.nav button:hover svg { color: var(--tx-2); }
+.nav button[aria-current="page"] { background: var(--bg-3); color: var(--tx-1); font-weight: 600; }
+.nav button[aria-current="page"] svg { color: var(--accent); }
+.nav button.resume { background: var(--accent); color: var(--accent-ink); font-weight: 600; margin-bottom: .5rem; }
+.nav button.resume svg { color: var(--accent-ink); }
+.nav button.resume:hover { background: var(--accent-hi); }
+.rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding-top: 1rem; border-top: 1px solid var(--line); }
+.version { padding: .75rem .75rem 0; font: 400 .6875rem/1.4 var(--f-mono); color: var(--tx-3); }
+
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: rgba(16, 26, 35, .9); }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 1rem 2.5rem; border-bottom: 1px solid var(--line); min-height: 4rem; }
+.crumbs { display: flex; align-items: center; gap: .5rem; font: 600 .8125rem/1 var(--f-display); letter-spacing: .12em; text-transform: uppercase; color: var(--tx-3); }
+.crumbs button { border: 0; background: none; padding: .25rem .375rem; margin: -.25rem -.375rem; border-radius: 4px; color: var(--tx-2); font: inherit; letter-spacing: inherit; text-transform: inherit; }
+.crumbs button:hover { color: var(--tx-1); background: var(--bg-3); }
+.crumbs .sep { color: var(--line-2); }
+.crumbs .cur { color: var(--tx-1); }
+.status { display: flex; gap: .5rem; flex-wrap: wrap; }
+.scroll { flex: 1; min-height: 0; overflow-y: auto; scrollbar-color: var(--line-2) transparent; }
+.page { max-width: 54rem; padding: 2.25rem 2.5rem 3rem; display: flex; flex-direction: column; gap: 2rem; }
+.page-head h1 { margin: 0; font: 600 2.5rem/1.05 var(--f-display); letter-spacing: .005em; text-wrap: balance; }
+.page-head p { margin: .625rem 0 0; color: var(--tx-2); max-width: 62ch; }
+
+.sec { display: flex; flex-direction: column; gap: .75rem; }
+.sec-h { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin: 0; font: 600 .8125rem/1 var(--f-display); letter-spacing: .14em; text-transform: uppercase; color: var(--tx-3); }
+.rows { border: 1px solid var(--line); border-radius: var(--r-panel); background: rgba(11, 19, 26, .5); }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 20rem); align-items: center; gap: 1.5rem; padding: .875rem 1.25rem; min-height: 4rem; border-top: 1px solid var(--line); transition: background-color .12s; }
+.row:first-child { border-top: 0; border-radius: var(--r-panel) var(--r-panel) 0 0; }
+.row:last-child { border-radius: 0 0 var(--r-panel) var(--r-panel); }
+.row:only-child { border-radius: var(--r-panel); }
+.row:hover { background: rgba(22, 35, 46, .6); }
+.row:focus-within { background: var(--bg-3); }
+.row.wide { grid-template-columns: minmax(0, 1fr) auto; }
+.lbl { font-weight: 500; color: var(--tx-1); }
+.hint { margin-top: .125rem; font-size: .875rem; color: var(--tx-2); }
+.ctl { display: flex; justify-content: flex-end; align-items: center; gap: .5rem; min-width: 0; }
+.ctl-col { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; }
+.val { font: 500 .9375rem var(--f-mono); color: var(--tx-1); }
+
+details.na { border: 1px solid var(--line); border-radius: var(--r-panel); background: var(--bg-1); }
+details.na summary { display: flex; align-items: center; gap: .75rem; padding: .875rem 1.25rem; cursor: pointer; list-style: none; color: var(--tx-2); font-size: .875rem; border-radius: var(--r-panel); }
+details.na summary::-webkit-details-marker { display: none; }
+details.na summary:hover { color: var(--tx-1); }
+details.na summary svg { width: 16px; height: 16px; color: var(--tx-3); transition: transform .15s; }
+details.na[open] summary svg.chev { transform: rotate(90deg); }
+details.na ul { margin: 0; padding: 0 1.25rem 1rem 3.25rem; color: var(--tx-2); font-size: .875rem; display: grid; gap: .375rem; }
+details.na li::marker { color: var(--tx-3); }
+
+.actionbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: .875rem 2.5rem; border-top: 1px solid var(--line); background: var(--bg-1); }
+.actionbar .state { display: flex; align-items: center; gap: .625rem; font-size: .875rem; color: var(--tx-2); }
+.actionbar .state.dirty { color: var(--tx-1); }
+.actionbar .btns { display: flex; gap: .5rem; }
+
+/* ---------- main-menu specifics ---------- */
+.main-bg { position: absolute; inset: 0; background: radial-gradient(120% 90% at 85% 10%, #10202C 0%, var(--bg-0) 60%); }
+.main-bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.coords { position: absolute; right: 1.5rem; bottom: 1rem; font: 400 .6875rem var(--f-mono); color: var(--tx-3); letter-spacing: .04em; pointer-events: none; }
+
+.quick { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1.5rem; padding: 1.5rem 1.75rem; border-radius: var(--r-panel);
+  border: 1px solid rgba(60, 200, 186, .28); background: linear-gradient(100deg, rgba(60, 200, 186, .10), rgba(60, 200, 186, .02) 60%); }
+.quick h2 { margin: 0; font: 600 1.375rem/1.1 var(--f-display); }
+.quick .specs { display: flex; flex-wrap: wrap; gap: .375rem 1.25rem; margin-top: .625rem; font-size: .875rem; color: var(--tx-2); }
+.quick .specs b { color: var(--tx-1); font-weight: 500; }
+.launch { display: flex; align-items: center; justify-content: space-between; gap: 1.25rem; flex-wrap: wrap; padding-top: .5rem; }
+.launch .sum { font-size: .875rem; color: var(--tx-2); }
+.launch .sum b { color: var(--tx-1); font-weight: 500; }
+
+.hub { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.tile { display: flex; flex-direction: column; gap: .5rem; padding: 1.25rem; border-radius: var(--r-panel); border: 1px solid var(--line); background: rgba(11, 19, 26, .5); text-align: left; color: var(--tx-1); transition: background-color .12s, border-color .12s; }
+.tile:hover { background: var(--bg-3); border-color: var(--line-2); }
+.tile .t-top { display: flex; align-items: center; justify-content: space-between; }
+.tile .t-ico { width: 2.25rem; height: 2.25rem; border-radius: 8px; display: grid; place-items: center; background: var(--bg-3); color: var(--accent); }
+.tile:hover .t-ico { background: var(--bg-4); }
+.tile .t-ico svg { width: 18px; height: 18px; }
+.tile .t-go { width: 18px; height: 18px; color: var(--tx-3); transition: transform .12s, color .12s; }
+.tile:hover .t-go { transform: translateX(3px); color: var(--tx-1); }
+.tile h3 { margin: .25rem 0 0; font: 600 1.25rem/1.1 var(--f-display); }
+.tile p { margin: 0; font-size: .875rem; color: var(--tx-2); }
+.tile .t-sum { margin-top: .25rem; font: 400 .75rem var(--f-mono); color: var(--tx-3); }
+
+.hw { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.hw-card { padding: 1.125rem 1.25rem; border-radius: var(--r-panel); border: 1px solid var(--line); background: rgba(11, 19, 26, .5); display: flex; flex-direction: column; gap: .5rem; }
+.hw-card .k { font: 600 .75rem/1 var(--f-display); letter-spacing: .14em; text-transform: uppercase; color: var(--tx-3); }
+.hw-card .v { display: flex; align-items: center; gap: .5rem; font: 600 1.125rem/1.2 var(--f-display); }
+.hw-card p { margin: 0; font-size: .8125rem; color: var(--tx-2); }
+.preview-tag { font: 500 .625rem/1 var(--f-mono); letter-spacing: .08em; color: var(--tx-3); border: 1px dashed var(--line-2); padding: 3px 6px; border-radius: 4px; text-transform: uppercase; }
+
+.steps { list-style: none; margin: 0; padding: 0; counter-reset: s; border: 1px solid var(--line); border-radius: var(--r-panel); background: rgba(11, 19, 26, .5); }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); gap: .75rem; padding: .875rem 1.25rem; border-top: 1px solid var(--line); color: var(--tx-2); }
+.steps li:first-child { border-top: 0; }
+.steps li::before { content: counter(s); font: 600 1.125rem/1.4 var(--f-display); color: var(--accent); }
+.steps b { color: var(--tx-1); font-weight: 500; }
+.trouble { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.trouble div { padding: 1rem 1.25rem; border: 1px solid var(--line); border-radius: var(--r-panel); }
+.trouble h3 { margin: 0 0 .375rem; font: 600 1rem/1.2 var(--f-display); letter-spacing: .02em; }
+.trouble p { margin: 0; font-size: .875rem; color: var(--tx-2); }
+
+/* controls */
+.ctl-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.devices { font-size: .875rem; color: var(--tx-2); display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.bind-row { display: grid; grid-template-columns: minmax(9rem, 14rem) minmax(0, 1fr) auto; align-items: center; gap: 1rem; padding: .625rem 1rem .625rem 1.25rem; min-height: 3.5rem; border-top: 1px solid var(--line); transition: background-color .12s; }
+.bind-row:first-child { border-top: 0; }
+.bind-row:hover, .bind-row:focus-within { background: var(--bg-3); }
+.bind-row .cmd { font-weight: 500; }
+.bind-row .keys { display: flex; flex-wrap: wrap; gap: .375rem; align-items: center; min-width: 0; }
+.bind-row .row-acts { display: flex; gap: .25rem; opacity: 0; transition: opacity .12s; }
+.bind-row:hover .row-acts, .bind-row:focus-within .row-acts { opacity: 1; }
+.bind-row .fb { grid-column: 2 / -1; font-size: .8125rem; color: var(--caution); margin-top: -.25rem; }
+.bind-row .fb.ok { color: var(--ok); }
+.changed { font: 600 .625rem/1 var(--f-display); letter-spacing: .1em; text-transform: uppercase; color: var(--accent); border: 1px solid rgba(60, 200, 186, .4); padding: 3px 5px; border-radius: 3px; }
+
+/* ---------- in-flight ---------- */
+.world { position: absolute; inset: 0; overflow: hidden; background: var(--sky-hi); }
+.horizon { position: absolute; left: -50%; right: -50%; top: -50%; bottom: -50%; transform: rotate(-3deg) translateY(6%); }
+.horizon .sky { position: absolute; left: 0; right: 0; top: 0; height: 50%; background: linear-gradient(to bottom, var(--sky-hi), var(--sky-lo)); }
+.horizon .gnd { position: absolute; left: 0; right: 0; bottom: 0; height: 50%; background: linear-gradient(to bottom, var(--ground-hi), var(--ground-lo));
+  background-image: linear-gradient(to bottom, var(--ground-hi), var(--ground-lo)), repeating-linear-gradient(90deg, transparent 0 79px, rgba(255,255,255,.035) 79px 80px); background-blend-mode: normal; }
+.horizon .haze { position: absolute; left: 0; right: 0; top: calc(50% - 3rem); height: 6rem; background: linear-gradient(to bottom, transparent, rgba(160, 190, 210, .18), transparent); }
+.hud { position: absolute; inset: 0; pointer-events: none; font: 500 .8125rem var(--f-mono); color: rgba(150, 240, 225, .85); letter-spacing: .04em; }
+.hud .tl { position: absolute; left: 1.5rem; top: 1.25rem; display: grid; gap: .25rem; }
+.hud .tr { position: absolute; right: 1.5rem; top: 1.25rem; text-align: right; display: grid; gap: .25rem; }
+.hud .reticle { position: absolute; left: 50%; top: 50%; width: 9rem; height: 1px; margin-left: -4.5rem; background: rgba(150, 240, 225, .55); }
+.hud .reticle::before { content: ""; position: absolute; left: 50%; top: -6px; width: 12px; height: 12px; margin-left: -6px; border: 1.5px solid rgba(150, 240, 225, .8); border-radius: 50%; }
+.hud .hint { position: absolute; left: 50%; bottom: 1.5rem; transform: translateX(-50%); display: flex; align-items: center; gap: .5rem; padding: .5rem .875rem; border-radius: 999px; background: rgba(4, 8, 12, .6); color: var(--tx-1); font: 500 .8125rem var(--f-body); pointer-events: auto; border: 1px solid rgba(255,255,255,.08); }
+.hud .hint kbd { font: 500 .75rem var(--f-mono); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--line-2); background: var(--bg-1); }
+.scrim { position: absolute; inset: 0; background: var(--scrim); }
+.overlay { position: absolute; inset: 2.5rem; border-radius: 12px; overflow: hidden; border: 1px solid var(--line-2); box-shadow: 0 30px 80px rgba(0, 0, 0, .5); max-width: 82rem; margin: 0 auto; }
+.overlay .shell { grid-template-columns: 16rem minmax(0, 1fr); }
+.overlay .main { background: var(--bg-2); }
+.overlay .rail { background: var(--bg-1); }
+.live { display: inline-flex; align-items: center; gap: .5rem; font-size: .8125rem; color: var(--tx-2); }
+.live .dot { background: var(--ok); box-shadow: 0 0 0 3px rgba(82, 201, 140, .18); }
+
+.tt { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; justify-content: flex-end; }
+.tt .clock { font: 500 1.75rem/1 var(--f-mono); font-variant-numeric: tabular-nums; min-width: 5.5rem; text-align: right; }
+.tt .clock.low { color: var(--caution); }
+.disclose { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: .875rem 1.25rem; border: 0; background: transparent; color: var(--tx-1); font-weight: 500; text-align: left; border-top: 1px solid var(--line); }
+.disclose:hover { background: rgba(22, 35, 46, .6); }
+.disclose svg { width: 16px; height: 16px; color: var(--tx-3); transition: transform .15s; }
+.disclose[aria-expanded="true"] svg { transform: rotate(90deg); }
+.nested { background: rgba(0, 0, 0, .18); }
+.nested .row { padding-left: 2.25rem; }
+.nested .row:last-child { border-radius: 0 0 var(--r-panel) var(--r-panel); }
+.nova { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(26rem, calc(100% - 2rem)); padding: 1.75rem; border-radius: var(--r-panel); background: var(--bg-2); border: 1px solid rgba(240, 169, 60, .45); box-shadow: 0 30px 80px rgba(0,0,0,.5); text-align: center; }
+.nova .k { font: 600 .75rem/1 var(--f-display); letter-spacing: .16em; text-transform: uppercase; color: var(--caution); }
+.nova h2 { margin: .625rem 0 .5rem; font: 600 1.625rem/1.1 var(--f-display); }
+.nova p { margin: 0 0 1.25rem; color: var(--tx-2); font-size: .9375rem; }
+
+/* ---------- dialogs / overlays ---------- */
+.modal-back { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 1rem; background: rgba(4, 8, 12, .72); }
+.modal { width: min(28rem, 100%); padding: 1.75rem; border-radius: var(--r-panel); background: var(--bg-2); border: 1px solid var(--line-2); box-shadow: 0 30px 80px rgba(0, 0, 0, .55); }
+.modal .k { font: 600 .75rem/1 var(--f-display); letter-spacing: .16em; text-transform: uppercase; color: var(--tx-3); }
+.modal h2 { margin: .5rem 0 .5rem; font: 600 1.625rem/1.1 var(--f-display); text-wrap: balance; }
+.modal p { margin: 0; color: var(--tx-2); }
+.modal .acts { display: flex; justify-content: flex-end; gap: .5rem; margin-top: 1.5rem; flex-wrap: wrap; }
+.listen { display: flex; align-items: center; justify-content: center; gap: .75rem; margin: 1.25rem 0 0; padding: 1.25rem; border-radius: 8px; border: 1px dashed rgba(60, 200, 186, .5); background: var(--accent-soft); color: var(--tx-1); font-size: .9375rem; text-align: center; }
+.pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s ease-in-out infinite; flex: none; }
+@keyframes pulse { 50% { opacity: .25; transform: scale(.7); } }
+.cur-bind { display: flex; align-items: center; gap: .625rem; margin-top: 1rem; font-size: .875rem; color: var(--tx-2); }
+.loading { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; background: var(--bg-0); }
+.loading .box { width: min(22rem, calc(100% - 2rem)); display: flex; flex-direction: column; gap: .875rem; }
+.loading .k { font: 600 .75rem/1 var(--f-display); letter-spacing: .2em; text-transform: uppercase; color: var(--tx-3); }
+.loading h2 { margin: 0; font: 600 1.75rem/1.1 var(--f-display); }
+.bar { height: 3px; border-radius: 2px; background: var(--line-2); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 1.4s cubic-bezier(.3, .7, .3, 1); }
+.toast { position: absolute; right: 1.5rem; bottom: 1.5rem; z-index: 25; max-width: min(24rem, calc(100% - 3rem)); display: flex; gap: .625rem; align-items: flex-start; padding: .75rem 1rem; border-radius: 8px; background: var(--bg-3); border: 1px solid var(--line-2); box-shadow: 0 12px 30px rgba(0,0,0,.4); font-size: .875rem; }
+.toast .dot { margin-top: .45rem; }
+.ended { position: absolute; inset: 0; display: grid; place-items: center; background: #000; color: var(--tx-2); text-align: center; }
+.ended div { display: grid; gap: 1rem; justify-items: center; }
+
+/* ---------- spec ---------- */
+.spec { position: absolute; inset: 0; overflow-y: auto; background: var(--bg-0); }
+.spec-in { max-width: 68rem; margin: 0 auto; padding-block: 2.5rem 4rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 2.5rem; }
+.spec h1 { margin: 0; font: 600 2.5rem/1.05 var(--f-display); }
+.spec h2 { margin: 0 0 1rem; font: 600 .8125rem/1 var(--f-display); letter-spacing: .14em; text-transform: uppercase; color: var(--tx-3); }
+.spec p.lead { margin: .5rem 0 0; color: var(--tx-2); max-width: 66ch; }
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: .75rem; }
+.sw { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--bg-1); }
+.sw i { display: block; height: 3.5rem; border-bottom: 1px solid var(--line); }
+.sw div { padding: .625rem .75rem; font-size: .8125rem; color: var(--tx-2); }
+.sw b { display: block; color: var(--tx-1); font: 500 .8125rem var(--f-mono); }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r-panel); }
+table { border-collapse: collapse; width: 100%; font-size: .875rem; }
+th, td { text-align: left; padding: .75rem 1rem; border-top: 1px solid var(--line); vertical-align: top; }
+thead th { border-top: 0; font: 600 .75rem/1 var(--f-display); letter-spacing: .12em; text-transform: uppercase; color: var(--tx-3); background: var(--bg-1); }
+td { color: var(--tx-2); }
+td:first-child { color: var(--tx-1); }
+td code, .spec code { font: 400 .8125rem var(--f-mono); color: var(--tx-1); }
+.changes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.changes div { padding: 1rem 1.25rem; border: 1px solid var(--line); border-radius: var(--r-panel); background: var(--bg-1); }
+.changes h3 { margin: 0 0 .375rem; font: 600 1.0625rem/1.2 var(--f-display); }
+.changes p { margin: 0; font-size: .875rem; color: var(--tx-2); }
+.states { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; }
+.states .lab { font: 500 .6875rem var(--f-mono); color: var(--tx-3); text-align: center; margin-top: .375rem; }
+.btn.fake-hover { background: var(--bg-4); border-color: #3A5163; }
+.btn.fake-focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- narrow ---------- */
+@media (max-width: 860px) {
+  .shell, .overlay .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .rail { flex-direction: row; align-items: center; gap: .75rem; padding: .625rem .75rem; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; overflow-y: hidden; }
+  .brand { padding: 0 .25rem; flex: none; }
+  .brand-mark { font-size: 1.375rem; }
+  .brand-sub, .nav-label, .version { display: none; }
+  .nav { flex-direction: row; flex: none; }
+  .nav button { height: 2.5rem; white-space: nowrap; }
+  .nav button.resume { margin: 0 .25rem 0 0; }
+  .rail-foot { margin: 0; padding: 0 0 0 .75rem; border-top: 0; border-left: 1px solid var(--line); flex-direction: row; flex: none; }
+  .topbar, .actionbar { padding-left: 16px; padding-right: 16px; }
+  .page { padding: 1.5rem 16px 2.5rem; gap: 1.5rem; }
+  .page-head h1 { font-size: 2rem; }
+  .row { grid-template-columns: minmax(0, 1fr); gap: .75rem; }
+  .ctl, .ctl-col { justify-content: flex-start; align-items: flex-start; }
+  .quick { grid-template-columns: minmax(0, 1fr); }
+  .hub, .hw, .trouble, .changes { grid-template-columns: minmax(0, 1fr); }
+  .bind-row { grid-template-columns: minmax(0, 1fr); gap: .5rem; padding: .75rem 1rem; }
+  .bind-row .row-acts { opacity: 1; }
+  .bind-row .fb { grid-column: 1; margin: 0; }
+  .overlay { inset: 0; border-radius: 0; border: 0; }
+  .hud .tr { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="app">
+  <header class="chrome">
+    <div class="chrome-title"><b>HeliSim</b> · Menu redesign preview</div>
+    <div class="seg" role="radiogroup" aria-label="Preview view" id="viewSwitch">
+      <button role="radio" id="v-main" data-view="main">Main menu</button>
+      <button role="radio" id="v-flight" data-view="flight">In-flight</button>
+      <button role="radio" id="v-spec" data-view="spec">Design spec</button>
+    </div>
+    <div class="chrome-hint"><kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>Enter</kbd> select · <kbd>Esc</kbd> back</div>
+  </header>
+  <div class="stage" id="stage"></div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------------- icons ---------------- */
+const I = {
+  fly: '<path d="M3 5h18M12 5v3"/><path d="M5 12.5c0-2.2 1.8-4 4-4h5.5c2.5 0 4.5 2 4.5 4.5S17 17 14.5 17H9a4 4 0 0 1-4-4.5z"/><path d="M19 12.5h2.5M9 17l-1 3m8-3 1 3M6 20h12"/>',
+  multi: '<circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.2c2.3.2 4 1.8 4.5 4.3"/>',
+  sliders: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+  stick: '<circle cx="12" cy="6" r="2.6"/><path d="M12 8.6V15"/><rect x="5" y="15" width="14" height="5" rx="1.6"/>',
+  rec: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/>',
+  help: '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2 1-1.2 1.8v.4"/><circle cx="12" cy="16.8" r=".4" fill="currentColor"/>',
+  power: '<path d="M12 3.5v8"/><path d="M6.6 6.8a7.5 7.5 0 1 0 10.8 0"/>',
+  play: '<path d="M8 5.5v13l10.5-6.5z" fill="currentColor" stroke="none"/>',
+  pause: '<rect x="7" y="5.5" width="3.4" height="13" rx="1" fill="currentColor" stroke="none"/><rect x="13.6" y="5.5" width="3.4" height="13" rx="1" fill="currentColor" stroke="none"/>',
+  gauge: '<path d="M4.5 16a8 8 0 1 1 15 0"/><path d="m12 13 3.5-4"/><circle cx="12" cy="13.5" r="1.2" fill="currentColor"/>',
+  globe: '<circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5"/><path d="M3.5 12h17"/>',
+  display: '<rect x="3.5" y="4.5" width="17" height="11.5" rx="1.5"/><path d="M9 20h6M12 16v4"/>',
+  speaker: '<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>',
+  exit: '<path d="M14 4.5H6.5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1H14"/><path d="M10 12h10m-3.5-3.5L20 12l-3.5 3.5"/>',
+  chev: '<path d="m9 6 6 6-6 6"/>',
+  info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".5" fill="currentColor"/>',
+  warn: '<path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4.2"/><circle cx="12" cy="17" r=".5" fill="currentColor"/>',
+  reset: '<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/>',
+  folder: '<path d="M3.5 7a1.5 1.5 0 0 1 1.5-1.5h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8.5a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5z"/>',
+  vr: '<path d="M3.5 9a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3.2l-1.8-2.5h-3L8.7 17H5.5a2 2 0 0 1-2-2z"/>',
+  engine: '<circle cx="12" cy="12" r="3"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3M6 6l2.1 2.1M15.9 15.9 18 18M6 18l2.1-2.1M15.9 8.1 18 6"/>',
+  target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/>'
+};
+const ico = (n, cls = '') => `<svg ${cls ? `class="${cls}"` : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* ---------------- data ---------------- */
+const ASSIST = [['default', 'Keep aircraft default'], ['0', 'None'], ['1', 'Level 1'], ['2', 'Level 2'], ['3', 'Level 3'], ['4', 'Level 4'], ['5', 'Level 5 (most help)']];
+const LEVEL_NAMES = ['None', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5'];
+
+const GROUPS = {
+  display: {
+    title: 'Display & graphics', short: 'Display', icon: 'display',
+    desc: 'Screen mode, rendering quality and interface scale.',
+    sections: [
+      { h: 'Screen', items: [
+        { k: 'windowMode', t: 'select', l: 'Window mode', o: ['Exclusive fullscreen', 'Fullscreen window', 'Maximized window', 'Windowed'] },
+        { k: 'resolution', t: 'select', l: 'Resolution', o: ['3840 × 2160', '2560 × 1440', '1920 × 1080', '1600 × 900', '1280 × 720'] },
+        { k: 'vsync', t: 'switch', l: 'VSync', h: 'Syncs frames to the display refresh rate.' },
+        { k: 'frameCap', t: 'number', l: 'Frame-rate cap', h: '−1 for no cap, or 30 to 240.', unit: 'fps', valid: v => v === -1 || (v >= 30 && v <= 240), err: 'Enter −1, or a whole number from 30 to 240.' }
+      ] },
+      { h: 'Quality', items: [
+        { k: 'quality', t: 'select', l: 'Quality preset', o: ['Very Low', 'Low', 'Medium', 'High', 'Very High', 'Ultra'] }
+      ] },
+      { h: 'Interface', items: [
+        { k: 'uiScale', t: 'range', l: 'UI scale', h: 'Applies to menus and data panels.', min: 75, max: 150, step: 5, unit: '%' }
+      ] }
+    ],
+    na: ['Brightness', 'Colour-blind mode', 'Camera field of view'],
+    naWhy: 'These need a safe runtime owner before they can be offered.'
+  },
+  audio: {
+    title: 'Audio & simulator', short: 'Settings', icon: 'speaker',
+    desc: 'Master volume and simulator hardware preferences.',
+    sections: [
+      { h: 'Audio', items: [
+        { k: 'volume', t: 'range', l: 'Master volume', h: 'Range 0 to 200.', min: 0, max: 200, step: 1, unit: '' }
+      ] },
+      { h: 'Hardware', items: [
+        { k: 'novaPopup', t: 'switch', l: 'NOVA popup and collective lock', h: 'Holds the collective at flight start until the pilot enables the helicopter.' }
+      ], note: 'NOVA status is read-only. Nothing on this page changes motion output or safety limits.' }
+    ],
+    na: ['Engine, environment, UI and radio/intercom volume, and mute: no separate audio buses exist yet.',
+         'VR render scale, refresh rate, seated offset, vignette and spectator display: no runtime owner yet. Recenter is in Flight & Session.',
+         'Control sensitivity, response curves and dead zones: no safe adapter yet. Assist presets are in Flight & Session.',
+         'Units, hints, confirmation prompts and autosave: no runtime owner yet.',
+         'High contrast and other visual modes: no runtime owner yet. UI scale is under Display.'],
+    naWhy: ''
+  },
+  cesium: {
+    title: 'World streaming', short: 'Cesium', icon: 'globe',
+    desc: 'Cesium 3D Tiles streaming and culling. Lower screen-space error looks sharper and loads more tiles.',
+    sections: [
+      { h: 'Streaming', items: [
+        { k: 'sse', t: 'range', l: 'Maximum screen-space error', min: 0, max: 64, step: 1, unit: 'px' },
+        { k: 'preloadAncestors', t: 'switch', l: 'Preload ancestors' },
+        { k: 'preloadSiblings', t: 'switch', l: 'Preload siblings' },
+        { k: 'forbidHoles', t: 'switch', l: 'Forbid holes', h: 'Waits for all child tiles before refining.' },
+        { k: 'maxLoads', t: 'range', l: 'Maximum simultaneous tile loads', min: 0, max: 1000, step: 1, unit: '' },
+        { k: 'descLimit', t: 'range', l: 'Loading descendant limit', min: 0, max: 1000, step: 1, unit: '' },
+        { k: 'cacheBytes', t: 'bytes', l: 'Maximum cached bytes', valid: v => Number.isInteger(v) && v >= 0, err: 'Enter a whole number of bytes, 0 or more.' }
+      ] },
+      { h: 'Culling', items: [
+        { k: 'frustum', t: 'switch', l: 'Frustum culling' },
+        { k: 'fog', t: 'switch', l: 'Fog culling' },
+        { k: 'forceSse', t: 'switch', l: 'Force culled screen-space error' },
+        { k: 'culledSse', t: 'range', l: 'Culled screen-space error', min: 0, max: 64, step: 1, unit: 'px' }
+      ] }
+    ]
+  }
+};
+
+const CMDS = [
+  { id: 'pitch', cat: 'Flight controls', name: 'Cyclic pitch', axis: true },
+  { id: 'roll', cat: 'Flight controls', name: 'Cyclic roll', axis: true },
+  { id: 'coll', cat: 'Flight controls', name: 'Collective', axis: true },
+  { id: 'thr', cat: 'Flight controls', name: 'Throttle', axis: true },
+  { id: 'yaw', cat: 'Flight controls', name: 'Pedals / yaw', axis: true },
+  { id: 'trim', cat: 'Flight controls', name: 'Trim' },
+  { id: 'start', cat: 'Aircraft & session', name: 'Engine start' },
+  { id: 'reset', cat: 'Aircraft & session', name: 'Reset aircraft' },
+  { id: 'pause', cat: 'Aircraft & session', name: 'Pause / menu' },
+  { id: 'map', cat: 'Aircraft & session', name: 'Map' },
+  { id: 'vr', cat: 'View', name: 'VR recenter' },
+  { id: 'cam', cat: 'View', name: 'Cycle camera' },
+  { id: 'orbit', cat: 'View', name: 'Camera orbit', na: 'This command has no Input System action yet.' }
+];
+const DEF_BIND = {
+  kbm: { pitch: [['−', 'S'], ['+', 'W']], roll: [['−', 'A'], ['+', 'D']], coll: [['−', 'Page Down'], ['+', 'Page Up']], thr: [['−', '2'], ['+', '1']],
+    yaw: [['−', 'Q'], ['+', 'E']], trim: [['', 'T']], start: [['', 'F1']], reset: [['', 'H']], pause: [['', 'F10']], map: [['', 'M']], vr: [['', 'V']], cam: [['', 'C']] },
+  joy: { pitch: [['', 'Stick Y']], roll: [['', 'Stick X']], coll: [['', 'Throttle Z']], thr: [['', 'Throttle slider']],
+    yaw: [['−', 'Hat left'], ['+', 'Hat right']], trim: [['', null]], start: [['', 'Throttle button 16']], reset: [['', 'Throttle button 26']], pause: [['', null]], map: [['', null]], vr: [['', 'Throttle button 21']], cam: [['', null]] }
+};
+const clone = o => JSON.parse(JSON.stringify(o));
+
+/* ---------------- state ---------------- */
+const initial = {
+  display: { windowMode: 'Fullscreen window', resolution: '1920 × 1080', vsync: false, frameCap: 120, quality: 'High', uiScale: 100 },
+  audio: { volume: 100, novaPopup: true },
+  cesium: { sse: 16, preloadAncestors: true, preloadSiblings: true, forbidHoles: false, maxLoads: 20, descLimit: 20, cacheBytes: 536870912, frustum: true, fog: true, forceSse: false, culledSse: 64 }
+};
+const S = {
+  view: 'main',
+  page: { main: 'fly', flight: 'session' },
+  sub: null,                 // main-menu settings sub page
+  dialog: null,
+  menuOpen: true,
+  ended: false,
+  loading: null,
+  novaLocked: false,
+  toast: null,
+  session: { assist: 'default', record: false },
+  last: { assist: '2', record: true },
+  recDefault: false,
+  mp: { role: 'pilot', address: '127.0.0.1', port: '7777' },
+  mpErr: {},
+  g: { display: { a: clone(initial.display), p: clone(initial.display) }, audio: { a: clone(initial.audio), p: clone(initial.audio) }, cesium: { a: clone(initial.cesium), p: clone(initial.cesium) } },
+  raw: {}, err: {},
+  tab: 'kbm', yawMode: 'buttons',
+  bind: clone(DEF_BIND),
+  bindFb: {},
+  fl: { engine: false, assist: 2, adv: false, autoTrim: true, tail: 60, mainRotor: 60, roll: 50, stab: 70, ttRun: false, ttLeft: 180, offline: false, journey: 'Journey.csv', subs: false, subScale: 100 }
+};
+const subtitleSourceConnected = false;
+
+/* ---------------- helpers ---------------- */
+const stage = document.getElementById('stage');
+const dirtyKeys = g => Object.keys(S.g[g].p).filter(k => S.g[g].p[k] !== S.g[g].a[k]);
+const hasErr = g => Object.keys(S.err).some(k => k.startsWith(g + '.') && S.err[k]);
+const pct = (v, min, max) => ((v - min) / (max - min) * 100) + '%';
+const gib = b => (b / 1073741824).toFixed(2) + ' GiB';
+const fmtClock = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+const seg = (id, val, opts, attrs = '') => `<div class="seg" role="radiogroup" ${attrs}>${opts.map(([v, l, on]) =>
+  `<button role="radio" id="${id}-${v}" class="${on ? 'on' : ''}" aria-checked="${val === v}" data-seg="${id}" data-v="${v}">${l}</button>`).join('')}</div>`;
+const sw = (id, on, disabled = false) => `<div class="seg ${disabled ? 'is-disabled' : ''}" role="radiogroup">` +
+  `<button role="radio" id="${id}-off" aria-checked="${!on}" data-sw="${id}" data-v="0" ${disabled ? 'disabled' : ''}>Off</button>` +
+  `<button role="radio" id="${id}-on" class="on" aria-checked="${on}" data-sw="${id}" data-v="1" ${disabled ? 'disabled' : ''}>On</button></div>`;
+const row = (lbl, hint, ctl, cls = '') => `<div class="row ${cls}"><div><div class="lbl">${lbl}</div>${hint ? `<div class="hint">${hint}</div>` : ''}</div><div class="ctl">${ctl}</div></div>`;
+
+/* ---------------- settings group rendering ---------------- */
+function itemCtl(g, it) {
+  const id = `${g}.${it.k}`, v = S.g[g].p[it.k];
+  if (it.t === 'switch') return sw(id, v);
+  if (it.t === 'select') return `<select class="select" id="${id}" data-set="${id}">${it.o.map(o => `<option ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+  if (it.t === 'range') return `<div class="ctl-col" style="width:100%"><div class="range-wrap">
+      <input type="range" class="range" id="${id}" data-set="${id}" min="${it.min}" max="${it.max}" step="${it.step}" value="${v}" style="--p:${pct(v, it.min, it.max)}" aria-label="${esc(it.l)}">
+      <input class="field mono num" id="${id}-n" data-num="${id}" inputmode="numeric" value="${esc(S.raw[id] ?? v)}" aria-label="${esc(it.l)} value" aria-invalid="${!!S.err[id]}">
+    </div><div class="msg" id="${id}-m">${S.err[id] ? ico('warn') + esc(S.err[id]) : ''}</div></div>`;
+  if (it.t === 'number') return `<div class="ctl-col"><div class="range-wrap" style="justify-content:flex-end">
+      <input class="field mono num" id="${id}-n" data-num="${id}" inputmode="numeric" value="${esc(S.raw[id] ?? v)}" aria-label="${esc(it.l)}" aria-invalid="${!!S.err[id]}"><span class="hint" style="margin:0">${it.unit || ''}</span>
+    </div><div class="msg" id="${id}-m">${S.err[id] ? ico('warn') + esc(S.err[id]) : ''}</div></div>`;
+  if (it.t === 'bytes') return `<div class="ctl-col"><div class="range-wrap" style="justify-content:flex-end">
+      <span class="hint" style="margin:0" id="${id}-h">${gib(v)}</span>
+      <input class="field mono" style="width:9.5rem;text-align:right" id="${id}-n" data-num="${id}" inputmode="numeric" value="${esc(S.raw[id] ?? v)}" aria-label="${esc(it.l)}" aria-invalid="${!!S.err[id]}">
+    </div><div class="msg" id="${id}-m">${S.err[id] ? ico('warn') + esc(S.err[id]) : ''}</div></div>`;
+}
+function groupBody(g) {
+  const G = GROUPS[g];
+  let h = G.sections.map(sec => `<section class="sec"><h2 class="sec-h">${sec.h}</h2>
+      <div class="rows">${sec.items.map(it => row(esc(it.l), it.h ? esc(it.h) : '', itemCtl(g, it), it.t === 'range' ? '' : '')).join('')}</div>
+      ${sec.note ? `<div class="note">${ico('info')}<span>${esc(sec.note)}</span></div>` : ''}</section>`).join('');
+  if (G.na) h += `<details class="na"><summary>${ico('chev', 'chev')}<span>${G.na.length} options are not available in this build${G.naWhy ? '. ' + esc(G.naWhy) : ''}</span></summary>
+      <ul>${G.na.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>`;
+  return h;
+}
+function actionBar(g) {
+  const n = dirtyKeys(g).length, bad = hasErr(g);
+  return `<div class="actionbar" id="ab-${g}">
+    <div class="state ${n ? 'dirty' : ''}" id="ab-${g}-s">${stateText(g)}</div>
+    <div class="btns"><button class="btn ghost" id="ab-${g}-revert" data-act="revert" data-g="${g}" ${n ? '' : 'disabled'}>Revert</button>
+    <button class="btn primary" id="ab-${g}-apply" data-act="apply" data-g="${g}" ${n && !bad ? '' : 'disabled'}>Apply changes</button></div></div>`;
+}
+function stateText(g) {
+  const n = dirtyKeys(g).length;
+  if (hasErr(g)) return `<span class="dot caution"></span>Fix the highlighted value to apply`;
+  return n ? `<span class="dot accent"></span>${n} unsaved ${n === 1 ? 'change' : 'changes'}` : `<span class="dot ok"></span>All changes applied`;
+}
+function refreshBar(g) {
+  const s = document.getElementById(`ab-${g}-s`); if (!s) return;
+  const n = dirtyKeys(g).length;
+  s.innerHTML = stateText(g); s.className = 'state' + (n ? ' dirty' : '');
+  document.getElementById(`ab-${g}-revert`).disabled = !n;
+  document.getElementById(`ab-${g}-apply`).disabled = !n || hasErr(g);
+}
+
+/* ---------------- controls page ---------------- */
+function controlsBody() {
+  const t = S.tab;
+  const changed = CMDS.filter(c => !c.na && JSON.stringify(S.bind[t][c.id]) !== JSON.stringify(DEF_BIND[t][c.id])).length;
+  let cats = [...new Set(CMDS.map(c => c.cat))];
+  return `<div class="ctl-head">
+      ${seg('tab', t, [['kbm', 'Keyboard & mouse'], ['joy', 'Joystick']], 'aria-label="Input device"')}
+      <div class="devices"><span class="chip"><span class="dot ok"></span>Keyboard</span><span class="chip"><span class="dot ok"></span>Mouse</span><span class="chip"><span class="dot ${t === 'joy' ? 'ok' : ''}"></span>HOTAS Warthog</span><span class="preview-tag">Example devices</span></div>
+    </div>
+    ${cats.map(cat => `<section class="sec"><h2 class="sec-h">${cat}</h2><div class="rows">${CMDS.filter(c => c.cat === cat).map(bindRow).join('')}</div></section>`).join('')}
+    <section class="sec"><h2 class="sec-h">Pedals</h2><div class="rows">
+      ${row('Pedal yaw mode', 'Buttons uses two keys or hat directions. Axis uses rudder pedals.', seg('yawMode', S.yawMode, [['buttons', 'Buttons'], ['axis', 'Axis']]))}
+    </div></section>
+    <div class="launch"><span class="sum">${changed ? `<b>${changed}</b> ${changed === 1 ? 'command differs' : 'commands differ'} from the defaults on this device.` : 'All commands use their default bindings.'} Changes save immediately.</span>
+      <button class="btn danger" id="resetAll" data-act="resetAllAsk">Reset all bindings</button></div>`;
+}
+function bindRow(c) {
+  const t = S.tab;
+  if (c.na) return `<div class="bind-row"><div class="cmd">${c.name}</div><div class="keys"><span class="kc na">Unavailable</span><span class="hint" style="margin:0">${c.na}</span></div><div></div></div>`;
+  const parts = S.bind[t][c.id];
+  const changed = JSON.stringify(parts) !== JSON.stringify(DEF_BIND[t][c.id]);
+  const fb = S.bindFb[`${t}.${c.id}`];
+  return `<div class="bind-row" id="br-${c.id}">
+    <div class="cmd">${c.name} ${changed ? '<span class="changed">Changed</span>' : ''}</div>
+    <div class="keys">${parts.map(([pt, key], i) => key
+      ? `<button class="kc" id="kc-${c.id}-${i}" data-act="rebind" data-c="${c.id}" data-i="${i}" aria-label="Rebind ${c.name} ${pt === '−' ? 'negative' : pt === '+' ? 'positive' : ''}: ${esc(key)}">${pt ? `<span class="pt">${pt}</span>` : ''}${esc(key)}</button>`
+      : `<button class="kc unbound" id="kc-${c.id}-${i}" data-act="rebind" data-c="${c.id}" data-i="${i}">Unbound</button>`).join('')}</div>
+    <div class="row-acts">
+      <button class="btn ghost sm" id="rb-${c.id}" data-act="rebind" data-c="${c.id}" data-i="0">Rebind</button>
+      <button class="btn ghost sm" id="rs-${c.id}" data-act="resetBind" data-c="${c.id}" ${changed ? '' : 'disabled'}>${ico('reset')}Default</button>
+    </div>
+    ${fb ? `<div class="fb ${fb.ok ? 'ok' : ''}">${esc(fb.m)}</div>` : ''}
+  </div>`;
+}
+
+/* ---------------- main menu ---------------- */
+const MAIN_NAV = [['fly', 'Fly', 'fly'], ['multiplayer', 'Multiplayer', 'multi'], ['settings', 'Settings', 'sliders'], ['hardware', 'Hardware & setup', 'stick'], ['recordings', 'Recordings', 'rec'], ['help', 'Help & about', 'help']];
+const SUBS = { display: GROUPS.display, audio: GROUPS.audio, controls: { title: 'Controls & bindings', icon: 'stick', desc: 'Rebind any command. Keyboard bindings always remain as a fallback.' }, cesium: GROUPS.cesium };
+
+function statusChips() {
+  return `<div class="status"><span class="chip"><span class="dot ok"></span>Keyboard & mouse</span><span class="chip"><span class="dot"></span>Desktop · no VR</span><span class="chip"><span class="dot caution"></span>NOVA unverified</span></div>`;
+}
+function assistLabel(v) { return (ASSIST.find(a => a[0] === v) || ASSIST[0])[1]; }
+
+function mainPage() {
+  const p = S.page.main;
+  if (p === 'settings' && S.sub) return settingsSub(S.sub, 'main');
+  if (p === 'fly') return `<div class="page">
+    <div class="page-head"><h1>Your next flight</h1><p>Set up a local session, or fly again with your last valid setup.</p></div>
+    <div class="quick">
+      <div><h2>Quick start</h2><div class="specs"><span>Aircraft <b>R66</b></span><span>Location <b>Multiplayer environment</b></span><span>Assistance <b>${assistLabel(S.last.assist)}</b></span><span>CSV <b>${S.last.record ? 'On' : 'Off'}</b></span></div></div>
+      <button class="btn" id="quickStart" data-act="launch" data-mode="quick">${ico('play')}Fly last setup</button>
+    </div>
+    <section class="sec"><h2 class="sec-h">New flight</h2><div class="rows">
+      ${row('Aircraft', 'The only aircraft in this build.', '<span class="val">R66</span>')}
+      ${row('Location', 'Shared with multiplayer sessions.', '<span class="val" style="font-family:var(--f-body)">Multiplayer environment</span>')}
+      ${row('Assistance', 'Overrides the aircraft’s assist preset for this flight.', `<select class="select" id="assist" data-s="assist">${ASSIST.map(([v, l]) => `<option value="${v}" ${S.session.assist === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)}
+      ${row('Record flight data', 'Writes a CSV file for this session.', sw('record', S.session.record))}
+    </div></section>
+    <div class="launch"><span class="sum" id="flySum">Assistance <b>${assistLabel(S.session.assist)}</b> · CSV recording <b>${S.session.record ? 'On' : 'Off'}</b></span>
+      <button class="btn primary lg" id="startSolo" data-act="launch" data-mode="solo">${ico('play')}Start flight</button></div>
+  </div>`;
+  if (p === 'multiplayer') return `<div class="page">
+    <div class="page-head"><h1>Fly together</h1><p>Host a session or join one by IPv4 address. Spectators don’t need their own helicopter.</p></div>
+    <section class="sec"><h2 class="sec-h">Session</h2><div class="rows">
+      ${row('Your role', S.mp.role === 'pilot' ? 'You fly your own helicopter.' : 'You watch without controlling an aircraft.', seg('role', S.mp.role, [['pilot', 'Pilot'], ['spectator', 'Spectator']]))}
+      ${row('Server address', 'IPv4 of the host on your network.', `<div class="ctl-col" style="width:100%"><input class="field mono" style="width:100%" id="mp-address" data-mp="address" value="${esc(S.mp.address)}" aria-invalid="${!!S.mpErr.address}" spellcheck="false"><div class="msg" id="mp-address-m">${S.mpErr.address ? ico('warn') + S.mpErr.address : ''}</div></div>`)}
+      ${row('Port', '1 to 65535.', `<div class="ctl-col"><input class="field mono num" id="mp-port" data-mp="port" value="${esc(S.mp.port)}" inputmode="numeric" aria-invalid="${!!S.mpErr.port}"><div class="msg" id="mp-port-m">${S.mpErr.port ? ico('warn') + S.mpErr.port : ''}</div></div>`)}
+    </div></section>
+    <div class="note">${ico('info')}<span>Hosting listens on your local network. Assistance and recording come from the Fly page. The host owns the shared environment.</span></div>
+    <div class="launch"><span class="sum">Joining <b class="mono" id="mpTarget">${esc(S.mp.address)}:${esc(S.mp.port)}</b> as <b>${S.mp.role === 'pilot' ? 'pilot' : 'spectator'}</b></span>
+      <div class="btns" style="display:flex;gap:.5rem"><button class="btn" id="startHost" data-act="launch" data-mode="host">Host session</button><button class="btn primary" id="startJoin" data-act="launch" data-mode="join">Join session</button></div></div>
+  </div>`;
+  if (p === 'settings') return `<div class="page">
+    <div class="page-head"><h1>Settings</h1><p>These preferences and bindings are shared with the in-flight menu.</p></div>
+    <div class="hub">${Object.entries(SUBS).map(([k, s]) => `<button class="tile" id="hub-${k}" data-act="sub" data-sub="${k}">
+      <div class="t-top"><span class="t-ico">${ico(s.icon)}</span>${ico('chev', 't-go')}</div>
+      <h3>${s.title}</h3><p>${s.desc}</p><span class="t-sum">${hubSummary(k)}</span></button>`).join('')}</div>
+    <div class="note">${ico('vr')}<span>VR uses the configured OpenXR runtime. Head tracking and seated recenter stay with the XR system, and every menu works with keyboard, mouse or HOTAS, without hand controllers.</span></div>
+  </div>`;
+  if (p === 'hardware') return `<div class="page">
+    <div class="page-head"><h1>Check your setup</h1><p>Connected devices are optional. Detection doesn’t verify calibration or a physical motion-platform connection.</p></div>
+    <section class="sec"><h2 class="sec-h">Detected <span class="preview-tag">Example readout</span></h2><div class="hw">
+      <div class="hw-card"><span class="k">Flight controls</span><span class="v"><span class="dot ok"></span>3 devices</span><p>Keyboard, mouse and HOTAS Warthog. Keyboard fallback stays available.</p></div>
+      <div class="hw-card"><span class="k">VR headset</span><span class="v"><span class="dot"></span>Not active</span><p>No headset reported. Desktop flying is available. Start your PC VR runtime before launching.</p></div>
+      <div class="hw-card"><span class="k">NOVA</span><span class="v"><span class="dot caution"></span>Unverified</span><p>This menu never connects, calibrates or sends motion. Follow the operator setup and safety procedures.</p></div>
+    </div></section>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn" id="openBindings" data-act="openBindings">${ico('stick')}Open controls & bindings</button><button class="btn ghost" id="recenter" data-act="toast" data-msg="VR menu recentered.">${ico('target')}Recenter VR menu</button></div>
+  </div>`;
+  if (p === 'recordings') return `<div class="page">
+    <div class="page-head"><h1>Flight recordings</h1><p>Choose whether new flights record by default and open the folder of saved CSV files.</p></div>
+    <section class="sec"><h2 class="sec-h">Preference</h2><div class="rows">${row('Record CSV data by default', 'Pre-selects recording on the Fly page.', sw('recDefault', S.recDefault))}</div></section>
+    <section class="sec"><h2 class="sec-h">Saved files <span class="preview-tag">Example readout</span></h2><div class="rows">
+      ${row('12 CSV recordings', 'Saved in the HeliSim recordings folder.', `<button class="btn" id="openRec" data-act="toast" data-msg="Opened the recordings folder.">${ico('folder')}Open folder</button>`)}
+    </div></section>
+  </div>`;
+  if (p === 'help') return `<div class="page">
+    <div class="page-head"><h1>Before you take off</h1><p>HeliSim supports desktop flying, seated VR and simulator installations.</p></div>
+    <section class="sec"><h2 class="sec-h">Getting started</h2><ol class="steps">
+      <li><span>Set up your controls in <b>Settings › Controls & bindings</b>.</span></li>
+      <li><span>Choose assistance and recording on <b>Fly</b>.</span></li>
+      <li><span>Start a local flight, or host or join from <b>Multiplayer</b>.</span></li>
+      <li><span>Press <b>Esc</b> in flight for session controls and settings.</span></li>
+      <li><span>Use <b>Return to menu</b> to end a session before starting another.</span></li>
+    </ol></section>
+    <section class="sec"><h2 class="sec-h">Troubleshooting</h2><div class="trouble">
+      <div><h3>Can’t connect</h3><p>Check the host’s IPv4 address and port, that the host is running, and firewall permissions. A failed join returns here with the reason.</p></div>
+      <div><h3>VR or hardware missing</h3><p>Carry on with keyboard and mouse on desktop. NOVA operation needs the normal operator checks.</p></div>
+    </div></section>
+  </div>`;
+}
+function hubSummary(k) {
+  const d = S.g.display.a, a = S.g.audio.a, c = S.g.cesium.a;
+  if (k === 'display') return `${d.windowMode} · ${d.resolution} · ${d.quality}`;
+  if (k === 'audio') return `Volume ${a.volume} · NOVA lock ${a.novaPopup ? 'on' : 'off'}`;
+  if (k === 'controls') { const n = ['kbm', 'joy'].reduce((s, t) => s + CMDS.filter(cm => !cm.na && JSON.stringify(S.bind[t][cm.id]) !== JSON.stringify(DEF_BIND[t][cm.id])).length, 0); return `${CMDS.length} commands · ${n ? n + ' changed' : 'all default'}`; }
+  if (k === 'cesium') return `SSE ${c.sse}px · ${c.maxLoads} tile loads · ${gib(c.cacheBytes)}`;
+}
+function settingsSub(k, where) {
+  const s = SUBS[k];
+  const body = k === 'controls' ? controlsBody() : groupBody(k);
+  const head = `<div class="page-head"><h1>${s.title}</h1><p>${s.desc}</p></div>`;
+  return { split: true, html: `<div class="scroll" id="scroll"><div class="page">${head}${body}</div></div>${k === 'controls' ? '' : actionBar(k)}` };
+}
+
+function renderMain() {
+  const p = S.page.main;
+  const content = mainPage();
+  const isSplit = typeof content === 'object';
+  const crumbs = p === 'settings' && S.sub
+    ? `<button id="crumb-settings" data-act="sub" data-sub="">Settings</button><span class="sep">/</span><span class="cur">${SUBS[S.sub].title}</span>`
+    : `<span>Main menu</span><span class="sep">/</span><span class="cur">${MAIN_NAV.find(n => n[0] === p)[1]}</span>`;
+  return `<div class="main-bg"><canvas id="topo" aria-hidden="true"></canvas><span class="coords">37°49′S 144°58′E · MELBOURNE</span></div>
+  <div class="shell">
+    <nav class="rail" aria-label="Main menu">
+      <div class="brand"><div class="brand-mark">HELI<span>SIM</span></div><div class="brand-sub">Flight simulator</div></div>
+      <div class="nav"><div class="nav-label">Menu</div>${MAIN_NAV.map(([id, l, ic]) => `<button id="nav-${id}" data-nav="${id}" ${p === id ? 'aria-current="page"' : ''}>${ico(ic)}${l}</button>`).join('')}</div>
+      <div class="rail-foot nav"><button id="nav-quit" data-act="quitAsk">${ico('power')}Quit</button><div class="version">Build 0.1 · Unity 6000.4.5f1</div></div>
+    </nav>
+    <main class="main">
+      <div class="topbar"><div class="crumbs">${crumbs}</div>${statusChips()}</div>
+      ${isSplit ? content.html : `<div class="scroll" id="scroll">${content}</div>`}
+    </main>
+  </div>`;
+}
+
+/* ---------------- in-flight ---------------- */
+const FL_NAV = [['session', 'Flight & session', 'gauge'], ['controls', 'Controls', 'stick'], ['audio', 'Settings', 'sliders'], ['cesium', 'Cesium', 'globe'], ['display', 'Display', 'display']];
+function sessionPage() {
+  const f = S.fl;
+  const sl = (k, l) => row(l, '', `<div class="range-wrap"><input type="range" class="range" id="fl-${k}" data-fl="${k}" min="0" max="100" step="1" value="${f[k]}" style="--p:${f[k]}%" aria-label="${l}"><span class="readout" id="fl-${k}-r">${f[k]}%</span></div>`);
+  return `<div class="page">
+    <div class="page-head"><h1>Flight & session</h1><p>Aircraft actions, assists and session tools. Changes take effect immediately.</p></div>
+    <section class="sec"><h2 class="sec-h">Aircraft</h2><div class="rows">
+      ${row('Engine', f.engine ? 'Running.' : 'Off. Start before lifting the collective.', `<span class="chip"><span class="dot ${f.engine ? 'ok' : ''}"></span>${f.engine ? 'Running' : 'Off'}</span><button class="btn ${f.engine ? '' : 'primary'}" id="startEngine" data-act="engine" ${f.engine ? 'disabled' : ''}>${ico('engine')}Start engine</button>`)}
+      ${row('Reset helicopter', 'Returns the aircraft to its starting state.', `<button class="btn" id="resetHeli" data-act="toast" data-msg="Helicopter reset.">${ico('reset')}Reset</button>`)}
+    </div></section>
+    <section class="sec"><h2 class="sec-h">Assists</h2><div class="rows">
+      ${row('Overall assist level', 'Sets all assists together.', `<div class="range-wrap"><input type="range" class="range" id="fl-assist" data-fl="assist" min="0" max="5" step="1" value="${f.assist}" style="--p:${f.assist * 20}%" aria-label="Overall assist level"><span class="readout" id="fl-assist-r" style="min-width:4.5rem;font-family:var(--f-body)">${LEVEL_NAMES[f.assist]}</span></div>`)}
+      <button class="disclose" id="advToggle" data-act="adv" aria-expanded="${f.adv}" aria-controls="advPanel"><span>Advanced control settings</span>${ico('chev')}</button>
+      ${f.adv ? `<div class="nested" id="advPanel">
+        ${row('Auto trim', '', sw('autoTrim', f.autoTrim))}
+        ${sl('tail', 'Tail rotor torque')}${sl('mainRotor', 'Main rotor torque')}${sl('roll', 'Roll rate limiter')}${sl('stab', 'Stabilization assist')}
+      </div>` : ''}
+    </div></section>
+    <section class="sec"><h2 class="sec-h">Time trial</h2><div class="rows">
+      ${row('Time remaining', f.ttRun ? 'Running.' : 'Paused.', `<div class="tt"><button class="btn sm" id="ttMinus" data-act="tt" data-d="-30">−30 s</button>
+        <button class="btn ${f.ttRun ? '' : 'primary'}" id="ttPlay" data-act="ttPlay" aria-label="${f.ttRun ? 'Pause' : 'Start'} timer" style="width:2.75rem;padding:0">${ico(f.ttRun ? 'pause' : 'play')}</button>
+        <button class="btn sm" id="ttPlus" data-act="tt" data-d="30">+30 s</button><span class="clock ${f.ttLeft <= 30 ? 'low' : ''}" id="ttClock">${fmtClock(f.ttLeft)}</span></div>`)}
+    </div></section>
+    <section class="sec"><h2 class="sec-h">World & map</h2><div class="rows">
+      ${row('Offline only', 'Use cached map data without streaming.', sw('offline', f.offline))}
+    </div></section>
+    <section class="sec"><h2 class="sec-h">Journey</h2><div class="rows">
+      ${row('Journey file', 'CSV of waypoints for this session.', `<input class="field mono" style="width:100%" id="journey" data-fl="journey" value="${esc(f.journey)}" spellcheck="false">`)}
+      ${row('Reset scene', 'Reloads the journey and world state.', `<button class="btn" id="resetScene" data-act="toast" data-msg="Scene reset.">${ico('reset')}Reset scene</button>`)}
+      ${row('Subtitles', subtitleSourceConnected ? '' : 'Unavailable: no subtitle source is connected.', sw('subs', f.subs, !subtitleSourceConnected))}
+      ${row('Subtitle scale', '', `<div class="range-wrap"><input type="range" class="range" id="fl-subScale" data-fl="subScale" min="50" max="200" step="10" value="${f.subScale}" style="--p:${pct(f.subScale, 50, 200)}" aria-label="Subtitle scale" ${subtitleSourceConnected ? '' : 'disabled'}><span class="readout" id="fl-subScale-r">${f.subScale}%</span></div>`)}
+    </div></section>
+    <section class="sec"><h2 class="sec-h">VR</h2><div class="rows">
+      ${row('Reset VR origin', 'Recenters the seated view on your current head position.', `<button class="btn" id="resetVr" data-act="toast" data-msg="VR origin reset.">${ico('target')}Reset VR origin</button>`)}
+    </div></section>
+  </div>`;
+}
+function renderFlight() {
+  const f = S.fl;
+  const world = `<div class="world"><div class="horizon"><div class="sky"></div><div class="gnd"></div><div class="haze"></div></div>
+    <div class="hud"><div class="tl"><span>R66 · MULTIPLAYER ENV</span><span>ENG ${f.engine ? 'RUN' : 'OFF'}</span><span>ASSIST ${LEVEL_NAMES[f.assist].toUpperCase()}</span></div>
+      <div class="tr"><span>TIME TRIAL</span><span id="hudClock">${fmtClock(f.ttLeft)}</span></div><div class="reticle"></div>
+      ${S.menuOpen ? '' : `<button class="hint" id="openMenu" data-act="openMenu"><kbd>Esc</kbd>Open in-flight menu</button>`}</div></div>`;
+  if (S.novaLocked && !S.menuOpen) return world + `<div class="scrim"></div><div class="nova" role="dialog" aria-labelledby="novaT"><div class="k">Collective locked</div><h2 id="novaT">Enable the helicopter</h2><p>Make sure NOVA is running before you continue. The collective stays locked until you enable it.</p><button class="btn primary lg" id="novaGo" data-act="novaUnlock" style="width:100%">Enable helicopter</button></div>`;
+  if (!S.menuOpen) return world;
+  const p = S.page.flight;
+  let body, bar = '';
+  if (p === 'session') body = sessionPage();
+  else if (p === 'controls') body = `<div class="page"><div class="page-head"><h1>Controls</h1><p>${SUBS.controls.desc}</p></div>${controlsBody()}</div>`;
+  else { const G = GROUPS[p]; body = `<div class="page"><div class="page-head"><h1>${p === 'audio' ? 'Settings' : G.title}</h1><p>${G.desc}</p></div>${groupBody(p)}</div>`; bar = actionBar(p); }
+  return world + `<div class="scrim"></div><div class="overlay" role="dialog" aria-label="In-flight menu"><div class="shell">
+    <nav class="rail" aria-label="In-flight menu">
+      <div class="brand"><div class="brand-mark">HELI<span>SIM</span></div><div class="brand-sub">In-flight menu</div></div>
+      <div class="nav"><button class="resume" id="resume" data-act="resume">${ico('play')}Resume flight</button>
+        ${FL_NAV.map(([id, l, ic]) => `<button id="fnav-${id}" data-fnav="${id}" ${p === id ? 'aria-current="page"' : ''}>${ico(ic)}${l}</button>`).join('')}</div>
+      <div class="rail-foot nav"><button id="returnMenu" data-act="returnAsk">${ico('exit')}Return to menu</button></div>
+    </nav>
+    <main class="main"><div class="topbar"><div class="crumbs"><span>In flight</span><span class="sep">/</span><span class="cur">${FL_NAV.find(n => n[0] === p)[1]}</span></div>
+      <span class="live"><span class="dot"></span>Simulation keeps running while this menu is open</span></div>
+      <div class="scroll" id="scroll">${body}</div>${bar}</main></div></div>`;
+}
+
+/* ---------------- spec ---------------- */
+function renderSpec() {
+  const sw = (hex, name, role) => `<div class="sw"><i style="background:${hex}"></i><div><b>${hex}</b>${name} · ${role}</div></div>`;
+  return `<div class="spec"><div class="spec-in">
+    <div><h1>Menu design spec</h1><p class="lead">Every value the preview uses, with its Unity equivalent at the 1920 × 1080 Canvas Scaler reference. Sizes in Unity are 1.5 × the web sizes below.</p></div>
+    <section><h2>What changed</h2><div class="changes">
+      <div><h3>States you can see</h3><p>Hover and focus brighten. Keyboard and HOTAS focus gets a 2 px teal ring. Disabled is 40 % opacity and never looks highlighted.</p></div>
+      <div><h3>One accent, one meaning</h3><p>Teal marks what’s active or selectable. Amber is caution, red is only for destructive actions. Section headings are quiet grey.</p></div>
+      <div><h3>Real type system</h3><p>Barlow for text, Barlow Condensed for headings and labels, JetBrains Mono for values and bindings. Six sizes, no fake bold.</p></div>
+      <div><h3>Apply when it matters</h3><p>Settings pages show one action bar with a live count of unsaved changes. Apply stays disabled while a value is invalid.</p></div>
+      <div><h3>Less noise</h3><p>The “unavailable” paragraphs fold into one expandable list per page. Bindings show as keycaps, and row actions appear on hover or focus.</p></div>
+      <div><h3>One system, two menus</h3><p>Main and in-flight menus share the same rail, rows, controls, dialogs and spacing, so settings look identical in both.</p></div>
+    </div></section>
+    <section><h2>Palette</h2><div class="swatches">
+      ${sw('#070C11', 'bg-0', 'backdrop')}${sw('#0B131A', 'bg-1', 'rail, inputs')}${sw('#101A23', 'bg-2', 'content panel')}${sw('#16232E', 'bg-3', 'raised, hover')}${sw('#1D2D3A', 'bg-4', 'hover on raised')}
+      ${sw('#1F2E3A', 'line', 'dividers')}${sw('#2C3F4E', 'line-2', 'control borders')}${sw('#E6EDF2', 'tx-1', 'primary text')}${sw('#9AABB8', 'tx-2', 'secondary text')}${sw('#637684', 'tx-3', 'labels, meta')}
+      ${sw('#3CC8BA', 'accent', 'active, primary, focus')}${sw('#03211E', 'accent-ink', 'text on accent')}${sw('#F0A93C', 'caution', 'validation, NOVA')}${sw('#EF5A5A', 'warning', 'destructive only')}${sw('#52C98C', 'ok', 'connected, applied')}
+    </div></section>
+    <section><h2>Type scale</h2><div class="tbl-wrap"><table><thead><tr><th>Role</th><th>Face</th><th>Web</th><th>Unity TMP</th><th>Used for</th></tr></thead><tbody>
+      <tr><td>Display</td><td>Barlow Condensed 600</td><td>40</td><td>60</td><td>Page titles</td></tr>
+      <tr><td>Heading</td><td>Barlow Condensed 600</td><td>22–26</td><td>36</td><td>Dialog and card titles</td></tr>
+      <tr><td>Body</td><td>Barlow 400 / 500</td><td>16</td><td>24</td><td>Row labels, buttons, copy</td></tr>
+      <tr><td>Hint</td><td>Barlow 400</td><td>14</td><td>21</td><td>Row hints, notes</td></tr>
+      <tr><td>Eyebrow</td><td>Barlow Condensed 600, caps, +0.14 em</td><td>13</td><td>19</td><td>Section headings, chips</td></tr>
+      <tr><td>Value</td><td>JetBrains Mono 500, tabular</td><td>13–15</td><td>21</td><td>Numbers, addresses, keycaps</td></tr>
+    </tbody></table></div></section>
+    <section><h2>Spacing, size and shape</h2><div class="tbl-wrap"><table><thead><tr><th>Token</th><th>Web</th><th>Unity</th><th>Notes</th></tr></thead><tbody>
+      <tr><td>Spacing scale</td><td>4 · 8 · 12 · 16 · 24 · 32 · 40</td><td>6 · 12 · 18 · 24 · 36 · 48 · 60</td><td>Use only these for padding and Layout Group spacing</td></tr>
+      <tr><td>Page padding</td><td>36 top · 40 sides</td><td>54 · 60</td><td>Symmetric. Replaces 5/15/5/30</td></tr>
+      <tr><td>Setting row</td><td>min 64, padding 14 × 20</td><td>80</td><td>Density-adjusted (not 1.5×). Label + hint left, control right (max 320 web / 480 Unity)</td></tr>
+      <tr><td>Binding row</td><td>min 56</td><td>≤ 56</td><td>Kept compact to match the existing Controls page test</td></tr>
+      <tr><td>Control / button</td><td>40 / 44 (large 52)</td><td>60 / 66 (78)</td><td>Two heights only</td></tr>
+      <tr><td>Nav item</td><td>44</td><td>66</td><td>Rail width 280 / 420</td></tr>
+      <tr><td>Radius</td><td>6 controls · 10 panels</td><td>9 · 15</td><td>One 9-sliced rounded sprite per radius, replaces box.png mix</td></tr>
+    </tbody></table></div></section>
+    <section><h2>Interaction states</h2>
+      <div class="states" style="margin-bottom:1rem">
+        <div><button class="btn" tabindex="-1">Normal</button><div class="lab">normal</div></div>
+        <div><button class="btn fake-hover" tabindex="-1">Hover</button><div class="lab">bg-4</div></div>
+        <div><button class="btn fake-focus" tabindex="-1">Focus</button><div class="lab">2px accent ring</div></div>
+        <div><button class="btn" disabled tabindex="-1">Disabled</button><div class="lab">40% alpha</div></div>
+        <div><button class="btn primary" tabindex="-1">Primary</button><div class="lab">accent</div></div>
+        <div><button class="btn danger" tabindex="-1">Destructive</button><div class="lab">warning</div></div>
+      </div>
+      <div class="tbl-wrap"><table><thead><tr><th>Element</th><th>Normal</th><th>Hover</th><th>Selected (focus)</th><th>Pressed</th><th>Disabled</th></tr></thead><tbody>
+      <tr><td>Button</td><td>bg-3, line-2 border</td><td>bg-4</td><td>bg-4 + accent ring</td><td>bg-3, 1 px down</td><td>alpha 0.4</td></tr>
+      <tr><td>Primary</td><td>accent</td><td>#63D9CD</td><td>accent + ring</td><td>accent</td><td>alpha 0.4</td></tr>
+      <tr><td>Setting row</td><td>transparent</td><td>bg-3 at 60 %</td><td>bg-3</td><td>—</td><td>contents at 0.4</td></tr>
+      <tr><td>Nav item</td><td>tx-2 text</td><td>bg-3, tx-1</td><td>bg-3 + ring</td><td>—</td><td>—</td></tr>
+      <tr><td>Off / On switch</td><td colspan="5">Selected segment: On = accent fill, Off = bg-4. Unselected segment: tx-3 text, hover bg-3.</td></tr>
+    </tbody></table></div>
+      <p class="lead" style="font-size:.875rem">In Unity, Color Tint multiplies, so it can only darken. Either keep each graphic white and put the real colour in the ColorBlock, or set the transition to None and drive colours from a small shared state component (e.g. extend <code>SettingsToggleVisual</code>) reading one palette ScriptableObject. Add a separate focus-ring Image enabled on <code>OnSelect</code>/<code>OnDeselect</code>.</p>
+    </section>
+    <section><h2>Fonts</h2><p class="lead" style="margin:0">All three families are under the SIL Open Font License, so they can ship in the build. Create TMP SDF assets for Barlow Regular, Medium and SemiBold, Barlow Condensed SemiBold and Bold, and JetBrains Mono Medium, and keep LiberationSans only as a fallback.</p></section>
+  </div></div>`;
+}
+
+/* ---------------- dialogs ---------------- */
+function renderDialog() {
+  const d = S.dialog; if (!d) return '';
+  let inner = '';
+  if (d.type === 'quit') inner = `<div class="k">Main menu</div><h2 id="dlgT">Quit HeliSim?</h2><p>Your applied preferences are saved.</p>
+    <div class="acts"><button class="btn ghost" id="dlg-cancel" data-act="close">Cancel</button><button class="btn danger" id="dlg-ok" data-act="quit">Quit</button></div>`;
+  if (d.type === 'unsaved') inner = `<div class="k">${GROUPS[d.g].title}</div><h2 id="dlgT">Unsaved changes</h2><p>You changed ${dirtyKeys(d.g).length} ${dirtyKeys(d.g).length === 1 ? 'setting' : 'settings'}. Apply them, discard them, or keep editing.</p>
+    <div class="acts"><button class="btn ghost" id="dlg-cancel" data-act="close">Keep editing</button><button class="btn" id="dlg-discard" data-act="unsavedDiscard">Discard</button><button class="btn primary" id="dlg-ok" data-act="unsavedApply" ${hasErr(d.g) ? 'disabled' : ''}>Apply</button></div>`;
+  if (d.type === 'return') inner = `<div class="k">In flight</div><h2 id="dlgT">Return to the main menu?</h2><p>This ends your current session${S.fl.ttRun ? ' and stops the time trial' : ''}.</p>
+    <div class="acts"><button class="btn ghost" id="dlg-cancel" data-act="close">Stay in flight</button><button class="btn danger" id="dlg-ok" data-act="returnGo">Return to menu</button></div>`;
+  if (d.type === 'resetAll') inner = `<div class="k">Controls</div><h2 id="dlgT">Reset all bindings?</h2><p>Every command on both keyboard and joystick goes back to its default binding. This can’t be undone.</p>
+    <div class="acts"><button class="btn ghost" id="dlg-cancel" data-act="close">Cancel</button><button class="btn danger" id="dlg-ok" data-act="resetAll">Reset all</button></div>`;
+  if (d.type === 'bind') {
+    const c = CMDS.find(x => x.id === d.c), [pt, key] = S.bind[S.tab][d.c][d.i];
+    const partName = pt === '−' ? ' (negative)' : pt === '+' ? ' (positive)' : '';
+    inner = `<div class="k">Change binding · ${S.tab === 'kbm' ? 'Keyboard & mouse' : 'Joystick'}</div><h2 id="dlgT">${c.name}${partName}</h2>
+      <div class="cur-bind">Current ${key ? `<span class="kc">${esc(key)}</span>` : '<span class="kc unbound">Unbound</span>'}</div>
+      <div class="listen"><span class="pulse"></span><span>${S.tab === 'kbm' ? 'Press a key to assign it.' : 'Press a joystick button or move an axis.<br><span class="hint">Preview: any key stands in for a joystick button.</span>'}</span></div>
+      <div class="msg" id="dlgMsg" style="justify-content:center;margin-top:.75rem">${d.msg ? ico('warn') + esc(d.msg) : ''}</div>
+      <p class="hint" style="text-align:center;margin-top:.5rem">Esc cancels. It’s reserved for menu recovery and can’t be bound.</p>
+      <div class="acts"><button class="btn ghost" id="dlg-restore" data-act="bindRestore">Restore default</button><button class="btn ghost" id="dlg-clear" data-act="bindClear">Clear</button><button class="btn" id="dlg-cancel" data-act="close">Cancel</button></div>`;
+  }
+  return `<div class="modal-back" id="modalBack"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="dlgT">${inner}</div></div>`;
+}
+
+/* ---------------- render ---------------- */
+let focusAfter = null;
+function render(opts = {}) {
+  const active = document.activeElement && document.activeElement.id;
+  const scrollEl = document.getElementById('scroll'); const st = opts.keepScroll && scrollEl ? scrollEl.scrollTop : 0;
+  let html = '';
+  if (S.ended) html = `<div class="ended"><div><div class="brand-mark">HELI<span>SIM</span></div><p>HeliSim has quit.</p><button class="btn" id="restart" data-act="restart">Restart preview</button></div></div>`;
+  else if (S.view === 'main') html = renderMain();
+  else if (S.view === 'flight') html = renderFlight();
+  else html = renderSpec();
+  if (S.view !== 'spec' && !S.ended) html += renderDialog();
+  if (S.loading) html += `<div class="loading"><div class="box"><span class="k">${esc(S.loading.k)}</span><h2>${esc(S.loading.t)}</h2><div class="bar"><i id="loadBar"></i></div></div></div>`;
+  if (S.toast) html += `<div class="toast" role="status"><span class="dot ${S.toast.cls || 'ok'}"></span><span>${esc(S.toast.m)}</span></div>`;
+  stage.innerHTML = html;
+  document.querySelectorAll('#viewSwitch button').forEach(b => b.setAttribute('aria-checked', b.dataset.view === S.view));
+  const sc = document.getElementById('scroll'); if (sc) sc.scrollTop = st;
+  const want = focusAfter || (opts.keepFocus !== false ? active : null);
+  focusAfter = null;
+  const el = want && document.getElementById(want);
+  if (S.dialog && !(el && el.closest('.modal'))) { const f = stage.querySelector('.modal button:not(:disabled)'); f && f.focus(); }
+  else if (el) el.focus({ preventScroll: true });
+  if (S.view === 'main' && !S.ended) drawTopo();
+  if (S.loading) requestAnimationFrame(() => { const b = document.getElementById('loadBar'); if (b) b.style.width = '100%'; });
+}
+let toastTimer;
+function toast(m, cls) { S.toast = { m, cls }; render({ keepScroll: true }); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = null; const t = stage.querySelector('.toast'); t && t.remove(); }, 2600); }
+
+/* topographic backdrop */
+function drawTopo() {
+  const c = document.getElementById('topo'); if (!c) return;
+  const r = c.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+  c.width = r.width * dpr; c.height = r.height * dpr;
+  const x = c.getContext('2d'); x.scale(dpr, dpr);
+  const peaks = [[r.width * .78, r.height * .3, 20, 1.3], [r.width * .55, r.height * .95, 14, 1], [r.width * 1.02, r.height * .85, 12, .8]];
+  peaks.forEach(([cx, cy, n, s], pi) => {
+    for (let i = 1; i <= n; i++) {
+      const R = i * 26 * s;
+      x.beginPath();
+      for (let a = 0; a <= Math.PI * 2 + .01; a += Math.PI / 90) {
+        const rr = R + Math.sin(a * 3 + pi + i * .35) * (6 + i * 1.6) + Math.sin(a * 5 - i * .2) * (3 + i * .8);
+        const px = cx + Math.cos(a) * rr * 1.25, py = cy + Math.sin(a) * rr * .8;
+        a === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
+      }
+      x.strokeStyle = i % 5 === 0 ? 'rgba(60,200,186,.13)' : 'rgba(120,160,180,.06)';
+      x.lineWidth = i % 5 === 0 ? 1.1 : .8; x.stroke();
+    }
+  });
+}
+window.addEventListener('resize', () => { if (S.view === 'main') drawTopo(); });
+
+/* ---------------- navigation logic ---------------- */
+function currentGroup() {
+  if (S.view === 'main' && S.page.main === 'settings' && S.sub && GROUPS[S.sub]) return S.sub;
+  if (S.view === 'flight' && S.menuOpen && GROUPS[S.page.flight]) return S.page.flight;
+  return null;
+}
+function guard(next) {
+  const g = currentGroup();
+  if (g && dirtyKeys(g).length) { S.dialog = { type: 'unsaved', g, next, opener: document.activeElement && document.activeElement.id }; render(); return; }
+  next(); render();
+}
+function clearGroupErrors(g) { Object.keys(S.err).forEach(k => { if (k.startsWith(g + '.')) { delete S.err[k]; delete S.raw[k]; } }); }
+function apply(g) { S.g[g].a = clone(S.g[g].p); clearGroupErrors(g); }
+function revert(g) { S.g[g].p = clone(S.g[g].a); clearGroupErrors(g); }
+
+function launch(mode) {
+  if (mode === 'host' || mode === 'join') {
+    validateMp(); if (S.mpErr.address || S.mpErr.port) { render(); focusAfter = S.mpErr.address ? 'mp-address' : 'mp-port'; render(); return; }
+  }
+  if (mode === 'quick') { S.session.assist = S.last.assist; S.session.record = S.last.record; }
+  else if (mode === 'solo') S.last = { ...S.session };
+  const t = mode === 'host' ? 'Hosting session on port ' + S.mp.port : mode === 'join' ? 'Joining ' + S.mp.address + ':' + S.mp.port : 'Multiplayer environment';
+  S.loading = { k: mode === 'join' ? 'Connecting' : 'Loading', t };
+  render();
+  setTimeout(() => {
+    S.loading = null; S.view = 'flight'; S.menuOpen = false; S.page.flight = 'session';
+    S.fl.engine = false;
+    const a = S.session.assist; if (mode !== 'join' && a !== 'default') S.fl.assist = +a;
+    S.novaLocked = S.g.audio.a.novaPopup;
+    focusAfter = S.novaLocked ? 'novaGo' : 'openMenu';
+    render();
+  }, 1600);
+}
+function validateMp() {
+  const ip = S.mp.address.trim(), port = S.mp.port.trim();
+  const ok = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/.test(ip);
+  S.mpErr.address = ok ? '' : 'Enter an IPv4 address like 192.168.1.20.';
+  const p = Number(port);
+  S.mpErr.port = /^\d+$/.test(port) && p >= 1 && p <= 65535 ? '' : 'Enter a port from 1 to 65535.';
+}
+
+/* time trial ticker */
+setInterval(() => {
+  if (!S.fl.ttRun) return;
+  S.fl.ttLeft = Math.max(0, S.fl.ttLeft - 1);
+  if (S.fl.ttLeft === 0) { S.fl.ttRun = false; if (S.view === 'flight') render({ keepScroll: true }); return; }
+  const c = document.getElementById('ttClock'); if (c) { c.textContent = fmtClock(S.fl.ttLeft); c.classList.toggle('low', S.fl.ttLeft <= 30); }
+  const h = document.getElementById('hudClock'); if (h) h.textContent = fmtClock(S.fl.ttLeft);
+}, 1000);
+
+/* ---------------- events ---------------- */
+document.getElementById('viewSwitch').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  S.view = b.dataset.view; S.dialog = null;
+  if (S.view === 'flight' && !S.loading) { S.menuOpen = true; S.novaLocked = false; }
+  try { history.replaceState(null, '', '#' + S.view); } catch (_) {}
+  render({ keepFocus: false });
+});
+
+stage.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t || t.disabled) return;
+  const d = t.dataset;
+  if (d.nav) return guard(() => { S.page.main = d.nav; S.sub = null; focusAfter = 'nav-' + d.nav; });
+  if (d.fnav) return guard(() => { S.page.flight = d.fnav; focusAfter = 'fnav-' + d.fnav; });
+  if (d.seg) {
+    if (d.seg === 'tab') { S.tab = d.v; S.bindFb = {}; }
+    if (d.seg === 'yawMode') S.yawMode = d.v;
+    if (d.seg === 'role') S.mp.role = d.v;
+    focusAfter = t.id; return render({ keepScroll: true });
+  }
+  if (d.sw) {
+    const on = d.v === '1', id = d.sw;
+    if (id.includes('.')) { const [g, k] = id.split('.'); S.g[g].p[k] = on; }
+    else if (id === 'record') S.session.record = on;
+    else if (id === 'recDefault') { S.recDefault = on; S.session.record = on; }
+    else S.fl[id] = on;
+    focusAfter = t.id; return render({ keepScroll: true });
+  }
+  switch (d.act) {
+    case 'sub': return guard(() => { S.sub = d.sub || null; focusAfter = d.sub ? 'crumb-settings' : 'hub-' + (S.sub || 'display'); });
+    case 'apply': apply(d.g); toast('Settings applied.'); return;
+    case 'revert': revert(d.g); focusAfter = t.id; render({ keepScroll: true }); toast('Changes reverted.', 'accent'); return;
+    case 'launch': return launch(d.mode);
+    case 'quitAsk': S.dialog = { type: 'quit', opener: t.id }; return render();
+    case 'quit': S.dialog = null; S.ended = true; return render();
+    case 'restart': S.ended = false; S.page.main = 'fly'; return render();
+    case 'close': { const o = S.dialog && S.dialog.opener; S.dialog = null; focusAfter = o; return render({ keepScroll: true }); }
+    case 'unsavedApply': { const { g, next } = S.dialog; apply(g); S.dialog = null; next(); return render(); }
+    case 'unsavedDiscard': { const { g, next } = S.dialog; revert(g); S.dialog = null; next(); return render(); }
+    case 'openBindings': S.page.main = 'settings'; S.sub = 'controls'; focusAfter = 'crumb-settings'; return render();
+    case 'toast': return toast(d.msg);
+    case 'resume': return guard(() => { S.menuOpen = false; focusAfter = 'openMenu'; });
+    case 'openMenu': S.menuOpen = true; focusAfter = 'resume'; return render();
+    case 'returnAsk': S.dialog = { type: 'return', opener: t.id }; return render();
+    case 'returnGo': {
+      const g = currentGroup(); if (g) revert(g);
+      S.dialog = null; S.fl.ttRun = false; S.loading = { k: 'Leaving session', t: 'Returning to the main menu' }; render();
+      setTimeout(() => { S.loading = null; S.view = 'main'; S.page.main = 'fly'; S.sub = null; focusAfter = 'nav-fly'; render(); }, 1200); return;
+    }
+    case 'novaUnlock': S.novaLocked = false; focusAfter = 'openMenu'; render(); return toast('Collective unlocked.');
+    case 'engine': S.fl.engine = true; focusAfter = 'resetHeli'; render({ keepScroll: true }); return toast('Engine starting.');
+    case 'adv': S.fl.adv = !S.fl.adv; focusAfter = 'advToggle'; return render({ keepScroll: true });
+    case 'tt': S.fl.ttLeft = Math.max(0, S.fl.ttLeft + Number(d.d)); focusAfter = t.id; return render({ keepScroll: true });
+    case 'ttPlay': if (S.fl.ttLeft === 0) S.fl.ttLeft = 180; S.fl.ttRun = !S.fl.ttRun; focusAfter = 'ttPlay'; return render({ keepScroll: true });
+    case 'rebind': S.dialog = { type: 'bind', c: d.c, i: +d.i, opener: t.id }; return render({ keepScroll: true });
+    case 'bindClear': {
+      if (S.tab === 'kbm') { S.dialog.msg = 'Keep a keyboard or mouse binding for this control.'; return render({ keepScroll: true }); }
+      setBind(S.dialog.c, S.dialog.i, null, 'Binding cleared.'); return;
+    }
+    case 'bindRestore': setBind(S.dialog.c, S.dialog.i, DEF_BIND[S.tab][S.dialog.c][S.dialog.i][1], 'Default restored.'); return;
+    case 'resetBind': S.bind[S.tab][d.c] = clone(DEF_BIND[S.tab][d.c]); S.bindFb[`${S.tab}.${d.c}`] = { ok: true, m: 'Default restored.' }; focusAfter = 'kc-' + d.c + '-0'; return render({ keepScroll: true });
+    case 'resetAllAsk': S.dialog = { type: 'resetAll', opener: t.id }; return render();
+    case 'resetAll': S.bind = clone(DEF_BIND); S.bindFb = {}; S.dialog = null; focusAfter = 'resetAll'; render({ keepScroll: true }); return toast('All bindings reset to defaults.');
+  }
+});
+function setBind(c, i, key, msg) {
+  const old = S.bind[S.tab][c][i][1];
+  S.bind[S.tab][c][i][1] = key;
+  let m = msg;
+  if (key) {
+    const clash = CMDS.find(x => !x.na && x.id !== c && S.bind[S.tab][x.id].some(p => p[1] === key));
+    if (clash) m = `${msg} ${key} is also bound to ${clash.name}.`;
+  }
+  S.bindFb[`${S.tab}.${c}`] = { ok: !m.includes('also bound'), m };
+  const opener = S.dialog.opener; S.dialog = null; focusAfter = opener; render({ keepScroll: true });
+}
+function keyName(e) {
+  const map = { Space: 'Space', ShiftLeft: 'Left Shift', ShiftRight: 'Right Shift', ControlLeft: 'Left Ctrl', ControlRight: 'Right Ctrl', AltLeft: 'Left Alt', AltRight: 'Right Alt',
+    ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right', PageUp: 'Page Up', PageDown: 'Page Down', Enter: 'Enter', Backspace: 'Backspace', Tab: 'Tab' };
+  if (map[e.code]) return map[e.code];
+  return e.code.replace(/^Key|^Digit/, '').replace(/^Numpad(.+)/, 'Num $1').replace(/([a-z])([A-Z])/g, '$1 $2');
+}
+
+stage.addEventListener('input', e => {
+  const t = e.target, d = t.dataset;
+  if (d.set) {
+    const [g, k] = d.set.split('.'), it = GROUPS[g].sections.flatMap(s => s.items).find(x => x.k === k);
+    S.g[g].p[k] = it.t === 'range' ? Number(t.value) : t.value;
+    if (it.t === 'range') { t.style.setProperty('--p', pct(t.value, it.min, it.max)); const n = document.getElementById(d.set + '-n'); if (n) { n.value = t.value; n.removeAttribute('aria-invalid'); } delete S.err[d.set]; delete S.raw[d.set]; const m = document.getElementById(d.set + '-m'); if (m) m.innerHTML = ''; }
+    refreshBar(g); return;
+  }
+  if (d.num) {
+    const [g, k] = d.num.split('.'), it = GROUPS[g].sections.flatMap(s => s.items).find(x => x.k === k);
+    const raw = t.value.trim().replace('−', '-'); S.raw[d.num] = t.value;
+    const v = Number(raw);
+    let err = '';
+    if (!/^-?\d+$/.test(raw)) err = it.err || `Enter a whole number from ${it.min} to ${it.max}.`;
+    else if (it.valid ? !it.valid(v) : (v < it.min || v > it.max)) err = it.err || `Enter a whole number from ${it.min} to ${it.max}.`;
+    S.err[d.num] = err; t.setAttribute('aria-invalid', !!err);
+    const m = document.getElementById(d.num + '-m'); if (m) m.innerHTML = err ? ico('warn') + esc(err) : '';
+    if (!err) {
+      S.g[g].p[k] = v; delete S.raw[d.num];
+      const r = document.getElementById(d.num); if (r && r.type === 'range') { r.value = v; r.style.setProperty('--p', pct(v, it.min, it.max)); }
+      const h = document.getElementById(d.num + '-h'); if (h) h.textContent = gib(v);
+    }
+    refreshBar(g); return;
+  }
+  if (d.fl) {
+    if (d.fl === 'journey') { S.fl.journey = t.value; return; }
+    const v = Number(t.value); S.fl[d.fl] = v;
+    if (d.fl === 'assist') { t.style.setProperty('--p', v * 20 + '%'); document.getElementById('fl-assist-r').textContent = LEVEL_NAMES[v]; }
+    else if (d.fl === 'subScale') { t.style.setProperty('--p', pct(v, 50, 200)); document.getElementById('fl-subScale-r').textContent = v + '%'; }
+    else { t.style.setProperty('--p', v + '%'); document.getElementById(`fl-${d.fl}-r`).textContent = v + '%'; }
+    return;
+  }
+  if (d.mp) {
+    S.mp[d.mp] = t.value;
+    if (S.mpErr[d.mp]) { validateMp(); const m = document.getElementById(`mp-${d.mp}-m`); m.innerHTML = S.mpErr[d.mp] ? ico('warn') + S.mpErr[d.mp] : ''; t.setAttribute('aria-invalid', !!S.mpErr[d.mp]); }
+    const tg = document.getElementById('mpTarget'); if (tg) tg.textContent = `${S.mp.address}:${S.mp.port}`;
+    return;
+  }
+  if (d.s === 'assist') { S.session.assist = t.value; const s = document.getElementById('flySum'); if (s) s.innerHTML = `Assistance <b>${assistLabel(S.session.assist)}</b> · CSV recording <b>${S.session.record ? 'On' : 'Off'}</b>`; }
+});
+stage.addEventListener('change', e => { if (e.target.dataset.set && e.target.tagName === 'SELECT') refreshBar(e.target.dataset.set.split('.')[0]); });
+stage.addEventListener('focusout', e => {
+  const t = e.target; if (!t.dataset || !t.dataset.mp) return;
+  validateMp(); const m = document.getElementById(`mp-${t.dataset.mp}-m`); if (m) m.innerHTML = S.mpErr[t.dataset.mp] ? ico('warn') + S.mpErr[t.dataset.mp] : ''; t.setAttribute('aria-invalid', !!S.mpErr[t.dataset.mp]);
+});
+
+document.addEventListener('keydown', e => {
+  if (S.loading) { e.preventDefault(); return; }
+  // binding capture
+  if (S.dialog && S.dialog.type === 'bind') {
+    if (e.key === 'Escape') { e.preventDefault(); const o = S.dialog.opener; S.dialog = null; focusAfter = o; render({ keepScroll: true }); return; }
+    if (e.key === 'Tab' || (e.key === 'Enter' && document.activeElement.closest('.modal'))) { if (e.key === 'Tab') trapTab(e); return; }
+    if (['Shift', 'Control', 'Alt', 'Meta'].includes(e.key) && !e.code) return;
+    e.preventDefault();
+    const name = S.tab === 'joy' ? 'Button ' + ((e.code.charCodeAt(e.code.length - 1) % 32) + 1) : keyName(e);
+    setBind(S.dialog.c, S.dialog.i, name, `Bound to ${name}.`);
+    return;
+  }
+  if (S.dialog && e.key === 'Tab') return trapTab(e);
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    if (S.dialog) { const o = S.dialog.opener; S.dialog = null; focusAfter = o; return render({ keepScroll: true }); }
+    if (S.view === 'main' && S.page.main === 'settings' && S.sub) return guard(() => { focusAfter = 'hub-' + S.sub; S.sub = null; });
+    if (S.view === 'flight' && !S.novaLocked) {
+      if (S.menuOpen) return guard(() => { S.menuOpen = false; focusAfter = 'openMenu'; });
+      S.menuOpen = true; focusAfter = 'resume'; return render();
+    }
+    return;
+  }
+  const a = document.activeElement;
+  const typing = a && (a.tagName === 'SELECT' || (a.tagName === 'INPUT' && a.type !== 'range'));
+  if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && a && a.getAttribute('role') === 'radio') {
+    const sibs = [...a.parentElement.querySelectorAll('button:not(:disabled)')]; const i = sibs.indexOf(a);
+    const n = sibs[(i + (e.key === 'ArrowRight' ? 1 : -1) + sibs.length) % sibs.length]; e.preventDefault(); n.focus(); n.click(); return;
+  }
+  if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !typing && !(a && a.type === 'range')) {
+    const scope = stage.querySelector('.modal') || (S.view === 'spec' ? null : stage); if (!scope) return;
+    const list = [...scope.querySelectorAll('button:not(:disabled):not([tabindex="-1"]), input:not(:disabled), select, summary')]
+      .filter(el => el.offsetParent !== null && !(el.getAttribute('role') === 'radio' && el.getAttribute('aria-checked') !== 'true' && el.parentElement.querySelector('[aria-checked="true"]')));
+    if (!list.length) return;
+    e.preventDefault();
+    const i = list.indexOf(a); const n = list[i < 0 ? 0 : (i + (e.key === 'ArrowDown' ? 1 : -1) + list.length) % list.length];
+    n.focus(); n.scrollIntoView({ block: 'nearest' });
+  }
+});
+function trapTab(e) {
+  const f = [...stage.querySelectorAll('.modal button:not(:disabled)')]; if (!f.length) return;
+  const i = f.indexOf(document.activeElement);
+  if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
+  else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
+}
+stage.addEventListener('mousedown', e => { if (e.target.id === 'modalBack' && S.dialog && S.dialog.type !== 'bind') { const o = S.dialog.opener; S.dialog = null; focusAfter = o; render({ keepScroll: true }); } });
+
+/* boot */
+const h = (location.hash || '').slice(1);
+if (['main', 'flight', 'spec'].includes(h)) S.view = h;
+window.addEventListener('hashchange', () => { const v = location.hash.slice(1); if (['main', 'flight', 'spec'].includes(v) && v !== S.view) { S.view = v; S.dialog = null; if (v === 'flight') S.menuOpen = true; render({ keepFocus: false }); } });
+render({ keepFocus: false });
+})();
+</script>

@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 998ef5f4b6189dc448ec634c9472ba7f, type: 3}
+  m_Name: HeliSimMenuTheme
+  m_EditorClassIdentifier: Assembly-CSharp::HeliSim.UI.Theme.MenuTheme
+  palette:
+    bg0: {r: 0.02745098, g: 0.047058824, b: 0.06666667, a: 1}
+    bg1: {r: 0.043137256, g: 0.07450981, b: 0.101960786, a: 1}
+    bg2: {r: 0.0627451, g: 0.101960786, b: 0.13725491, a: 1}
+    bg3: {r: 0.08627451, g: 0.13725491, b: 0.18039216, a: 1}
+    bg4: {r: 0.11372549, g: 0.1764706, b: 0.22745098, a: 1}
+    line: {r: 0.12156863, g: 0.18039216, b: 0.22745098, a: 1}
+    line2: {r: 0.17254902, g: 0.24705882, b: 0.30588236, a: 1}
+    scrim: {r: 0.015686275, g: 0.03137255, b: 0.047058824, a: 0.66}
+    text1: {r: 0.9019608, g: 0.92941177, b: 0.9490196, a: 1}
+    text2: {r: 0.6039216, g: 0.67058825, b: 0.72156864, a: 1}
+    text3: {r: 0.3882353, g: 0.4627451, b: 0.5176471, a: 1}
+    accent: {r: 0.23529412, g: 0.78431374, b: 0.7294118, a: 1}
+    accentHi: {r: 0.3882353, g: 0.8509804, b: 0.8039216, a: 1}
+    accentInk: {r: 0.011764706, g: 0.12941177, b: 0.11764706, a: 1}
+    caution: {r: 0.9411765, g: 0.6627451, b: 0.23529412, a: 1}
+    warning: {r: 0.9372549, g: 0.3529412, b: 0.3529412, a: 1}
+    ok: {r: 0.32156864, g: 0.7882353, b: 0.54901963, a: 1}
+  bodyFont: {fileID: 11400000, guid: e7356c17e4663a74e8ed6ca62af43154, type: 2}
+  bodyMediumFont: {fileID: 11400000, guid: 51dc23baa2fdf9c41bc5c74973a82994, type: 2}
+  bodySemiBoldFont: {fileID: 11400000, guid: 987e4a8168535254e87c86c8aa9c99da, type: 2}
+  displayFont: {fileID: 11400000, guid: 355e871f4e4cb7748a1e9b944669c1e3, type: 2}
+  displayBoldFont: {fileID: 11400000, guid: 4e0060bd0b2912d4e8659882341bf108, type: 2}
+  monoFont: {fileID: 11400000, guid: 5a7bbe0405d8e634ca645eca507185c0, type: 2}
+  displaySize: 60
+  headingSize: 39
+  titleSize: 30
+  subtitleSize: 27
+  bodySize: 24
+  controlSize: 22
+  hintSize: 21
+  eyebrowSize: 19
+  smallSize: 18
+  microSize: 16
+  valueSize: 22
+  brandSize: 48
+  clockSize: 42
+  controlSprite: {fileID: 21300000, guid: 2ec30a8f782817a4580514250b6efb7b, type: 3}
+  panelSprite: {fileID: 21300000, guid: 06266e54c9b6dc14a9bcfcaf29f771cc, type: 3}
+  focusRingSprite: {fileID: 21300000, guid: cc711e4761338894c80972a5412b8fb8, type: 3}
+  controlBorderSprite: {fileID: 21300000, guid: 8a3275e120112e1498a195b0d61532cb, type: 3}
+  panelBorderSprite: {fileID: 21300000, guid: d0eb5aa4dec687a48a1705c49ca13531, type: 3}
+  circleSprite: {fileID: 21300000, guid: d2efe4b24f101014ba2084935495e01d, type: 3}
+  pillBorderSprite: {fileID: 21300000, guid: abde3029ba1e94647bdb65315fb9641b, type: 3}
+  keycapSprite: {fileID: 21300000, guid: 7ab0a449012c02b4590b425e64667565, type: 3}

@@ -278,6 +278,83 @@ public sealed class InputRebindingService : IDisposable
         return rows[0].Display;
     }
 
+    /// <summary>True when the binding's effective path differs from its default path.</summary>
+    public bool IsBindingChanged(string actionName, int bindingIndex)
+    {
+        if (!TryGetBinding(actionName, bindingIndex, out _, out InputBinding binding, out _)) return false;
+        return IsChanged(binding);
+    }
+
+    /// <summary>True when any binding in the action's grouped joystick setting differs from its default.</summary>
+    public bool AreJoystickBindingsChanged(string actionName)
+    {
+        if (!TryGetJoystickBindings(actionName, out InputAction action, out List<int> indices, out _)) return false;
+        foreach (int index in indices)
+            if (IsChanged(action.bindings[index])) return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Returns the label of another binding shown on the same device tab that uses the same effective control,
+    /// or null when there is no conflict.
+    /// </summary>
+    public string FindConflict(string actionName, int bindingIndex, BindingDeviceTab tab)
+    {
+        if (!TryGetBinding(actionName, bindingIndex, out InputAction action, out InputBinding binding, out _)) return null;
+        if (binding.isComposite || string.IsNullOrEmpty(binding.effectivePath)) return null;
+        return FindConflictingRow(binding.effectivePath, action.name, bindingIndex, tab, false);
+    }
+
+    /// <summary>
+    /// Returns the label of another command whose joystick-tab binding uses one of this action's grouped
+    /// joystick controls, or null when there is no conflict.
+    /// </summary>
+    public string FindJoystickConflict(string actionName)
+    {
+        if (!TryGetJoystickBindings(actionName, out InputAction action, out List<int> indices, out _)) return null;
+        foreach (int index in indices)
+        {
+            string path = action.bindings[index].effectivePath;
+            if (string.IsNullOrEmpty(path)) continue;
+            string conflict = FindConflictingRow(path, action.name, index, BindingDeviceTab.Joystick, true);
+            if (conflict != null) return conflict;
+        }
+
+        return null;
+    }
+
+    private string FindConflictingRow(string effectivePath, string ownActionName, int ownIndex, BindingDeviceTab tab,
+        bool otherActionsOnly)
+    {
+        foreach (InputRebindingCommand command in InputRebindingCommands.All)
+        {
+            InputAction other = actions.FindAction(command.ActionName, false);
+            if (other == null) continue;
+            bool sameAction = string.Equals(other.name, ownActionName, StringComparison.Ordinal);
+            if (sameAction && otherActionsOnly) continue;
+
+            foreach (InputBindingRow row in GetBindingRows(command.ActionName, tab))
+            {
+                if (!row.IsAvailable || (sameAction && row.BindingIndex == ownIndex)) continue;
+                InputBinding candidate = other.bindings[row.BindingIndex];
+                if (candidate.isComposite || string.IsNullOrEmpty(candidate.effectivePath)) continue;
+                if (!string.Equals(candidate.effectivePath, effectivePath, StringComparison.OrdinalIgnoreCase)) continue;
+
+                bool namedPart = sameAction && !string.IsNullOrEmpty(row.BindingName) &&
+                    (tab == BindingDeviceTab.KeyboardMouse || candidate.isPartOfComposite);
+                return namedPart ? command.Label + " — " + row.BindingName : command.Label;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsChanged(InputBinding binding)
+    {
+        return !string.Equals(binding.effectivePath ?? string.Empty, binding.path ?? string.Empty,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
     public void Load()
     {
         string json = store.Load();

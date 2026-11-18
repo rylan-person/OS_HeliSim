@@ -286,6 +286,125 @@ public class PauseMenuControllerTests
         Assert.That(scrollRect.verticalNormalizedPosition, Is.EqualTo(1f));
     }
 
+    [Test]
+    public void ConfirmedAction_WaitsForConfirmationWithStayInFlightFocused()
+    {
+        ActionDialog dialog = CreateControllerWithActionDialog();
+        controller.Open();
+        int exits = 0;
+
+        controller.RequestConfirmedAction(() => exits++);
+
+        Assert.That(dialog.Root.activeSelf, Is.True);
+        Assert.That(exits, Is.Zero);
+        Assert.That(controller.IsConfirmingAction, Is.True);
+        Assert.That(eventSystem.currentSelectedGameObject, Is.EqualTo(dialog.Cancel.gameObject), "the safe choice has focus");
+        Assert.That(dialog.Cancel.interactable && dialog.Confirm.interactable, Is.True, "dialog buttons stay usable");
+        dialog.Confirm.onClick.Invoke();
+        Assert.That(exits, Is.EqualTo(1));
+        Assert.That(dialog.Root.activeSelf, Is.False);
+        dialog.Confirm.onClick.Invoke();
+        Assert.That(exits, Is.EqualTo(1), "a second confirm does nothing");
+    }
+
+    [Test]
+    public void ConfirmedAction_CancelAndEscapeKeepTheSessionAndTheMenuOpen()
+    {
+        ActionDialog dialog = CreateControllerWithActionDialog();
+        controller.Open();
+        int exits = 0;
+
+        controller.RequestConfirmedAction(() => exits++);
+        dialog.Cancel.onClick.Invoke();
+        Assert.That(dialog.Root.activeSelf, Is.False);
+
+        controller.RequestConfirmedAction(() => exits++);
+        controller.Close(); // Escape toggles through Close().
+        Assert.That(dialog.Root.activeSelf, Is.False);
+        Assert.That(overlayRoot.activeSelf, Is.True);
+        Assert.That(controller.IsOpen, Is.True);
+        Assert.That(exits, Is.Zero);
+        controller.ResolvePendingClose(DirtyPageChoice.Discard);
+        Assert.That(exits, Is.Zero, "Apply/Discard never run a cancelled action");
+    }
+
+    [Test]
+    public void ConfirmedAction_OnADirtyPage_StillAsksAboutUnsavedChanges()
+    {
+        ActionDialog dialog = CreateControllerWithActionDialog();
+        controller.Open();
+        controller.SelectPage("dirty");
+        dirtyPage.SetDirty(true);
+        int exits = 0;
+
+        controller.RequestConfirmedAction(() => exits++);
+        dialog.Confirm.onClick.Invoke();
+
+        Assert.That(dialog.Root.activeSelf, Is.False);
+        Assert.That(confirmationRoot.activeSelf, Is.True, "unsaved-changes dialog follows");
+        Assert.That(exits, Is.Zero);
+        controller.ResolvePendingClose(DirtyPageChoice.Discard);
+        Assert.That(dirtyPage.DiscardCalls, Is.EqualTo(1));
+        Assert.That(exits, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void ConfirmedAction_CancellingTheUnsavedDialog_ReturnsFocusToTheOpener()
+    {
+        ActionDialog dialog = CreateControllerWithActionDialog();
+        Button opener = CreateButton("ReturnToMenuButton", overlayRoot.transform);
+        controller.Open();
+        controller.SelectPage("dirty");
+        dirtyPage.SetDirty(true);
+        eventSystem.SetSelectedGameObject(opener.gameObject);
+
+        controller.RequestConfirmedAction(() => { });
+        dialog.Confirm.onClick.Invoke();
+        controller.ResolvePendingClose(DirtyPageChoice.Cancel);
+
+        Assert.That(eventSystem.currentSelectedGameObject, Is.EqualTo(opener.gameObject));
+        Assert.That(opener.interactable, Is.True);
+    }
+
+    [Test]
+    public void ConfirmedAction_WithoutADialog_RunsAsBefore()
+    {
+        controller.Open();
+        int exits = 0;
+        controller.RequestConfirmedAction(() => exits++);
+        Assert.That(exits, Is.EqualTo(1));
+    }
+
+    private sealed class ActionDialog
+    {
+        public GameObject Root;
+        public Button Confirm;
+        public Button Cancel;
+    }
+
+    private ActionDialog CreateControllerWithActionDialog()
+    {
+        Object.DestroyImmediate(controller.gameObject);
+        // Under the overlay, as in Menu.prefab, so suspending the menu's selectables must skip the dialog's buttons.
+        var dialog = new ActionDialog { Root = CreateGameObject("ReturnDialog") };
+        dialog.Root.transform.SetParent(overlayRoot.transform, false);
+        dialog.Cancel = CreateButton("Stay", dialog.Root.transform);
+        dialog.Confirm = CreateButton("Return", dialog.Root.transform);
+        GameObject controllerRoot = CreateGameObject("ControllerWithDialog");
+        controllerRoot.SetActive(false);
+        controller = controllerRoot.AddComponent<PauseMenuController>();
+        SetPrivateField(controller, "overlayRoot", overlayRoot);
+        SetPrivateField(controller, "confirmationRoot", confirmationRoot);
+        SetPrivateField(controller, "eventSystem", eventSystem);
+        SetPrivateField(controller, "pages", CreateRegistrations(new[] { firstPage, secondPage, dirtyPage }));
+        SetPrivateField(controller, "actionConfirmationRoot", dialog.Root);
+        SetPrivateField(controller, "confirmActionButton", dialog.Confirm);
+        SetPrivateField(controller, "cancelActionButton", dialog.Cancel);
+        controllerRoot.SetActive(true);
+        typeof(PauseMenuController).GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(controller, null);
+        return dialog;
+    }
+
     private PauseMenuController CreateController(IEnumerable<TestInFlightMenuPage> pages)
     {
         GameObject controllerRoot = CreateGameObject("Controller");

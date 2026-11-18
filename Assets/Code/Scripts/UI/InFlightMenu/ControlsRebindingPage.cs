@@ -27,6 +27,7 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
     [SerializeField] private Button dialogClearButton;
     [SerializeField] private Button dialogRestoreButton;
     [SerializeField] private TMP_Text categoryHeadingPrefab;
+    [SerializeField] private TMP_Text changeSummaryLabel;
 
     private readonly List<ControlsBindingRow> rows = new List<ControlsBindingRow>();
     private InputRebindingService service;
@@ -119,6 +120,8 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
         WireResetButton();
     }
 
+    public void SetChangeSummaryForTest(TMP_Text label) => changeSummaryLabel = label;
+
     public void SetServiceForTest(InputRebindingService injectedService)
     {
         ReleaseOwnedService();
@@ -192,6 +195,7 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
 
     private void RebuildRows()
     {
+        UpdateChangeSummary();
         if (bindingRowPrefab == null || bindingRowsRoot == null)
         {
             SetDiagnostic("Assign a binding row prefab and row container.");
@@ -241,7 +245,7 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
                     binding = new InputBindingRow(binding.ActionName, binding.BindingIndex, string.Empty,
                         service.GetJoystickBindingDisplay(command.ActionName), binding.Error);
                 row.Configure(service, command, binding, selectedTab == BindingDeviceTab.KeyboardMouse && index == 0,
-                    RefreshRows, OpenDialog, groupedJoystick);
+                    RefreshRows, OpenDialog, groupedJoystick, selectedTab);
                 row.transform.SetAsLastSibling();
             }
         }
@@ -256,6 +260,43 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
         {
             resetProfileButton.interactable = service != null;
         }
+    }
+
+    private void UpdateChangeSummary()
+    {
+        if (changeSummaryLabel == null) return;
+        if (service == null)
+        {
+            changeSummaryLabel.text = "Changes save immediately.";
+            return;
+        }
+
+        int changedCommands = 0;
+        foreach (InputRebindingCommand command in InputRebindingCommands.All)
+            if (IsCommandChanged(command.ActionName)) changedCommands++;
+
+        changeSummaryLabel.text = changedCommands == 0
+            ? "All commands use their default bindings. Changes save immediately."
+            : changedCommands == 1
+                ? "1 command differs from the defaults on this device. Changes save immediately."
+                : changedCommands + " commands differ from the defaults on this device. Changes save immediately.";
+    }
+
+    private bool IsCommandChanged(string actionName)
+    {
+        InputAction action = service.Actions.FindAction(actionName, false);
+        if (action == null) return false;
+        foreach (InputBindingRow binding in service.GetBindingRows(actionName, selectedTab))
+        {
+            if (!binding.IsAvailable) continue;
+            bool groupedJoystick = selectedTab == BindingDeviceTab.Joystick &&
+                !action.bindings[binding.BindingIndex].isPartOfComposite;
+            if (groupedJoystick ? service.AreJoystickBindingsChanged(actionName)
+                : service.IsBindingChanged(actionName, binding.BindingIndex))
+                return true;
+        }
+
+        return false;
     }
 
     private static string GetCategory(string actionName)
@@ -341,7 +382,7 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
     private void RefreshDialogBinding()
     {
         if (dialogBindingLabel != null && selectedRow != null && service != null)
-            dialogBindingLabel.text = "Current: " + (selectedRow.IsGroupedJoystick
+            dialogBindingLabel.text = (selectedRow.IsGroupedJoystick
                 ? service.GetJoystickBindingDisplay(selectedRow.ActionName)
                 : service.GetDisplayString(selectedRow.ActionName, selectedRow.BindingIndex));
     }

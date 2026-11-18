@@ -19,6 +19,7 @@ public sealed class PauseMenuController : MonoBehaviour
         Close,
         SelectPage,
         Action,
+        ConfirmAction,
     }
 
     [SerializeField] private List<PauseMenuPageRegistration> pages = new List<PauseMenuPageRegistration>();
@@ -31,6 +32,11 @@ public sealed class PauseMenuController : MonoBehaviour
     [SerializeField] private UnityEngine.UI.Button cancelCloseButton;
     [SerializeField] private EventSystem eventSystem;
     [SerializeField] private ScrollRect pageScrollRect;
+    [SerializeField] private HeliSim.UI.Theme.MenuBreadcrumb breadcrumb;
+    [Header("Action confirmation (optional, e.g. Return to menu)")]
+    [SerializeField] private GameObject actionConfirmationRoot;
+    [SerializeField] private UnityEngine.UI.Button confirmActionButton;
+    [SerializeField] private UnityEngine.UI.Button cancelActionButton;
 
     private readonly Dictionary<string, InFlightMenuPage> pagesById = new Dictionary<string, InFlightMenuPage>();
     private readonly List<InFlightMenuPage> validPages = new List<InFlightMenuPage>();
@@ -65,12 +71,24 @@ public sealed class PauseMenuController : MonoBehaviour
         {
             confirmationRoot.SetActive(false);
         }
+
+        if (actionConfirmationRoot != null)
+        {
+            actionConfirmationRoot.SetActive(false);
+        }
     }
 
     private void Update()
     {
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
+            // The action confirmation sits above every page dialog, so Esc dismisses it first.
+            if (IsConfirmingAction)
+            {
+                Close();
+                return;
+            }
+
             if (activePage is ControlsRebindingPage controlsPage && controlsPage.TryHandleEscape())
             {
                 return;
@@ -159,6 +177,12 @@ public sealed class PauseMenuController : MonoBehaviour
             return;
         }
 
+        if (pendingOperation == PendingOperation.ConfirmAction && choice != DirtyPageChoice.Cancel)
+        {
+            // Apply and Discard belong to the unsaved-changes dialog; the action dialog only confirms or cancels.
+            return;
+        }
+
         if (choice == DirtyPageChoice.Cancel)
         {
             GameObject previousSelection = selectionBeforeConfirmation;
@@ -229,6 +253,50 @@ public sealed class PauseMenuController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Asks the player to confirm a session-ending action (Return to menu) before running it. Confirming hands the
+    /// action to <see cref="RequestAction"/>, so a dirty settings page still gets its Apply / Discard / Cancel choice.
+    /// Without a configured dialog the action is requested directly, as before.
+    /// </summary>
+    public void RequestConfirmedAction(System.Action action)
+    {
+        if (action == null || pendingOperation != PendingOperation.None) return;
+        if (!isOpen || actionConfirmationRoot == null || confirmActionButton == null)
+        {
+            RequestAction(action);
+            return;
+        }
+
+        pendingAction = action;
+        pendingOperation = PendingOperation.ConfirmAction;
+        pendingPageId = null;
+        EventSystem selectionEventSystem = GetSelectionEventSystem();
+        selectionBeforeConfirmation = selectionEventSystem != null ? selectionEventSystem.currentSelectedGameObject : null;
+        SuspendUnderlyingSelectables();
+        actionConfirmationRoot.SetActive(true);
+        ConfigureAutomaticNavigation();
+        LinkActions(cancelActionButton, confirmActionButton);
+        // The safe choice ("Stay in flight") has initial focus.
+        Select(cancelActionButton != null ? cancelActionButton : confirmActionButton);
+    }
+
+    public void ConfirmPendingAction()
+    {
+        if (pendingOperation != PendingOperation.ConfirmAction) return;
+        System.Action action = pendingAction;
+        GameObject openerSelection = selectionBeforeConfirmation;
+        ClearPendingOperation();
+        selectionBeforeConfirmation = null;
+        RequestAction(action);
+        if (pendingOperation == PendingOperation.Action)
+        {
+            // The unsaved-changes dialog recorded the hidden confirm button; cancelling should return to the opener.
+            selectionBeforeConfirmation = openerSelection;
+        }
+    }
+
+    public bool IsConfirmingAction => pendingOperation == PendingOperation.ConfirmAction;
+
     private void BuildPageLookup()
     {
         pagesById.Clear();
@@ -297,6 +365,16 @@ public sealed class PauseMenuController : MonoBehaviour
         {
             cancelCloseButton.onClick.AddListener(() => ResolvePendingClose(DirtyPageChoice.Cancel));
         }
+
+        if (confirmActionButton != null)
+        {
+            confirmActionButton.onClick.AddListener(ConfirmPendingAction);
+        }
+
+        if (cancelActionButton != null)
+        {
+            cancelActionButton.onClick.AddListener(() => ResolvePendingClose(DirtyPageChoice.Cancel));
+        }
     }
 
     private void RequestDeferredOperation(PendingOperation operation, string pageId)
@@ -326,7 +404,38 @@ public sealed class PauseMenuController : MonoBehaviour
             confirmationRoot.SetActive(false);
         }
 
+        if (actionConfirmationRoot != null)
+        {
+            actionConfirmationRoot.SetActive(false);
+        }
+
         RestoreUnderlyingSelectables();
+    }
+
+    // Keeps the rail item for the visible page highlighted (presentation only).
+    private void UpdateCurrentNavigation()
+    {
+        foreach (PauseMenuPageRegistration registration in pages)
+        {
+            if (registration == null || registration.NavigationButton == null)
+            {
+                continue;
+            }
+
+            HeliSim.UI.Theme.MenuSelectableStyle style =
+                registration.NavigationButton.GetComponent<HeliSim.UI.Theme.MenuSelectableStyle>();
+            bool current = activePage != null && registration.Page == activePage;
+            if (style != null)
+            {
+                style.IsCurrent = current;
+            }
+
+            if (current && breadcrumb != null)
+            {
+                TMPro.TMP_Text label = registration.NavigationButton.GetComponentInChildren<TMPro.TMP_Text>(true);
+                breadcrumb.Show(label != null ? label.text : registration.Page.name);
+            }
+        }
     }
 
     private void SelectPageNow(string pageId)
@@ -344,6 +453,7 @@ public sealed class PauseMenuController : MonoBehaviour
 
         SetAllPageRootsActive(false);
         activePage = nextPage;
+        UpdateCurrentNavigation();
         if (activePage == null)
         {
             Select(resumeButton);
@@ -370,6 +480,7 @@ public sealed class PauseMenuController : MonoBehaviour
             activePage = null;
         }
 
+        UpdateCurrentNavigation();
         SetAllPageRootsActive(false);
         if (overlayRoot != null)
         {
@@ -449,6 +560,21 @@ public sealed class PauseMenuController : MonoBehaviour
         }
     }
 
+    private static void LinkActions(Selectable first, Selectable second)
+    {
+        if (first == null || second == null) return;
+        foreach ((Selectable action, Selectable other) in new[] { (first, second), (second, first) })
+        {
+            Navigation navigation = action.navigation;
+            navigation.mode = Navigation.Mode.Explicit;
+            navigation.selectOnLeft = other;
+            navigation.selectOnRight = other;
+            navigation.selectOnUp = other;
+            navigation.selectOnDown = other;
+            action.navigation = navigation;
+        }
+    }
+
     private static void AddConfirmationAction(Selectable action, ICollection<Selectable> confirmationActions)
     {
         if (action != null)
@@ -524,7 +650,9 @@ public sealed class PauseMenuController : MonoBehaviour
 
     private bool IsConfirmationSelectable(Selectable selectable)
     {
-        return confirmationRoot != null && selectable != null && selectable.transform.IsChildOf(confirmationRoot.transform);
+        return selectable != null &&
+            (confirmationRoot != null && selectable.transform.IsChildOf(confirmationRoot.transform) ||
+             actionConfirmationRoot != null && selectable.transform.IsChildOf(actionConfirmationRoot.transform));
     }
 
     private void Select(UnityEngine.UI.Selectable selectable)

@@ -17,6 +17,8 @@ namespace HeliSim.FrontEnd
         public Button navigationButton;
         public InFlightMenuPage settingsPage;
         public Selectable initialSelectable;
+        [Tooltip("Breadcrumb text; settings sub-pages show it after a 'Settings' link.")]
+        public string title;
     }
 
     public sealed class MainMenuPageRouter : MonoBehaviour
@@ -28,6 +30,7 @@ namespace HeliSim.FrontEnd
         [SerializeField] private Button cancelChangesButton;
         [SerializeField] private EventSystem eventSystem;
         [SerializeField] private ScrollRect pageScrollRect;
+        [SerializeField] private HeliSim.UI.Theme.MenuBreadcrumb breadcrumb;
 
         private readonly Dictionary<string, MainMenuPageEntry> pagesById = new Dictionary<string, MainMenuPageEntry>(StringComparer.Ordinal);
         private readonly List<MainMenuPageEntry> validPages = new List<MainMenuPageEntry>();
@@ -89,6 +92,11 @@ namespace HeliSim.FrontEnd
         {
             RevealChangedSelection();
             dropdownWasExpanded = FindExpandedDropdown() != null;
+        }
+
+        public void SetBreadcrumb(HeliSim.UI.Theme.MenuBreadcrumb crumbs)
+        {
+            breadcrumb = crumbs;
         }
 
         public void SetScrollRect(ScrollRect scrollRect)
@@ -276,11 +284,44 @@ namespace HeliSim.FrontEnd
             SelectPage(pagesById.ContainsKey("fly") ? "fly" : validPages[0].id);
         }
 
+        // Highlights the rail item for the visible page; settings sub-pages keep Settings current.
+        private void UpdateCurrentNavigation(MainMenuPageEntry next)
+        {
+            bool settingsChild = next != null && next.settingsPage != null;
+            foreach (MainMenuPageEntry entry in pages)
+            {
+                if (entry == null || entry.navigationButton == null) continue;
+                var style = entry.navigationButton.GetComponent<HeliSim.UI.Theme.MenuSelectableStyle>();
+                if (style == null || style.Variant != HeliSim.UI.Theme.MenuSelectableVariant.NavItem) continue;
+                style.IsCurrent = entry == next || (settingsChild && entry.id == "settings");
+            }
+
+            if (breadcrumb != null && next != null)
+            {
+                string current = string.IsNullOrEmpty(next.title) ? next.id : next.title;
+                breadcrumb.Show(current, settingsChild ? SettingsTitle() : null);
+            }
+        }
+
+        private string SettingsTitle()
+        {
+            foreach (MainMenuPageEntry entry in pages)
+            {
+                if (entry != null && entry.id == "settings")
+                {
+                    return string.IsNullOrEmpty(entry.title) ? "Settings" : entry.title;
+                }
+            }
+
+            return "Settings";
+        }
+
         private void SelectPageNow(MainMenuPageEntry next)
         {
             DeselectActivePage();
             SetAllRootsInactive();
             activePage = next;
+            UpdateCurrentNavigation(next);
             next.root.SetActive(true);
             if (next.settingsPage != null) next.settingsPage.OnPageSelected();
             ResetPageScroll();

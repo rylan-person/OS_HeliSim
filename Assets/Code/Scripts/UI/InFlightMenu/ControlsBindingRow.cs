@@ -13,8 +13,12 @@ public sealed class ControlsBindingRow : MonoBehaviour
     [SerializeField] private Button clearButton;
     [SerializeField] private Button resetButton;
     [SerializeField] private Button rowButton;
+    [SerializeField] private GameObject changedBadge;
 
     private InputRebindingService service;
+    private BindingDeviceTab deviceTab = BindingDeviceTab.KeyboardMouse;
+    private string transientError = string.Empty;
+    private string conflictMessage = string.Empty;
     private string actionName;
     private int bindingIndex;
     private Action changed;
@@ -39,10 +43,11 @@ public sealed class ControlsBindingRow : MonoBehaviour
 
     public void Configure(InputRebindingService rebindingService, InputRebindingCommand command,
         InputBindingRow binding, bool showPrimary, Action onChanged, Action<ControlsBindingRow> onSelected = null,
-        bool showGroupedJoystick = false)
+        bool showGroupedJoystick = false, BindingDeviceTab tab = BindingDeviceTab.KeyboardMouse)
     {
         WireListeners();
         service = rebindingService;
+        deviceTab = tab;
         actionName = command.ActionName;
         bindingIndex = binding.BindingIndex;
         changed = onChanged;
@@ -80,7 +85,23 @@ public sealed class ControlsBindingRow : MonoBehaviour
         if (rowButton != null) rowButton.interactable = available;
         if (clearButton != null) clearButton.interactable = available;
         if (resetButton != null) resetButton.interactable = available;
+
+        bool bindingChanged = available && (groupedJoystick
+            ? service.AreJoystickBindingsChanged(actionName)
+            : service.IsBindingChanged(actionName, bindingIndex));
+        if (changedBadge != null && changedBadge.activeSelf != bindingChanged) changedBadge.SetActive(bindingChanged);
+
+        string conflict = available
+            ? groupedJoystick ? service.FindJoystickConflict(actionName) : service.FindConflict(actionName, bindingIndex, deviceTab)
+            : null;
+        conflictMessage = string.IsNullOrEmpty(conflict) ? string.Empty : "Also bound to " + conflict + ".";
+        UpdateFeedback();
     }
+
+    public void SetChangedBadgeForTest(GameObject badge) => changedBadge = badge;
+
+    public bool ShowsChanged => changedBadge != null && changedBadge.activeSelf;
+    public string ConflictMessage => conflictMessage;
 
     public void SetControlsForTest(TMP_Text command, TMP_Text binding, TMP_Text primary, TMP_Text error,
         Button rebind, Button clear, Button reset)
@@ -180,9 +201,15 @@ public sealed class ControlsBindingRow : MonoBehaviour
 
     private void SetError(string error)
     {
+        transientError = error ?? string.Empty;
+        UpdateFeedback();
+    }
+
+    private void UpdateFeedback()
+    {
         if (errorLabel != null)
         {
-            errorLabel.text = error ?? string.Empty;
+            errorLabel.text = !string.IsNullOrEmpty(transientError) ? transientError : conflictMessage;
         }
     }
 }

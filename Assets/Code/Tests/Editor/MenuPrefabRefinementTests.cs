@@ -82,6 +82,33 @@ public sealed class MenuPrefabRefinementTests
         }
     }
 
+    [Test]
+    public void FlightSessionActionButtons_ReceivePointerClicks()
+    {
+        GameObject menu = AssetDatabase.LoadAssetAtPath<GameObject>(MenuPath);
+        foreach (string name in new[] { "StartEngine", "ResetHelicopter", "ResetScene", "ResetVrView" })
+        {
+            Transform button = Find(Find(menu.transform, "FlightSessionPage"), name);
+            Assert.That(button, Is.Not.Null, name);
+            Assert.That(button.GetComponent<Button>().targetGraphic.raycastTarget, Is.True, name);
+        }
+    }
+
+    [Test]
+    public void EverySelectable_HasARaycastTargetGraphic()
+    {
+        GameObject menu = AssetDatabase.LoadAssetAtPath<GameObject>(MenuPath);
+        foreach (Selectable selectable in menu.GetComponentsInChildren<Selectable>(true))
+        {
+            bool clickable = false;
+            foreach (Graphic graphic in selectable.GetComponentsInChildren<Graphic>(true))
+            {
+                if (graphic.raycastTarget) { clickable = true; break; }
+            }
+            Assert.That(clickable, Is.True, selectable.name + " has no graphic that can receive pointer clicks");
+        }
+    }
+
     private static Transform Find(Transform root, string name)
     {
         if (root == null) return null;
