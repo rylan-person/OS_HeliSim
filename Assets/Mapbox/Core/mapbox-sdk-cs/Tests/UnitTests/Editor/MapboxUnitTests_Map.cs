@@ -103,61 +103,36 @@ namespace Mapbox.MapboxSdkCs.UnitTest
 
 
 
-#if UNITY_5_6_OR_NEWER
-		[UnityTest]
-		public IEnumerator ChangeTilesetId()
-#else
 		[Test]
 		public void ChangeTilesetId()
-#endif
 		{
-			var map = new Map<ClassicRasterTile>(_fs);
-
-			var mapObserver = new Utils.ClassicRasterMapObserver();
-			map.Subscribe(mapObserver);
-
+			var source = new MapboxResponseFixtureSource();
+			var map = new Map<ClassicRasterTile>(source);
+			var observer = new Utils.ClassicRasterMapObserver();
+			map.Subscribe(observer);
 			map.Center = new Vector2d(60.163200, 24.937700);
 			map.Zoom = 13;
 			map.TilesetId = "invalid";
 			map.Update();
+			const string tilePath = "/13/4663/2371.png";
+			source.RespondTile("/v4/invalid" + tilePath, new byte[0], 1, 404);
+			Assert.AreEqual(0, observer.Tiles.Count);
 
-#if UNITY_5_6_OR_NEWER
-			IEnumerator enumerator = _fs.WaitForAllRequests();
-			while (enumerator.MoveNext()) { yield return null; }
-#else
-			_fs.WaitForAllRequests();
-#endif
-
-			Assert.AreEqual(0, mapObserver.Tiles.Count);
-
+			byte[] terrain = MapboxResponseFixtureSource.MakeRasterFixture(1);
 			map.TilesetId = "mapbox.terrain-rgb";
 			map.Update();
+			source.RespondTile("/v4/mapbox.terrain-rgb" + tilePath, terrain, 2);
+			Assert.AreEqual(1, observer.Tiles.Count);
+			CollectionAssert.AreEqual(terrain, observer.Tiles[0]);
 
-#if UNITY_5_6_OR_NEWER
-			enumerator = _fs.WaitForAllRequests();
-			while (enumerator.MoveNext()) { yield return null; }
-#else
-			_fs.WaitForAllRequests();
-#endif
-
-			Assert.AreEqual(1, mapObserver.Tiles.Count);
-
-			map.TilesetId = null; // Use default tileset ID.
+			byte[] satellite = MapboxResponseFixtureSource.MakeRasterFixture(2);
+			map.TilesetId = null;
 			map.Update();
-
-#if UNITY_5_6_OR_NEWER
-			enumerator = _fs.WaitForAllRequests();
-			while (enumerator.MoveNext()) { yield return null; }
-#else
-			_fs.WaitForAllRequests();
-#endif
-
-			Assert.AreEqual(2, mapObserver.Tiles.Count);
-
-			// Should have fetched tiles from different tileset IDs.
-			Assert.AreNotEqual(mapObserver.Tiles[0], mapObserver.Tiles[1]);
-
-			map.Unsubscribe(mapObserver);
+			source.RespondTile("/v4/mapbox.satellite" + tilePath, satellite, 3);
+			Assert.AreEqual(2, observer.Tiles.Count);
+			CollectionAssert.AreEqual(satellite, observer.Tiles[1]);
+			CollectionAssert.AreNotEqual(observer.Tiles[0], observer.Tiles[1]);
+			map.Unsubscribe(observer);
 		}
 
 

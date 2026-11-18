@@ -31,6 +31,14 @@ helper passes integer values through its ticks overload. Tests distinguish
 polyline6 request formatting from geometry decoding, and check raw timestamp
 values and conversion presence without claiming correct Unix-millisecond dates.
 
+The raster-loading and tileset-switch tests exercise the original SDK tile and
+map code with generated PNG responses. They check the requested host, paths,
+tile coordinates, invalid tileset handling, callback bytes and switching back
+to the default tileset. The live terrain service returned HTTP 429 during the
+v0.1.3 release and the same two SDK cases failed during patch verification. These deterministic checks
+cover SDK behavior independently of that endpoint. The dashboard uses the
+Streets style with flat terrain; its live imagery is checked separately.
+
 ## License for restored upstream data
 
 From upstream `LICENSE`, blob `7e24a4595f4f06785e9de7ae71b57815b63694d9`:

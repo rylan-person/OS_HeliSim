@@ -97,6 +97,14 @@ public class PrefSettings : MonoBehaviour
 
     public void VariablesToObjects()
     {
+        ApplyToScene();
+        VariablesToJSON();
+        VariablesToSettings();
+    }
+
+    /// <summary>Applies current values to the running scene without persisting user settings.</summary>
+    public void ApplyToScene()
+    {
         // Set the cesium asset settings
         if (HasValidCesiumTileLimits())
         {
@@ -141,8 +149,6 @@ public class PrefSettings : MonoBehaviour
 
         AudioListener.volume = volume / 200.0f;
 
-        VariablesToJSON();
-        VariablesToSettings();
     }
 
     public void SettingsToVariables()

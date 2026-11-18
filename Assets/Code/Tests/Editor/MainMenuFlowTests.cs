@@ -19,7 +19,7 @@ using Object = UnityEngine.Object;
 
 // Exercises the real menu/scene coordinator using harmless role prefabs and an inactive world.
 // This proves loopback/lifecycle and UI behaviour without running flight dynamics or NOVA.
-public sealed class MainMenuFlowTests
+public sealed partial class MainMenuFlowTests
 {
     private const string StateKey = "HeliSim.MainMenuFlowTests";
     [Serializable] private class SavedSetup { public SavedScene[] scenes; }
@@ -34,6 +34,7 @@ public sealed class MainMenuFlowTests
         SessionState.SetString(StateKey + ".Setup", setup);
         SavePreference(MenuSessionOptionsStore.PreferenceKey, ".Options");
         SavePreference("ServerIP", ".ServerIP");
+        CaptureSimulatorSettings();
         string folder = "Assets/__MainMenuFlow_" + Guid.NewGuid().ToString("N");
         SessionState.SetString(StateKey + ".Folder", folder);
         AssetDatabase.CreateFolder("Assets", folder.Substring(7));
@@ -62,6 +63,7 @@ public sealed class MainMenuFlowTests
         }
         RestorePreference(MenuSessionOptionsStore.PreferenceKey, ".Options");
         RestorePreference("ServerIP", ".ServerIP");
+        RestoreSimulatorSettings();
         string setup = SessionState.GetString(StateKey + ".Setup", "");
         if (!string.IsNullOrEmpty(setup))
         {
@@ -116,7 +118,29 @@ public sealed class MainMenuFlowTests
         Assert.That(first.LocalClient.PlayerObject.GetComponent<NetworkHelicopterRegistry>(), Is.Not.Null);
         AssertMenuRolePresentation(ClientRole.Player);
         Assert.That(Object.FindObjectsByType<NovaController>(FindObjectsInactive.Include, FindObjectsSortMode.None), Is.Empty);
-        MenuSessionCoordinator.RequestReturnToMenu();
+        // Exercise the shipped dialog and its serialized return button on a live session.
+        var shell = new GameObject("Pilot pause menu", typeof(RectTransform), typeof(Canvas));
+        shell.SetActive(false);
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Level/Prefabs/UI/Menu.prefab");
+        var inFlight = Object.Instantiate(prefab, shell.transform);
+        // Scene references for flight commands and persistent settings belong to the full aircraft.
+        foreach (var simulationMenu in inFlight.GetComponentsInChildren<MainMenu>(true)) simulationMenu.enabled = false;
+        foreach (var settings in inFlight.GetComponentsInChildren<PrefSettings>(true)) settings.enabled = false;
+        if (UnityEngine.EventSystems.EventSystem.current == null) shell.AddComponent<UnityEngine.EventSystems.EventSystem>();
+        shell.SetActive(true);
+        yield return null;
+        var pause = inFlight.GetComponentInChildren<PauseMenuController>(true);
+        pause.Open();
+        Assert.That(pause.IsOpen);
+        var quitButton = inFlight.GetComponentsInChildren<UnityEngine.UI.Button>(true).Single(button =>
+            Enumerable.Range(0, button.onClick.GetPersistentEventCount())
+                .Any(i => button.onClick.GetPersistentMethodName(i) == "RequestReturnToMenu"));
+        quitButton.onClick.Invoke();
+        Assert.That(pause.IsConfirmingAction);
+        pause.Close();
+        Assert.That(pause.IsOpen && !pause.IsConfirmingAction && first.IsListening);
+        quitButton.onClick.Invoke();
+        pause.ConfirmPendingAction();
         yield return Until(MenuIsReady, "return from local host");
         Assert.That(first == null, Is.True, "Old persistent network manager must be destroyed.");
         Assert.That(CustomConnectionManager.Instance, Is.Null);
@@ -249,6 +273,49 @@ public sealed class MainMenuFlowTests
     {
         SessionState.SetBool(StateKey + suffix + ".Exists", PlayerPrefs.HasKey(key));
         SessionState.SetString(StateKey + suffix, PlayerPrefs.GetString(key, ""));
+    }
+
+    // The shipped menu's PrefSettings.Start applies the profile and writes both stores.
+    private static readonly string[] SimulatorPreferences =
+    {
+        "screenSpaceError", "preloadAncestors", "preloadSiblings", "forbidHoles",
+        "MaximumSimultaneousTileLoads", "MaximumCachedBytes", "LoadingDescendantLimit",
+        "enableFrustumCulling", "enableFogCulling", "enableForceScreenSpaceError", "culledScreenSpaceError",
+        "controlScheme", "enableNovaPopup", "volume"
+    };
+
+    private static void CaptureSimulatorSettings()
+    {
+        foreach (string key in SimulatorPreferences)
+        {
+            SessionState.SetBool(StateKey + key + ".HadInt", PlayerPrefs.HasKey(key));
+            SessionState.SetInt(StateKey + key, PlayerPrefs.GetInt(key));
+        }
+        string path = Path.Combine(Application.persistentDataPath, "Settings", "settings.json");
+        SessionState.SetString(StateKey + ".SettingsBytes", File.Exists(path) ? Convert.ToBase64String(File.ReadAllBytes(path)) : "-");
+        SessionState.SetFloat(StateKey + ".Volume", AudioListener.volume);
+        SessionState.SetBool(StateKey + ".Captured", true);
+    }
+
+    private static void RestoreSimulatorSettings()
+    {
+        string bytes = SessionState.GetString(StateKey + ".SettingsBytes", "");
+        if (!SessionState.GetBool(StateKey + ".Captured", false)) return;
+        foreach (string key in SimulatorPreferences)
+        {
+            if (SessionState.GetBool(StateKey + key + ".HadInt", false)) PlayerPrefs.SetInt(key, SessionState.GetInt(StateKey + key, 0));
+            else PlayerPrefs.DeleteKey(key);
+            SessionState.EraseBool(StateKey + key + ".HadInt");
+            SessionState.EraseInt(StateKey + key);
+        }
+        PlayerPrefs.Save();
+        string path = Path.Combine(Application.persistentDataPath, "Settings", "settings.json");
+        if (bytes == "-") { if (File.Exists(path)) File.Delete(path); }
+        else File.WriteAllBytes(path, Convert.FromBase64String(bytes));
+        AudioListener.volume = SessionState.GetFloat(StateKey + ".Volume", 1);
+        SessionState.EraseString(StateKey + ".SettingsBytes");
+        SessionState.EraseFloat(StateKey + ".Volume");
+        SessionState.EraseBool(StateKey + ".Captured");
     }
 
     private static void RestorePreference(string key, string suffix)

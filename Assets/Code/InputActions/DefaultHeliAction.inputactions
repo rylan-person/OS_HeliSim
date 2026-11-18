@@ -777,6 +777,17 @@
                     "action": "Cycle Camera",
                     "isComposite": false,
                     "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "e8370698-ee38-4852-a4ab-5506a2f1c5c2",
+                    "path": "<HID::Saitek Saitek X52 Flight Control System>/stick/y",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pitch Input",
+                    "isComposite": false,
+                    "isPartOfComposite": false
                 }
             ]
         }

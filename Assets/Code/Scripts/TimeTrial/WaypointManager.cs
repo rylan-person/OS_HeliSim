@@ -48,6 +48,10 @@ public class WaypointManager : MonoBehaviour
 
     private string filePath;
 
+    // Optional per-session storage location; configure before Start to isolate a
+    // training profile or verification session from the default persistent file.
+    public string LapTimesFilePathOverride { get; set; }
+
     void Awake()
     {
         if (Instance == null)
@@ -303,7 +307,9 @@ public class WaypointManager : MonoBehaviour
         }
 
         // Keep in start
-        filePath = Path.Combine(Application.persistentDataPath, "LapTimes.txt");
+        filePath = string.IsNullOrEmpty(LapTimesFilePathOverride)
+            ? Path.Combine(Application.persistentDataPath, "LapTimes.txt")
+            : LapTimesFilePathOverride;
         LoadTimesFromCSV();
 
         int defaultSectorCount = _sectors;

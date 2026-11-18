@@ -36,6 +36,9 @@ public class DataExtractor : MonoBehaviour
 
     public bool isRecording = false;
 
+    // Optional per-instance destination; unset preserves the normal persistent-data location.
+    public string OutputDirectory { get; set; }
+
     public List<HeliData> heliDataList = new List<HeliData>();
 
     private Rigidbody heli_rigidbody;
@@ -48,6 +51,11 @@ public class DataExtractor : MonoBehaviour
     public void OnRollInput(InputValue value)
     {
         xJoy_input = value.Get<float>();
+    }
+
+    public void OnYawInput(InputValue value)
+    {
+        pedal_input = value.Get<float>();
     }
 
     public void OnCollectiveLever(InputValue value)
@@ -129,7 +137,8 @@ public class DataExtractor : MonoBehaviour
     {
         error = null;
         // have the file include the date and time
-        string directory = Path.Combine(Application.persistentDataPath, "Data");
+        string directory = string.IsNullOrWhiteSpace(OutputDirectory)
+            ? Path.Combine(Application.persistentDataPath, "Data") : OutputDirectory;
         string stem = System.DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss");
         string path = Path.Combine(directory, stem + ".csv");
 
@@ -145,13 +154,7 @@ public class DataExtractor : MonoBehaviour
                 {
                     // Convert quaternion to Euler angles (in degrees)
                     Vector3 euler = heliData.rotation.eulerAngles;
-                    writer.WriteLine(
-                        $"{heliData.time},{heliData.xJoy_input},{heliData.yJoy_input},{heliData.pedal_input},{heliData.collective_input}," +
-                        $"{heliData.position.x},{heliData.position.y},{heliData.position.z}," +
-                        $"{euler.x},{euler.y},{euler.z}," +
-                        $"{heliData.pitch_rate},{heliData.roll_rate},{heliData.yaw_rate},{heliData.turn_rate}," +
-                        $"{heliData.velocity.x},{heliData.velocity.y},{heliData.velocity.z}"
-                    );
+                    writer.WriteLine(System.FormattableString.Invariant($"{heliData.time},{heliData.xJoy_input},{heliData.yJoy_input},{heliData.pedal_input},{heliData.collective_input},{heliData.position.x},{heliData.position.y},{heliData.position.z},{euler.x},{euler.y},{euler.z},{heliData.pitch_rate},{heliData.roll_rate},{heliData.yaw_rate},{heliData.turn_rate},{heliData.velocity.x},{heliData.velocity.y},{heliData.velocity.z}"));
                 }
             }
             return true;

@@ -183,7 +183,7 @@ public class AutoTrim : MonoBehaviour
         }
         if (_flcs.LongitudinalUpper < cyclicTrimLimit)
         {
-            _flcs.LongitudinalLower += (amount - (cyclicTrimLimit - _flcs.LongitudinalUpper));
+            _flcs.LongitudinalLower += (amount * 2 - (cyclicTrimLimit - _flcs.LongitudinalUpper));
             _flcs.LongitudinalUpper = cyclicTrimLimit;
             return;
         }
@@ -203,7 +203,7 @@ public class AutoTrim : MonoBehaviour
         }
         if (_flcs.LongitudinalLower > -cyclicTrimLimit)
         {
-            _flcs.LongitudinalUpper -= (amount - (-cyclicTrimLimit - _flcs.LongitudinalLower));
+            _flcs.LongitudinalUpper -= (amount * 2 - (_flcs.LongitudinalLower + cyclicTrimLimit));
             _flcs.LongitudinalLower = -cyclicTrimLimit;
             return;
         }
@@ -248,7 +248,7 @@ public class AutoTrim : MonoBehaviour
         } 
         if (_flcs.LateralUpper < cyclicTrimLimit)
         {
-            _flcs.LateralLower += (amount - (cyclicTrimLimit - _flcs.LateralUpper));
+            _flcs.LateralLower += (amount * 2 - (cyclicTrimLimit - _flcs.LateralUpper));
             _flcs.LateralUpper = cyclicTrimLimit;
             return;
         }
@@ -268,7 +268,7 @@ public class AutoTrim : MonoBehaviour
         }
         if (_flcs.LateralLower > -cyclicTrimLimit)
         {
-            _flcs.LateralUpper -= (amount - (-cyclicTrimLimit - _flcs.LateralLower));
+            _flcs.LateralUpper -= (amount * 2 - (_flcs.LateralLower + cyclicTrimLimit));
             _flcs.LateralLower = -cyclicTrimLimit;
             return;
         }
@@ -290,22 +290,22 @@ public class AutoTrim : MonoBehaviour
         {
             if (_flcs.PedalUpper < pedalUpperCeiling)
             {
-                _flcs.PedalUpper += changeValue;
+                _flcs.PedalUpper = System.Math.Min(pedalUpperCeiling, _flcs.PedalUpper + changeValue);
             }
             if (_flcs.PedalLower < pedalLowerCeiling)
             {
-                _flcs.PedalLower += changeValue;
+                _flcs.PedalLower = System.Math.Min(pedalLowerCeiling, _flcs.PedalLower + changeValue);
             }
         }
         else if (_yawDiff > rateDeadband)
         {
             if (_flcs.PedalUpper > pedalUpperFloor)
             {
-                _flcs.PedalUpper -= changeValue;
+                _flcs.PedalUpper = System.Math.Max(pedalUpperFloor, _flcs.PedalUpper - changeValue);
             }
             if (_flcs.PedalLower > pedalLowerFloor)
             {
-                _flcs.PedalLower -= changeValue;
+                _flcs.PedalLower = System.Math.Max(pedalLowerFloor, _flcs.PedalLower - changeValue);
             }
         }
     }

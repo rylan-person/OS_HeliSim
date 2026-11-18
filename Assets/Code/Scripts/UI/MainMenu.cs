@@ -189,6 +189,10 @@ public class MainMenu : MonoBehaviour
         if (AssistValuesList[(int)AssistPresets.value].stabilizationValue == 0f && AssistValuesList[(int)AssistPresets.value].rateLimitValue == 0f)
         {
             HelicopterComponents.Instance.rotaryComputer.m_mode = Oyedoyin.Common.Computer.Mode.Manual;
+            // Manual mode skips SAS computation, but rotor controls still consume these outputs.
+            HelicopterComponents.Instance.rotaryComputer.Bɪc_afcs = 0;
+            HelicopterComponents.Instance.rotaryComputer.Aɪc_afcs = 0;
+            HelicopterComponents.Instance.rotaryComputer.θt_afcs = 0;
 
             if (AssistValuesList[(int)AssistPresets.value].mainRotorTorqueValue != 0.0f)
             {
@@ -309,11 +313,13 @@ public class MainMenu : MonoBehaviour
             yield return null;
         }
 
-        // Ensure the rotation is exactly the target rotation after the loop
-        HelicopterComponents.Instance.helicopterRb.transform.rotation = endRotation;
-
-        // Optionally, reset the rigidbody to be non-kinematic after the operation
-        HelicopterComponents.Instance.helicopterRb.isKinematic = false;
+        // Commit the final pose to PhysX before handing control back to the pilot.
+        Rigidbody body = HelicopterComponents.Instance.helicopterRb;
+        body.position = HelicopterComponents.Instance.rotaryController.basePosition;
+        body.rotation = endRotation;
+        body.isKinematic = false;
+        body.linearVelocity = Vector3.zero;
+        body.angularVelocity = Vector3.zero;
 
         if (waypointManager != null)
         {

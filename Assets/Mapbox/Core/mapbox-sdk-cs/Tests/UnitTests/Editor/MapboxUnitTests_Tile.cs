@@ -43,31 +43,21 @@ namespace Mapbox.MapboxSdkCs.UnitTest
 
 
 
-#if UNITY_5_6_OR_NEWER
-		[UnityTest]
-		public IEnumerator TileLoading()
-#else
 		[Test]
-		public void TileLoading() 
-#endif
+		public void TileLoading()
 		{
-			byte[] data;
-
-			var parameters = new Tile.Parameters();
-			parameters.Fs = _fs;
-			parameters.Id = new CanonicalTileId(1, 1, 1);
-
+			var source = new MapboxResponseFixtureSource();
 			var tile = new RawPngRasterTile();
-			tile.Initialize(parameters, () => { data = tile.Data; });
-
-#if UNITY_5_6_OR_NEWER
-			IEnumerator enumerator = _fs.WaitForAllRequests();
-			while (enumerator.MoveNext()) { yield return null; }
-#else
-			_fs.WaitForAllRequests();
-#endif
-
+			byte[] captured = null;
+			var parameters = new Tile.Parameters { Fs = source, Id = new CanonicalTileId(1, 1, 1) };
+			tile.Initialize(parameters, () => captured = tile.Data);
+			Assert.AreEqual(Tile.State.Loading, tile.CurrentState);
+			var png = MapboxResponseFixtureSource.MakeRasterFixture(3);
+			source.RespondTile("/v4/mapbox.terrain-rgb/1/1/1.pngraw", png, 1);
+			Assert.AreEqual(Tile.State.Loaded, tile.CurrentState);
+			Assert.IsFalse(tile.HasError);
 			Assert.Greater(tile.Data.Length, 1000);
+			CollectionAssert.AreEqual(png, captured);
 		}
 
 

@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using NUnit.Framework;
+using Oyedoyin.RotaryWing;
 using TMPro;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
@@ -313,6 +314,90 @@ public sealed class MultiplayerIntegrationTests
         AssertAnchor(anchor, world);
     }
 
+    [UnityTest]
+    public IEnumerator RemoteOwnerTelemetryReachesSpectatorsAndLateJoinWithoutUsingTheirLocalSources()
+    {
+        ushort port = AvailablePort();
+        NetworkManager host = CreateManager("TelemetryHost", port);
+        host.SetSingleton();
+        ConfigureHost(host, ClientRole.Spectator);
+        Assert.That(host.StartHost(), Is.True);
+        yield return Until(() => host.LocalClient?.PlayerObject != null, "telemetry spectator host");
+        NetworkManager pilot = CreateManager("TelemetryPilot", port, new byte[] { 0 });
+        Assert.That(pilot.StartClient(), Is.True);
+        yield return Connected(host, pilot, ClientRole.Player);
+        var owner = pilot.LocalClient.PlayerObject.GetComponent<ClientTelemetryCollector>();
+        var observed = host.ConnectedClients[pilot.LocalClientId].PlayerObject.GetComponent<ClientTelemetryCollector>();
+        Assert.That(owner.IsOwner, Is.True);
+        Assert.That(observed.IsOwner, Is.False);
+        owner.rotaryComputer.m_roll = -0.625;
+        owner.rotaryComputer.m_pitch = 0.375;
+        owner.transform.rotation = Quaternion.Euler(-10, 230, 20);
+        observed.rotaryComputer.m_roll = 0.9;
+        observed.rotaryComputer.m_pitch = -0.9;
+        observed.transform.rotation = Quaternion.Euler(0, 45, 0);
+        var ownerTrial = owner.GetComponent<PlayerTimeTrialState>();
+        var observedTrial = observed.GetComponent<PlayerTimeTrialState>();
+        ownerTrial.PublishLocalProgress(3, 1, 12.5f, 4.25f, true, new[] { 8.25f });
+        ownerTrial.PublishComparisonData(25f, 23f, 26f, -0.75f, 27f, true,
+            new[] { 9f, 10f, 8f }, new[] { 7f, 9f, 7f }, new[] { 8f, 9f, 8f });
+        yield return Until(() => TelemetryMatches(observed, -0.625f, 0.375f, -130f, -10f, 20f) && TrialMatches(observedTrial),
+            "remote-owner input and signed-degree samples at spectator");
+        observedTrial.PublishLocalProgress(99, 99, 99, 99, false, new[] { 99f });
+        Assert.That(TrialMatches(observedTrial), Is.True, "A spectator must not overwrite the pilot's course state.");
+        NetworkManager late = CreateManager("TelemetryLateSpectator", port, new byte[] { 1 });
+        Assert.That(late.StartClient(), Is.True);
+        yield return Connected(host, late, ClientRole.Spectator);
+        var lateSource = late.SpawnManager.SpawnedObjectsList.Single(item =>
+            item.IsPlayerObject && item.OwnerClientId == pilot.LocalClientId).GetComponent<ClientTelemetryCollector>();
+        var lateTrial = lateSource.GetComponent<PlayerTimeTrialState>();
+        Assert.That(late.LocalClient.PlayerObject.GetComponent<ClientTelemetryCollector>(), Is.Null,
+            "A spectator does not need a helicopter or locally authoritative telemetry.");
+        yield return Until(() => TelemetryMatches(lateSource, -0.625f, 0.375f, -130f, -10f, 20f) && TrialMatches(lateTrial),
+            "late spectator telemetry and completed course statistics");
+        owner.rotaryComputer.m_roll = 0.25;
+        owner.rotaryComputer.m_pitch = -0.5;
+        owner.transform.rotation = Quaternion.Euler(0, 90, 0);
+        yield return Until(() => TelemetryMatches(observed, 0.25f, -0.5f, 90f) &&
+            TelemetryMatches(lateSource, 0.25f, -0.5f, 90f), "changed owner samples on both spectators");
+        ClientTelemetryCollector.SetActiveCollector(observed);
+        PlayerTimeTrialState.SetActiveState(observedTrial);
+        ulong pilotId = pilot.LocalClientId;
+        pilot.Shutdown();
+        yield return Until(() => !host.ConnectedClients.ContainsKey(pilotId) && observed == null && lateSource == null,
+            "telemetry source despawn after pilot disconnect");
+        Assert.That(ClientTelemetryCollector.ActiveCollector, Is.Null);
+        Assert.That(PlayerTimeTrialState.ActiveState, Is.Null);
+    }
+
+    private static bool TrialMatches(PlayerTimeTrialState state)
+    {
+        return state != null && state.CurrentWaypoint == 3 && state.CurrentSector == 1 && state.LapActive &&
+            Mathf.Approximately(state.CurrentLapTime, 12.5f) && Mathf.Approximately(state.CurrentSectorTime, 4.25f) &&
+            state.CurrentSectorSplitCount == 1 && Mathf.Approximately(state.GetCurrentSectorSplit(0), 8.25f) &&
+            Mathf.Approximately(state.BestLapTime, 25f) && Mathf.Approximately(state.OptLapTime, 23f) &&
+            Mathf.Approximately(state.LastLapTime, 26f) && Mathf.Approximately(state.LastLapDiffTime, -0.75f) &&
+            Mathf.Approximately(state.AverageLapTime, 27f) && state.LastLapWasNewBest &&
+            state.AverageSectorCount == 3 && state.BestSectorCount == 3 && state.BestLapSectorCount == 3 &&
+            Enumerable.Range(0, 3).All(i => Mathf.Approximately(state.GetAverageSector(i), new[] { 9f, 10f, 8f }[i]) &&
+                Mathf.Approximately(state.GetBestSector(i), new[] { 7f, 9f, 7f }[i]) &&
+                Mathf.Approximately(state.GetBestLapSector(i), new[] { 8f, 9f, 8f }[i]));
+    }
+
+    private static bool TelemetryMatches(ClientTelemetryCollector collector, float x, float y, float yaw, float pitch = 0f, float roll = 0f)
+    {
+        if (collector == null) return false;
+        var xs = collector.GetSamples(TelemetrySeries.XJoy);
+        var ys = collector.GetSamples(TelemetrySeries.YJoy);
+        var yaws = collector.GetSamples(TelemetrySeries.RotationYaw);
+        var pitches = collector.GetSamples(TelemetrySeries.RotationPitch);
+        var rolls = collector.GetSamples(TelemetrySeries.RotationRoll);
+        return xs.Count > 0 && ys.Count > 0 && yaws.Count > 0 && pitches.Count > 0 && rolls.Count > 0 &&
+            Mathf.Abs(xs.Last().value - x) < 0.001f && Mathf.Abs(ys.Last().value - y) < 0.001f &&
+            Mathf.Abs(yaws.Last().value - yaw) < 0.001f && Mathf.Abs(pitches.Last().value - pitch) < 0.001f &&
+            Mathf.Abs(rolls.Last().value - roll) < 0.001f && xs.Last().time > 0f && xs.Last().time <= Time.time;
+    }
+
     private static IEnumerator Connected(NetworkManager host, NetworkManager client, ClientRole role)
     {
         yield return Until(() => client.IsConnectedClient && client.LocalClient?.PlayerObject != null &&
@@ -427,7 +512,19 @@ public sealed class MultiplayerIntegrationTests
         try
         {
             gameObject.AddComponent<NetworkObject>();
-            if (helicopter) gameObject.AddComponent<NetworkHelicopterRegistry>();
+            if (helicopter)
+            {
+                gameObject.AddComponent<NetworkHelicopterRegistry>();
+                var computer = gameObject.AddComponent<RotaryComputer>();
+                computer.enabled = false;
+                var collector = gameObject.AddComponent<ClientTelemetryCollector>();
+                collector.autoAssignForLocalPlayer = false;
+                collector.rotaryComputer = computer;
+                collector.rotationTarget = gameObject.transform;
+                var timeTrial = gameObject.AddComponent<PlayerTimeTrialState>();
+                typeof(PlayerTimeTrialState).GetField("autoAssignForLocalPlayer", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .SetValue(timeTrial, false);
+            }
             else gameObject.AddComponent<ClientRoleMarker>();
             var prefab = PrefabUtility.SaveAsPrefabAsset(gameObject, path);
             Assert.That(prefab.GetComponent<NetworkObject>().PrefabIdHash, Is.Not.Zero);
