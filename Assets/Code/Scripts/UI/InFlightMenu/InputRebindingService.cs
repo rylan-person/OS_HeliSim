@@ -542,6 +542,9 @@ public sealed class InputRebindingService : IDisposable
         bool bindingChanged = false;
         operation = action.PerformInteractiveRebinding(bindingIndex)
             .WithCancelingThrough("<Keyboard>/escape")
+            .OnGeneratePath(control => control.device is Joystick
+                ? "<" + control.device.layout + ">" + control.path.Substring(control.device.path.Length)
+                : null)
             .OnApplyBinding((rebind, path) =>
             {
                 bool applied = replaceJoystickBindings

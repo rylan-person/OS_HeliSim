@@ -93,6 +93,42 @@ public class InputRebindingServiceTests
     }
 
     [Test]
+    public void InteractiveJoystickRebind_ResolvesOnlySelectedModelAfterReload()
+    {
+        InputSystem.RegisterLayout(@"{""name"":""HeliTestStick"",""extend"":""Joystick""}");
+        InputSystem.RegisterLayout(@"{""name"":""HeliTestThrottle"",""extend"":""Joystick""}");
+        try
+        {
+            var stick = (Joystick)InputSystem.AddDevice("HeliTestStick");
+            var throttle = (Joystick)InputSystem.AddDevice("HeliTestThrottle");
+            actions.devices = new InputDevice[] { stick, throttle };
+            string error = null;
+            Assert.That(service.TryStartRebind("Pitch Input", 0, message => error = message,
+                null, acceptControl: control => control == stick.stick.x, replaceJoystickBindings: true), Is.True);
+            using (UnityEngine.InputSystem.LowLevel.StateEvent.From(stick, out var stickEvent))
+            {
+                stick.stick.x.WriteValueIntoEvent(1f, stickEvent);
+                InputSystem.QueueEvent(stickEvent);
+            }
+            InputSystem.Update();
+            Assert.That(error, Is.Null);
+            var pitch = actions.FindAction("Pitch Input");
+            Assert.That(pitch.bindings[0].effectivePath, Is.EqualTo("<HeliTestStick>/stick/x"));
+            pitch.RemoveAllBindingOverrides();
+            service.Load();
+            actions.Enable();
+            CollectionAssert.Contains(pitch.controls, stick.stick.x);
+            CollectionAssert.DoesNotContain(pitch.controls, throttle.stick.x);
+        }
+        finally
+        {
+            actions.Disable();
+            InputSystem.RemoveLayout("HeliTestStick");
+            InputSystem.RemoveLayout("HeliTestThrottle");
+        }
+    }
+
+    [Test]
     public void InteractiveKeyboardRebind_ChangesLiveAxisAndRestoresEnabledState()
     {
         Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
