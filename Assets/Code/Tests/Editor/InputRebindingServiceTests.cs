@@ -93,6 +93,60 @@ public class InputRebindingServiceTests
     }
 
     [Test]
+    public void InteractiveJoystickRebind_OnlyResolvesSelectedModelsAxisAfterReload()
+    {
+        const string stickLayout = "HeliSimTestFlightStick";
+        const string throttleLayout = "HeliSimTestThrottle";
+        InputSystem.RegisterLayout("{\"extend\":\"Joystick\"}", name: stickLayout);
+        InputSystem.RegisterLayout("{\"extend\":\"Joystick\"}", name: throttleLayout);
+        try
+        {
+            var stick = (Joystick)InputSystem.AddDevice(stickLayout);
+            var throttle = (Joystick)InputSystem.AddDevice(throttleLayout);
+            actions.devices = new InputDevice[] { stick, throttle };
+            actions.Enable();
+            bool changed = false;
+            string error = null;
+            Assert.That(service.TryStartRebind("Pitch Input", 0, message => error = message,
+                () => changed = true, acceptControl: control => control.device is Joystick,
+                replaceJoystickBindings: true), Is.True);
+            QueueStickX(stick, 0.8f);
+            InputSystem.Update();
+            Assert.That(error, Is.Null);
+            Assert.That(changed, Is.True);
+
+            InputAction pitch = actions.FindAction("Pitch Input");
+            actions.RemoveAllBindingOverrides();
+            service.Load();
+            Assert.That(pitch.bindings[0].effectivePath, Is.EqualTo("<" + stickLayout + ">/stick/x"));
+            Assert.That(pitch.controls, Does.Contain(stick.stick.x));
+            CollectionAssert.DoesNotContain(pitch.controls, throttle.stick.x);
+            QueueStickX(stick, 0f);
+            QueueStickX(throttle, 1f);
+            InputSystem.Update();
+            Assert.That(pitch.ReadValue<float>(), Is.Zero);
+            QueueStickX(stick, 0.8f);
+            InputSystem.Update();
+            Assert.That(pitch.ReadValue<float>(), Is.GreaterThan(0.5f));
+        }
+        finally
+        {
+            actions.Disable();
+            InputSystem.RemoveLayout(throttleLayout);
+            InputSystem.RemoveLayout(stickLayout);
+        }
+    }
+
+    private static void QueueStickX(Joystick device, float value)
+    {
+        using (UnityEngine.InputSystem.LowLevel.StateEvent.From(device, out var stateEvent))
+        {
+            device.stick.x.WriteValueIntoEvent(value, stateEvent);
+            InputSystem.QueueEvent(stateEvent);
+        }
+    }
+
+    [Test]
     public void InteractiveKeyboardRebind_ChangesLiveAxisAndRestoresEnabledState()
     {
         Keyboard keyboard = InputSystem.AddDevice<Keyboard>();

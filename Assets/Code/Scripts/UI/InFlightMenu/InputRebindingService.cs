@@ -542,6 +542,7 @@ public sealed class InputRebindingService : IDisposable
         bool bindingChanged = false;
         operation = action.PerformInteractiveRebinding(bindingIndex)
             .WithCancelingThrough("<Keyboard>/escape")
+            .OnGeneratePath(GetJoystickControlPath)
             .OnApplyBinding((rebind, path) =>
             {
                 bool applied = replaceJoystickBindings
@@ -575,6 +576,18 @@ public sealed class InputRebindingService : IDisposable
         }
         operation.Start();
         return true;
+    }
+
+    private static string GetJoystickControlPath(InputControl control)
+    {
+        // Unity normally binds inherited axes to <Joystick>, which also matches HOTAS throttles.
+        if (!(control.device is Joystick joystick)) return null;
+
+        string layout = joystick.layout.Replace("\\", "\\\\").Replace(">", "\\>");
+        string path = "<" + layout + ">";
+        foreach (var usage in joystick.usages)
+            path += "{" + usage.ToString().Replace("\\", "\\\\").Replace("}", "\\}") + "}";
+        return path + control.path.Substring(joystick.path.Length).Replace("\\", "\\\\");
     }
 
     public void CancelRebind()
