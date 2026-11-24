@@ -46,6 +46,7 @@ public sealed class ControlsRebindingPage : InFlightMenuPage
 
     public InputRebindingService Service => service;
     public bool IsBindingDialogOpen => bindingDialogRoot != null && bindingDialogRoot.activeSelf;
+    public bool CapturingShortcutThisFrame => IsBindingDialogOpen || dialogClosedFrame == Time.frameCount;
 
     private void OnEnable() => WireResetButton();
 

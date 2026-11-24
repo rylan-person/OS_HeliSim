@@ -160,7 +160,7 @@ namespace Mapbox.Editor
 			}
 
 			//setup local variables from mapbox config file
-			_mapboxConfig = _mapboxAccess.Configuration;
+			_mapboxConfig = _mapboxAccess.GetConfigurationForStorage();
 			if (_mapboxConfig != null)
 			{
 				_accessToken = _mapboxConfig.AccessToken;
@@ -248,6 +248,11 @@ namespace Mapbox.Editor
 		/// </summary>
 		private static void SubmitConfiguration()
 		{
+			if (MapboxAccess.HasRuntimeAccessToken)
+			{
+				Debug.LogWarning("Mapbox setup cannot save configuration while a session token override is active.");
+				return;
+			}
 			var mapboxConfiguration = new MapboxConfiguration
 			{
 				AccessToken = _accessToken,
@@ -262,13 +267,18 @@ namespace Mapbox.Editor
 
 		private static void HandleValidationResponse(MapboxTokenStatus status)
 		{
+			if (MapboxAccess.HasRuntimeAccessToken)
+			{
+				_validating = false;
+				return;
+			}
 			_currentTokenStatus = status;
 			_validating = false;
 			_lastValidatedToken = _accessToken;
 
 			//save the config
 			_configurationFile = Path.Combine(Unity.Constants.Path.MAPBOX_RESOURCES_ABSOLUTE, Unity.Constants.Path.CONFIG_FILE);
-			var json = JsonUtility.ToJson(_mapboxAccess.Configuration);
+			var json = JsonUtility.ToJson(_mapboxAccess.GetConfigurationForStorage());
 			File.WriteAllText(_configurationFile, json);
 		}
 

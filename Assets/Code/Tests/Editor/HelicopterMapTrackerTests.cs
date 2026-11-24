@@ -4,9 +4,75 @@ using CesiumForUnity;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools.Utils;
+using Mapbox.Unity;
+using Mapbox.Unity.Map;
+using TMPro;
+using UnityEngine.UI;
 
 public class HelicopterMapTrackerTests
 {
+    [Test]
+    public void MissingToken_DoesNotInitializeMapboxOrInstantiateMapAndShowsSettingsPath()
+    {
+        // Isolate SDK memory only. Never load, save, or delete the user's credential store.
+        FieldInfo instanceField = typeof(MapboxAccess).GetField("_instance", BindingFlags.Static | BindingFlags.NonPublic);
+        FieldInfo runtimeField = typeof(MapboxAccess).GetField("_runtimeAccessToken", BindingFlags.Static | BindingFlags.NonPublic);
+        object previousInstance = instanceField.GetValue(null);
+        object previousRuntime = runtimeField.GetValue(null);
+        string previousJson = MapboxAccess.ConfigurationJSON;
+        GameObject trackerObject = new GameObject("TokenlessTracker");
+        GameObject mapObject = new GameObject("UninitializedMap");
+        mapObject.SetActive(false);
+        AbstractMap map = mapObject.AddComponent<AbstractMap>();
+        GameObject panelObject = new GameObject("TokenlessMapPanel", typeof(RectTransform));
+        GameObject imageObject = new GameObject("MapImage", typeof(RectTransform), typeof(RawImage));
+        imageObject.transform.SetParent(panelObject.transform, false);
+        try
+        {
+            instanceField.SetValue(null, null);
+            runtimeField.SetValue(null, null);
+            MapboxAccess.ConfigurationJSON = "{\"AccessToken\":\"\"}";
+            HelicopterMapTracker tracker = trackerObject.AddComponent<HelicopterMapTracker>();
+            typeof(HelicopterMapTracker).GetField("mapPrefab", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(tracker, map);
+            Assert.That(tracker.HasMapAccessToken, Is.False);
+            Assert.That(tracker.GetOrCreateMap(), Is.Null);
+            Assert.That(tracker.Map, Is.Null);
+
+            StreetMapDashboardPanel panel = panelObject.AddComponent<StreetMapDashboardPanel>();
+            typeof(StreetMapDashboardPanel).GetField("displayImage", BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(panel, imageObject.GetComponent<RawImage>());
+            panel.OnPanelShown();
+            TMP_Text message = imageObject.GetComponentInChildren<TMP_Text>();
+            Assert.That(message, Is.Not.Null);
+            Assert.That(message.text, Does.Contain("Settings > World streaming"));
+            Assert.That(message.text, Does.Contain("Mapbox token"));
+            Assert.That(imageObject.GetComponent<RawImage>().texture, Is.Null);
+            Assert.That(panelObject.GetComponentInChildren<Camera>(), Is.Null);
+            panel.SetFullscreen(true);
+            panel.OnPanelHidden();
+            panel.OnPanelShown();
+
+            // The legacy scene-assigned map must also be paused before its Start can initialize services.
+            typeof(HelicopterMapTracker).GetField("map", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(tracker, map);
+            InvokeAwake(tracker);
+            Assert.That(map.enabled, Is.False);
+            Assert.That(tracker.GetOrCreateMap(), Is.Null);
+            runtimeField.SetValue(null, "synthetic-recovery-token");
+            Assert.That(tracker.GetOrCreateMap(), Is.SameAs(map));
+            Assert.That(map.enabled, Is.True, "Adding a session token should release the paused map.");
+            Assert.That(instanceField.GetValue(null), Is.Null, "Availability checks must not construct Mapbox services.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(panelObject);
+            Object.DestroyImmediate(trackerObject);
+            Object.DestroyImmediate(mapObject);
+            instanceField.SetValue(null, previousInstance);
+            runtimeField.SetValue(null, previousRuntime);
+            MapboxAccess.ConfigurationJSON = previousJson;
+        }
+    }
+
     [Test]
     public void SyncToHelicopter_FollowsTheFlightRigidbody()
     {

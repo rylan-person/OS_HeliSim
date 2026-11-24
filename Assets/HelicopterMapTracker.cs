@@ -3,6 +3,7 @@ using CesiumForUnity;
 using Mapbox.Unity.Map;
 using Mapbox.Utils;
 using System.Globalization;
+using Mapbox.Unity;
 
 public class HelicopterMapTracker : MonoBehaviour
 {
@@ -29,9 +30,11 @@ public class HelicopterMapTracker : MonoBehaviour
     private bool hasMapPosition;
     private bool mapVisible;
     private int mapCreatedFrame = -1;
+    private bool mapAwaitingAccess;
 
     public AbstractMap Map => map;
     public bool HasHelicopter => helicopterTransform != null;
+    public bool HasMapAccessToken => MapboxAccess.HasAccessToken;
 
     private void Awake()
     {
@@ -39,7 +42,15 @@ public class HelicopterMapTracker : MonoBehaviour
             helicopterAnchor = GetComponent<CesiumGlobeAnchor>();
 
         if (map != null)
+        {
+            // AbstractMap starts its SDK services in Start. Pause a scene map before that happens.
+            if (map.enabled && !HasMapAccessToken)
+            {
+                map.enabled = false;
+                mapAwaitingAccess = true;
+            }
             ConfigureMap();
+        }
     }
 
     private void LateUpdate()
@@ -91,6 +102,16 @@ public class HelicopterMapTracker : MonoBehaviour
 
     public AbstractMap GetOrCreateMap()
     {
+        if (!HasMapAccessToken)
+            return null;
+
+        if (map != null && mapAwaitingAccess)
+        {
+            map.enabled = true;
+            mapAwaitingAccess = false;
+            mapCreatedFrame = Time.frameCount;
+        }
+
         if (map == null && mapPrefab != null)
         {
             map = Instantiate(mapPrefab);
@@ -122,7 +143,7 @@ public class HelicopterMapTracker : MonoBehaviour
 
     private void UpdateMapPosition()
     {
-        if (helicopterAnchor == null || map == null)
+        if (helicopterAnchor == null || map == null || !HasMapAccessToken)
             return;
 
         var cesiumPosition =

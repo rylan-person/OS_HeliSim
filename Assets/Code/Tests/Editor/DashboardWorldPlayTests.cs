@@ -6,6 +6,7 @@ using System.Reflection;
 using CesiumForUnity;
 using HeliSim.InFlightMenu;
 using Mapbox.Unity.Map;
+using Mapbox.Unity;
 using NUnit.Framework;
 using Unity.Cinemachine;
 using UnityEditor;
@@ -22,6 +23,8 @@ public sealed class DashboardWorldPlayTests
     private const string StateKey = "HeliSim.DashboardWorldPlayTests.Setup";
     private const string FolderKey = "HeliSim.DashboardWorldPlayTests.Folder";
     private const string DashboardPath = "Assets/Level/Prefabs/UI/DashboardSystem.prefab";
+    private const string TokenTargetKey = "HeliSim.MapServiceTokens.TestTarget";
+    private const string PreviousTokenTargetKey = "HeliSim.DashboardWorldPlayTests.PreviousTokenTarget";
 
     [Serializable] private sealed class Setup { public Record[] scenes; }
     [Serializable] private sealed class Record { public string path; public bool isLoaded; public bool isActive; }
@@ -46,6 +49,9 @@ public sealed class DashboardWorldPlayTests
         AssetDatabase.CreateFolder("Assets", folder.Substring("Assets/".Length));
         Scene isolated = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         Assert.That(EditorSceneManager.SaveScene(isolated, folder + "/Isolated.unity"), Is.True);
+        SessionState.SetString(PreviousTokenTargetKey, SessionState.GetString(TokenTargetKey, ""));
+        SessionState.SetString(TokenTargetKey, "HeliSim/MapServiceTokens/Tests/" + Guid.NewGuid().ToString("N"));
+        Assert.That(MapServiceTokens.TryForget(), Is.True, "Only the isolated synthetic credential target may be used.");
         yield return new EnterPlayMode();
     }
 
@@ -62,6 +68,17 @@ public sealed class DashboardWorldPlayTests
         }
         string folder = SessionState.GetString(FolderKey, "");
         if (!string.IsNullOrEmpty(folder)) Assert.That(AssetDatabase.DeleteAsset(folder), Is.True, "Temporary scene cleanup failed.");
+        if (SessionState.GetString(PreviousTokenTargetKey, "<not-active>") != "<not-active>")
+        {
+            try { Assert.That(MapServiceTokens.TryForget(), Is.True); }
+            finally
+            {
+                string previous = SessionState.GetString(PreviousTokenTargetKey, "");
+                if (string.IsNullOrEmpty(previous)) SessionState.EraseString(TokenTargetKey);
+                else SessionState.SetString(TokenTargetKey, previous);
+                SessionState.EraseString(PreviousTokenTargetKey);
+            }
+        }
         SessionState.EraseString(StateKey);
         SessionState.EraseString(FolderKey);
     }
@@ -175,6 +192,8 @@ public sealed class DashboardWorldPlayTests
     [UnityTest]
     public IEnumerator ShippedStreetMap_OfflineMapAllocatesResizesAndReleasesItsCameraTexture()
     {
+        // Supply only an in-memory synthetic credential; the disabled map cannot send requests.
+        using var token = new SyntheticMapboxToken();
         CreateWorldAndCameras();
         var mapObject = new GameObject("OfflineStreetMap");
         mapObject.SetActive(false);
@@ -436,6 +455,24 @@ public sealed class DashboardWorldPlayTests
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(DashboardPath);
         Assert.That(prefab, Is.Not.Null);
         return Object.Instantiate(prefab).GetComponentInChildren<DashboardManager>(true);
+    }
+
+    private sealed class SyntheticMapboxToken : IDisposable
+    {
+        private readonly FieldInfo runtimeField = typeof(MapboxAccess).GetField(
+            "_runtimeAccessToken", BindingFlags.Static | BindingFlags.NonPublic);
+        private readonly object previous;
+
+        public SyntheticMapboxToken()
+        {
+            previous = runtimeField.GetValue(null);
+            runtimeField.SetValue(null, "synthetic-dashboard-token");
+        }
+
+        public void Dispose()
+        {
+            runtimeField.SetValue(null, previous);
+        }
     }
 
     private static void CreateWorldAndCameras()

@@ -105,6 +105,82 @@ public static class MenuSceneBuilder
         }
     }
 
+    /// <summary>Adds only the optional token section, preserving the authored menu and existing references.</summary>
+    [MenuItem("HeliSim/Add Main Menu Streaming Token Entry")]
+    public static void AddMapServiceTokenEntry()
+    {
+        RequireIdle();
+        if (PrefabStageUtility.GetCurrentPrefabStage() != null)
+            throw new InvalidOperationException("Close Prefab Mode before updating the main menu asset.");
+        var asset = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+        if (asset == null || EditorUtility.IsDirty(asset))
+            throw new InvalidOperationException("Preserve unsaved main menu asset changes before adding token entry.");
+        var root = PrefabUtility.LoadPrefabContents(PrefabPath);
+        try
+        {
+            var page = root.GetComponentInChildren<CesiumSettingsPage>(true);
+            if (page == null) throw new InvalidOperationException("Main menu World streaming page is missing.");
+            AddTokenSection(new MenuKit(MenuThemeAssets.LoadTheme()), page.transform);
+            PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
+        }
+        finally { PrefabUtility.UnloadPrefabContents(root); }
+    }
+
+    private static void AddTokenSection(MenuKit kit, Transform page)
+    {
+        var palette = MenuPalette.Default;
+        const string help = "Save your own access tokens on this Windows account. HeliSim loads them when it starts. " +
+            "Leave a field blank to keep its saved token.";
+        var existing = page.Find("MapServiceTokens");
+        if (existing != null)
+        {
+            existing.Find("Help").GetComponent<TMP_Text>().text = help;
+            var existingEntry = existing.GetComponent<MapServiceTokenEntry>();
+            var applyButton = existing.GetComponentsInChildren<Button>(true).Single(b => b.name == "ApplyTokens");
+            applyButton.GetComponentInChildren<TMP_Text>(true).text = "Save tokens";
+            AddTokenActions(kit, existing, existingEntry, applyButton);
+            return;
+        }
+        var section = kit.Section(page, "MapServiceTokens", "Map service tokens (optional)");
+        section.SetSiblingIndex(1);
+        kit.Text(section, "Help", help, MenuTextRole.Hint, palette.text2);
+        var rows = kit.Rows(section);
+        var cesium = TokenField(kit, rows, "CesiumToken", "Cesium ion token", "3D Tiles and world streaming.");
+        var mapbox = TokenField(kit, rows, "MapboxToken", "Mapbox token", "Map tiles and location search.");
+        var links = MenuKit.Rect("AccountLinks", section);
+        MenuKit.RowLayout(links.gameObject, 0, 0, 0, 0, 18f);
+        var cesiumSignup = kit.Button(links, "CesiumSignup", "Create Cesium account", MenuButtonLook.Default);
+        var mapboxSignup = kit.Button(links, "MapboxSignup", "Create Mapbox account", MenuButtonLook.Default);
+        var apply = kit.Button(section, "ApplyTokens", "Save tokens", MenuButtonLook.Default);
+        var status = kit.Text(section, "Status", string.Empty, MenuTextRole.Hint, palette.text2);
+        var entry = section.gameObject.AddComponent<MapServiceTokenEntry>();
+        entry.Configure(cesium, mapbox, apply, cesiumSignup, mapboxSignup, status, null);
+        AddTokenActions(kit, section, entry, apply);
+        foreach (var child in section.GetComponentsInChildren<Transform>(true)) child.gameObject.layer = page.gameObject.layer;
+    }
+
+    private static void AddTokenActions(MenuKit kit, Transform section, MapServiceTokenEntry entry, Button save)
+    {
+        if (section.Find("TokenActions") != null) return;
+        var row = MenuKit.Rect("TokenActions", section);
+        row.SetSiblingIndex(save.transform.GetSiblingIndex());
+        MenuKit.RowLayout(row.gameObject, 0, 0, 0, 0, 18f);
+        save.transform.SetParent(row, false);
+        var forget = kit.Button(row, "ForgetTokens", "Forget saved tokens", MenuButtonLook.Default);
+        Set(entry, "forgetButton", forget);
+        foreach (var child in row.GetComponentsInChildren<Transform>(true)) child.gameObject.layer = section.gameObject.layer;
+    }
+
+    private static TMP_InputField TokenField(MenuKit kit, Transform rows, string name, string label, string hint)
+    {
+        kit.Row(rows, name + "Row", label, hint, out RectTransform control, 480f);
+        var field = MenuKit.Rect(name, control).gameObject.AddComponent<TMP_InputField>();
+        kit.Field(field, true, 480f, placeholder: "Optional token");
+        field.contentType = TMP_InputField.ContentType.Password;
+        field.richText = false;
+        return field;
+    }
+
     private static void RequireIdle()
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isCompiling || BuildPipeline.isBuildingPlayer)
@@ -144,6 +220,17 @@ public static class MenuSceneBuilder
         if (property == null) throw new InvalidOperationException(target.GetType().Name + " has no field " + name);
         property.objectReferenceValue = value;
         data.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void AddDisplaySwitch(MenuKit kit, Transform foot, MenuVrPresentation presentation)
+    {
+        var button = kit.NavItem(MenuKit.Rect("SwitchMenuDisplay", foot).gameObject.AddComponent<Button>(),
+            "Menu on monitor (F8)", "display");
+        button.gameObject.AddComponent<CanvasGroup>();
+        button.transform.SetSiblingIndex(foot.Find("Quit").GetSiblingIndex());
+        foreach (var child in button.GetComponentsInChildren<Transform>(true)) child.gameObject.layer = foot.gameObject.layer;
+        Set(presentation, "switchDisplay", button);
+        Set(presentation, "switchDisplayLabel", button.transform.Find("Label").GetComponent<TMP_Text>());
     }
 
     private sealed class MainMenuBuild
@@ -201,6 +288,7 @@ public static class MenuSceneBuilder
             coords.rectTransform.anchoredPosition = new Vector2(-36f, 24f);
 
             BuildRail(body, out Button quit);
+            AddDisplaySwitch(kit, quit.transform.parent, vrPresentation);
             var main = MenuKit.Rect("Main", body);
             MenuKit.Stretch(main, 420f);
             kit.Fill(main.gameObject, MenuPalette.WithAlpha(P.bg2, 0.9f), null, true);
@@ -641,6 +729,7 @@ public static class MenuSceneBuilder
                     data.ApplyModifiedPropertiesWithoutUndo();
                     var heading = page.Find("PageHead/PageTitle");
                     if (heading != null) heading.GetComponent<TMP_Text>().text = title;
+                    if (id == "streaming") AddTokenSection(kit, page);
                     var attachment = page.GetComponent<MenuPageAttachment>();
                     if (attachment != null)
                     {

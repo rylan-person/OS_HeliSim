@@ -69,6 +69,27 @@ namespace Mapbox.MapboxSdkCs.UnitTest
         }
 
         [UnityTest]
+        public IEnumerator ChangingTileAccessToken_UsesReplacementOnNextRequest()
+        {
+            using (var source = new Mapbox.Platform.Cache.CachingWebFileSource("first", () => "test-sku", false))
+            {
+                source.SetAccessToken("replacement");
+                Response response = null;
+                var request = source.Request(server.Url + "success?existing=retained", value => response = value,
+                    RequestTimeoutSeconds, tilesetId: "test.tiles");
+                requests.Add(request);
+                var timer = Stopwatch.StartNew();
+                while (!request.IsCompleted && timer.Elapsed.TotalSeconds < WaitTimeoutSeconds)
+                    yield return null;
+
+                Assert.That(response, Is.Not.Null);
+                Assert.That(response.HasError, Is.False);
+                AssertRequestQuery("existing=retained", "access_token=replacement", "sku=test-sku");
+                StringAssert.DoesNotContain("first", server.RequestTarget);
+            }
+        }
+
+        [UnityTest]
         public IEnumerator MultipleRequests()
         {
             List<Response> responses = new List<Response>();

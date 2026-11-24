@@ -28,6 +28,117 @@ namespace Mapbox.Unity
 		public event TokenValidationEvent OnTokenValidation;
 
 		private static MapboxAccess _instance;
+		private static string _runtimeAccessToken;
+		private MapboxConfiguration _projectConfiguration;
+		public static bool HasRuntimeAccessToken { get { return !string.IsNullOrEmpty(_runtimeAccessToken); } }
+
+		/// <summary>Checks credentials without initializing SDK services or issuing a request.</summary>
+		public static bool HasAccessToken
+		{
+			get
+			{
+				if (HasRuntimeAccessToken) { return true; }
+				if (_instance != null && _instance._configuration != null)
+				{
+					return !string.IsNullOrWhiteSpace(_instance._configuration.AccessToken);
+				}
+				string json = ConfigurationJSON;
+				if (string.IsNullOrEmpty(json))
+				{
+					TextAsset configuration = Resources.Load<TextAsset>(Constants.Path.MAPBOX_RESOURCES_RELATIVE);
+					if (configuration == null) { return false; }
+					json = configuration.text;
+				}
+				try
+				{
+					MapboxConfiguration configuration = JsonUtility.FromJson<MapboxConfiguration>(json);
+					return configuration != null && !string.IsNullOrWhiteSpace(configuration.AccessToken);
+				}
+				catch (ArgumentException) { return false; }
+			}
+		}
+
+		/// <summary>Overrides only the token for this Play session without replacing caches or options.</summary>
+		public static void SetRuntimeAccessToken(string accessToken)
+		{
+			if (!Application.isPlaying || string.IsNullOrWhiteSpace(accessToken)) { return; }
+			_runtimeAccessToken = accessToken.Trim();
+			if (_instance != null) { _instance.ApplyRuntimeAccessToken(); }
+		}
+
+		public static void ResetRuntimeAccessToken()
+		{
+			_runtimeAccessToken = null;
+			if (_instance != null && _instance._projectConfiguration != null)
+			{
+				_instance._configuration = _instance._projectConfiguration;
+				_instance._projectConfiguration = null;
+				if (_instance._fileSource != null)
+				{
+					_instance._fileSource.SetAccessToken(_instance._configuration.AccessToken);
+				}
+				if (_instance._telemetryLibrary != null)
+				{
+					_instance._telemetryLibrary.Initialize(_instance._configuration.AccessToken);
+				}
+				Configured = !string.IsNullOrEmpty(_instance._configuration.AccessToken);
+				_instance.ResetTokenServices();
+			}
+		}
+
+		private void ApplyRuntimeAccessToken()
+		{
+			if (string.IsNullOrEmpty(_runtimeAccessToken)) { return; }
+			if (_configuration == null)
+			{
+				LoadAccessToken();
+				return;
+			}
+			if (_projectConfiguration == null)
+			{
+				_projectConfiguration = _configuration;
+				_configuration = CopyConfiguration(_configuration, _runtimeAccessToken);
+			}
+			_configuration.AccessToken = _runtimeAccessToken;
+			if (_fileSource == null)
+			{
+				ConfigureFileSource();
+				ConfigureTelemetry();
+			}
+			else
+			{
+				_fileSource.SetAccessToken(_runtimeAccessToken);
+				if (_telemetryLibrary != null) { _telemetryLibrary.Initialize(_runtimeAccessToken); }
+			}
+			Configured = true;
+			ResetTokenServices();
+		}
+
+		private void ResetTokenServices()
+		{
+			_geocoder = null;
+			_directions = null;
+			_mapMatcher = null;
+			_tileJson = null;
+		}
+
+		/// <summary>The SDK setup window reads and saves the project configuration.</summary>
+		public MapboxConfiguration GetConfigurationForStorage()
+		{
+			return _projectConfiguration ?? _configuration;
+		}
+
+		private static MapboxConfiguration CopyConfiguration(MapboxConfiguration configuration, string accessToken)
+		{
+			return new MapboxConfiguration
+			{
+				AccessToken = accessToken,
+				MemoryCacheSize = configuration.MemoryCacheSize,
+				FileCacheSize = configuration.FileCacheSize,
+				DefaultTimeout = configuration.DefaultTimeout,
+				AutoRefreshCache = configuration.AutoRefreshCache
+			};
+		}
 
 		/// <summary>
 		/// The singleton instance.
@@ -72,6 +183,15 @@ namespace Mapbox.Unity
 
 		public void SetConfiguration(MapboxConfiguration configuration, bool throwExecptions = true)
 		{
+			if (configuration != null && !string.IsNullOrEmpty(_runtimeAccessToken))
+			{
+				if (_projectConfiguration == null || configuration != _configuration)
+				{
+					_projectConfiguration = configuration;
+				}
+				// Do not place the runtime credential into a caller-owned configuration object.
+				configuration = CopyConfiguration(configuration, _runtimeAccessToken);
+			}
 			if (configuration == null)
 			{
 				if (throwExecptions)
@@ -83,12 +203,17 @@ namespace Mapbox.Unity
 
 			if (null == configuration || string.IsNullOrEmpty(configuration.AccessToken))
 			{
+				if (_configuration == null) { _configuration = configuration; }
 				Debug.LogError(_tokenNotSetErrorMessage);
 			}
 			else
 			{
-				TokenValidator.Retrieve(configuration.GetMapsSkuToken, configuration.AccessToken, (response) =>
+				_configuration = configuration;
+				string validatedToken = configuration.AccessToken;
+				TokenValidator.Retrieve(configuration.GetMapsSkuToken, validatedToken, (response) =>
 				{
+					// A response for a previous session token must not clear a newer override.
+					if (_configuration != configuration || configuration.AccessToken != validatedToken) { return; }
 					if (OnTokenValidation != null)
 					{
 						OnTokenValidation(response.Status);
@@ -101,8 +226,6 @@ namespace Mapbox.Unity
 						Debug.LogError(new InvalidTokenException(response.Status.ToString().ToString()));
 					}
 				});
-
-				_configuration = configuration;
 
 				ConfigureFileSource();
 				ConfigureTelemetry();
@@ -151,6 +274,11 @@ namespace Mapbox.Unity
 				TextAsset configurationTextAsset = Resources.Load<TextAsset>(Constants.Path.MAPBOX_RESOURCES_RELATIVE);
 				if (null == configurationTextAsset)
 				{
+					if (!string.IsNullOrEmpty(_runtimeAccessToken))
+					{
+						SetConfiguration(new MapboxConfiguration());
+						return;
+					}
 					throw new InvalidTokenException(_tokenNotSetErrorMessage);
 				}
 				ConfigurationJSON = configurationTextAsset.text;

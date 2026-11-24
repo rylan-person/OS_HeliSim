@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using Mapbox.Unity;
 
 public class StreetMapDashboardPanel : DashboardPanel
 {
@@ -14,6 +15,11 @@ public class StreetMapDashboardPanel : DashboardPanel
     private Camera mapCamera;
     private RenderTexture renderTexture;
     private bool isShown;
+    private TMP_Text availabilityText;
+    private float availabilityTimer;
+    private bool mapAvailable;
+
+    public const string MissingTokenMessage = "Street map unavailable\nAdd a Mapbox token in Settings > World streaming.";
 
     protected override void Awake()
     {
@@ -29,6 +35,15 @@ public class StreetMapDashboardPanel : DashboardPanel
     private void Update()
     {
         if (!isShown)
+            return;
+
+        availabilityTimer -= Time.unscaledDeltaTime;
+        if (availabilityTimer <= 0f)
+        {
+            availabilityTimer = 0.5f;
+            RefreshAvailability();
+        }
+        if (!mapAvailable)
             return;
 
         if (mapCamera == null)
@@ -47,6 +62,9 @@ public class StreetMapDashboardPanel : DashboardPanel
     public override void OnPanelShown()
     {
         isShown = true;
+        RefreshAvailability();
+        if (!mapAvailable)
+            return;
         CreateMapCamera();
         if (tracker != null)
             tracker.SetMapVisible(true);
@@ -98,6 +116,54 @@ public class StreetMapDashboardPanel : DashboardPanel
         mapCamera.backgroundColor = new Color(0.08f, 0.1f, 0.13f);
         mapCamera.cullingMask = 1 << 8;
         mapCamera.enabled = isShown;
+    }
+
+    private void RefreshAvailability()
+    {
+        mapAvailable = MapboxAccess.HasAccessToken;
+        if (!mapAvailable)
+        {
+            if (tracker != null)
+                tracker.SetMapVisible(false);
+            if (mapCamera != null)
+                mapCamera.enabled = false;
+            ReleaseRenderTexture();
+        }
+        else if (mapCamera != null)
+        {
+            mapCamera.enabled = isShown;
+            if (tracker != null)
+                tracker.SetMapVisible(isShown);
+        }
+
+        if (displayImage != null)
+        {
+            if (availabilityText == null && !mapAvailable)
+            {
+                var message = new GameObject("MapAvailability", typeof(RectTransform));
+                message.transform.SetParent(displayImage.transform, false);
+                availabilityText = message.AddComponent<TextMeshProUGUI>();
+                if (titleText != null)
+                    availabilityText.font = titleText.font;
+                availabilityText.fontSize = 18f;
+                availabilityText.enableAutoSizing = true;
+                availabilityText.fontSizeMin = 12f;
+                availabilityText.fontSizeMax = 18f;
+                availabilityText.color = new Color(0.1f, 0.12f, 0.15f);
+                availabilityText.alignment = TextAlignmentOptions.Center;
+                availabilityText.raycastTarget = false;
+                RectTransform rect = availabilityText.rectTransform;
+                rect.anchorMin = Vector2.zero;
+                rect.anchorMax = Vector2.one;
+                rect.offsetMin = new Vector2(12f, 12f);
+                rect.offsetMax = new Vector2(-12f, -12f);
+                availabilityText.text = MissingTokenMessage;
+            }
+            if (availabilityText != null)
+                availabilityText.gameObject.SetActive(!mapAvailable);
+        }
+        if (helicopterMarker != null)
+            helicopterMarker.enabled = mapAvailable && tracker != null && tracker.HasHelicopter;
     }
 
     private void ResizeRenderTexture()

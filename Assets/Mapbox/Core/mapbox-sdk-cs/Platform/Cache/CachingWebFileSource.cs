@@ -33,6 +33,12 @@
 			_autoRefreshCache = autoRefreshCache;
 		}
 
+		/// <summary>Changes credentials for future requests while retaining live caches.</summary>
+		public void SetAccessToken(string accessToken)
+		{
+			_accessToken = accessToken;
+		}
+
 
 #region idisposable
 
@@ -203,13 +209,12 @@
 							{
 								// TODO: remove Debug.Log before PR
 								UnityEngine.Debug.LogWarningFormat(
-										"updating cached tile {1} tilesetId:{2}{0}cached etag:{3}{0}remote etag:{4}{0}{5}"
+										"updating cached tile {1} tilesetId:{2}{0}cached etag:{3}{0}remote etag:{4}"
 										, Environment.NewLine
 										, tileId
 										, tilesetId
 										, cachedItem.ETag
 										, headerOnly.Headers["ETag"]
-										, finalUrl
 									);
 
 								// request updated tile and pass callback to return new data to subscribers
@@ -248,7 +253,7 @@
 
 						if (!r.Headers.ContainsKey("ETag"))
 						{
-							UnityEngine.Debug.LogWarningFormat("no 'ETag' header present in response for {0}", url);
+							UnityEngine.Debug.LogWarning("no 'ETag' header present in tile response");
 						}
 						else
 						{

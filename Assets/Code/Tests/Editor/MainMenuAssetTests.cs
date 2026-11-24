@@ -4,12 +4,78 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using HeliSim.FrontEnd;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.TestTools;
 using TMPro;
 
 public sealed class MainMenuAssetTests
 {
     private const string PrefabPath = "Assets/Level/Prefabs/UI/MainMenu.prefab";
     private const string ScenePath = "Assets/Level/Scenes/MainMenu.unity";
+
+    [UnityTest]
+    public System.Collections.IEnumerator MenuDisplay_ButtonAndF8PersistAcrossMenuInstancesAndHeadsetDisconnects()
+    {
+        yield return new EnterPlayMode();
+        const string key = "HeliSim.MainMenu.UseMonitor";
+        int? previous = PlayerPrefs.HasKey(key) ? PlayerPrefs.GetInt(key) : (int?)null;
+        var keyboard = InputSystem.AddDevice<Keyboard>();
+        var cameraObject = new GameObject("Display test camera", typeof(Camera));
+        var camera = cameraObject.GetComponent<Camera>();
+        GameObject menu = null;
+        try
+        {
+            PlayerPrefs.DeleteKey(key);
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            var start = typeof(MenuVrPresentation).GetMethod("Start", flags);
+            var update = typeof(MenuVrPresentation).GetMethod("UpdatePresentation", flags);
+            MenuVrPresentation Open()
+            {
+                menu = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath));
+                var component = menu.GetComponent<MenuVrPresentation>();
+                component.ConfigureCamera(camera, false);
+                start.Invoke(component, null);
+                return component;
+            }
+            // Invoke only the presentation component, independently of attached XR hardware.
+            var presentation = Open();
+            void Tick(bool available) => update.Invoke(presentation, new object[] { available });
+            Tick(true);
+            Assert.That(menu.GetComponent<Canvas>().renderMode, Is.EqualTo(RenderMode.WorldSpace));
+            var button = menu.transform.Find("MenuContent/Navigation/RailFoot/SwitchMenuDisplay").GetComponent<Button>();
+            button.onClick.Invoke();
+            Assert.That(menu.GetComponent<Canvas>().renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay));
+            Assert.That(camera.stereoTargetEye, Is.EqualTo(StereoTargetEyeMask.None));
+            Object.DestroyImmediate(menu);
+            presentation = Open();
+            Tick(true);
+            Assert.That(menu.GetComponent<Canvas>().renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay));
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.F8));
+            InputSystem.Update();
+            Tick(true);
+            Assert.That(menu.GetComponent<Canvas>().renderMode, Is.EqualTo(RenderMode.WorldSpace));
+            Assert.That(camera.stereoTargetEye, Is.EqualTo(StereoTargetEyeMask.Both));
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+            InputSystem.Update();
+            Tick(false);
+            Assert.That(menu.GetComponent<Canvas>().renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay));
+            Tick(true);
+            Assert.That(menu.GetComponent<Canvas>().renderMode, Is.EqualTo(RenderMode.WorldSpace));
+            Assert.That(PlayerPrefs.GetInt(key), Is.Zero);
+        }
+        finally
+        {
+            if (menu != null) Object.DestroyImmediate(menu);
+            Object.DestroyImmediate(cameraObject);
+            InputSystem.RemoveDevice(keyboard);
+            if (previous.HasValue) PlayerPrefs.SetInt(key, previous.Value);
+            else PlayerPrefs.DeleteKey(key);
+            PlayerPrefs.Save();
+        }
+        yield return new ExitPlayMode();
+    }
 
     [TestCase(PrefabPath)]
     [TestCase("Assets/Level/Prefabs/UI/Menu.prefab")]
